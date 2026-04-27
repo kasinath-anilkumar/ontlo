@@ -11,16 +11,16 @@ const AppLayout = ({ children }) => {
 
   useEffect(() => {
     const pageTitles = {
-      "/": "Home | Cyou",
-      "/video": "Video Chat | Cyou",
-      "/connections": "Connections | Cyou",
-      "/messages": "Messages | Cyou",
-      "/profile": "Profile | Cyou",
-      "/setup-profile": "Setup Profile | Cyou",
-      "/auth": "Welcome | Cyou"
+      "/": "Home | Ontlo",
+      "/video": "Video Chat | Ontlo",
+      "/connections": "Connections | Ontlo",
+      "/messages": "Messages | Ontlo",
+      "/profile": "Profile | Ontlo",
+      "/setup-profile": "Setup Profile | Ontlo",
+      "/auth": "Welcome | Ontlo"
     };
 
-    document.title = pageTitles[location.pathname] || "Cyou";
+    document.title = pageTitles[location.pathname] || "Ontlo";
   }, [location]);
 
   return (
