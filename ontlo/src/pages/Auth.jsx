@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Video } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
 import API_URL from "../utils/api";
+import logo from "../assets/ontlo_Logo.png";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -51,8 +52,7 @@ const Auth = () => {
       <div className="w-full max-w-md bg-[#151923]/80 backdrop-blur-xl border border-[#1e293b] rounded-3xl p-8 relative z-10 shadow-2xl">
         <div className="flex justify-center mb-8">
            <div className="flex items-center gap-2">
-             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center font-bold text-white text-2xl">C</div>
-             <span className="text-3xl font-bold text-white tracking-wide">you</span>
+             <img src={logo} alt="Ontlo Logo" srcset="" />
            </div>
         </div>
 
