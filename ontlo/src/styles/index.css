@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #0B0E14;
+  --color-brand-card: #151923;
+  --color-brand-primary: #a855f7;
+  --color-brand-secondary: #ec4899;
+  --color-brand-text: #f8fafc;
+  --color-brand-text-muted: #94a3b8;
+  --color-brand-border: #1e293b;
+  --color-brand-accent: #3b82f6;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-bg text-brand-text font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-primary {
+    @apply bg-gradient-to-r from-brand-primary to-brand-secondary;
+  }
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-brand-border);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-brand-text-muted);
+}
+
+/* Hide bottom nav when a mobile chat is open */
+body.hide-bottom-nav .bottom-nav {
+  display: none !important;
+}
