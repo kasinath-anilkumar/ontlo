@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
 import { useEffect, useState } from "react";
 import API_URL from "../../utils/api";
-import logo from "../../assets/ontlo_logo.png";
+import logo from "../../assets/ontlo_Logo.png";
 import { 
   Home, 
   Video, 
