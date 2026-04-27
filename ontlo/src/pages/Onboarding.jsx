@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera, MapPin, User, Sparkles, Upload, Loader2 } from "lucide-react";
+import { Camera, MapPin, User, Sparkles, Upload, Loader2, ChevronRight, ChevronLeft, Heart, Globe, MessageSquare } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
 import API_URL from "../utils/api";
 
@@ -10,7 +10,7 @@ const Onboarding = () => {
     fullName: "",
     age: "",
     dob: "",
-    gender: "",
+    gender: "Male",
     location: "",
     interests: [],
     bio: "",
@@ -33,7 +33,6 @@ const Onboarding = () => {
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setUploading(true);
     const data = new FormData();
     data.append("image", file);
@@ -54,7 +53,6 @@ const Onboarding = () => {
       }
     } catch (err) {
       console.error("Upload error:", err);
-      alert("Failed to connect to upload server");
     } finally {
       setUploading(false);
     }
@@ -79,7 +77,6 @@ const Onboarding = () => {
       const updatedUser = { ...user, ...data.user, isProfileComplete: true };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       setUser(updatedUser);
-
       navigate("/");
     } catch (err) {
       alert(err.message);
@@ -91,195 +88,174 @@ const Onboarding = () => {
   const commonInterests = ["Travel", "Music", "Gaming", "Art", "Movies", "Tech", "Cooking", "Fitness", "Photography", "Reading"];
 
   return (
-    <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute -top-[10%] -right-[5%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px]"></div>
-        <div className="absolute -bottom-[10%] -left-[5%] w-[40%] h-[40%] bg-pink-600/10 rounded-full blur-[120px]"></div>
+    <div className="min-h-screen bg-[#05070A] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      {/* Immersive 3D Background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[150px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-pink-600/10 rounded-full blur-[150px] animate-pulse delay-700"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.05),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.02]"></div>
       </div>
 
-      <div className="w-full max-w-xl bg-[#151923]/80 backdrop-blur-2xl border border-[#1e293b] rounded-[40px] p-8 md:p-12 shadow-2xl relative z-10">
-        
-        {/* Progress Bar */}
-        <div className="flex gap-2 mb-10">
-          {[1, 2, 3, 4].map((s) => (
-            <div key={s} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${step >= s ? "bg-gradient-to-r from-purple-500 to-pink-500" : "bg-[#1e293b]"}`}></div>
-          ))}
-        </div>
+      <div className="w-full max-w-[500px] relative z-10">
+        <div className="bg-[#0D1117]/40 backdrop-blur-3xl border border-white/5 rounded-[48px] p-8 md:p-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden">
+          
+          {/* Enhanced Progress Header - 5 Steps global */}
+          <div className="flex items-center gap-3 mb-10">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-700 ${step + 1 >= i ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'bg-white/5'}`}></div>
+            ))}
+          </div>
 
-        {step === 1 && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-center">
-            <h1 className="text-3xl font-black text-white mb-2">Show your <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">Face</span></h1>
-            <p className="text-gray-400 mb-8">Upload a photo to your Cloudinary profile.</p>
-            
-            <div className="flex flex-col items-center">
+          <div className="mb-10 text-center">
+            <h1 className="text-3xl font-black text-white uppercase tracking-tight italic mb-2">
+              {step === 1 ? "Avatar" : step === 2 ? "Identity" : step === 3 ? "Origins" : "Vibe"}
+            </h1>
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em]">
+               Onboarding Phase {step + 1} of 5
+            </p>
+          </div>
+
+          {step === 1 && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center">
               <div className="relative group">
-                <div className="w-40 h-40 rounded-full border-4 border-[#1e293b] bg-[#0B0E14] overflow-hidden flex items-center justify-center transition group-hover:border-purple-500/50 relative">
+                <div className="w-44 h-44 rounded-[48px] bg-black border-4 border-white/5 overflow-hidden flex items-center justify-center transition-all group-hover:border-purple-500/50 shadow-2xl relative">
                   {formData.profilePic ? (
                     <img src={formData.profilePic} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
-                    <Camera className="w-12 h-12 text-gray-600" />
+                    <div className="flex flex-col items-center gap-3 opacity-20">
+                       <Camera className="w-12 h-12 text-white" />
+                       <p className="text-[8px] font-black uppercase tracking-widest text-white">No Image</p>
+                    </div>
                   )}
                   {uploading && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <Loader2 className="w-8 h-8 text-white animate-spin" />
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-20">
+                      <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
                     </div>
                   )}
                 </div>
-                <label className="absolute bottom-1 right-1 w-10 h-10 bg-purple-600 rounded-full border-4 border-[#151923] flex items-center justify-center text-white cursor-pointer hover:bg-purple-700 transition">
-                  <Upload className="w-5 h-5" />
+                <label className="absolute -bottom-3 -right-3 w-14 h-14 bg-white text-black rounded-[24px] flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-all shadow-2xl border-4 border-[#0D1117] z-30">
+                  <Upload className="w-6 h-6" />
                   <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" disabled={uploading} />
                 </label>
               </div>
-              <p className="mt-4 text-xs text-gray-500">{uploading ? "Uploading to Cloudinary..." : "JPG, PNG or WEBP (Max 5MB)"}</p>
-            </div>
-            
-            <button 
-              onClick={() => setStep(2)}
-              disabled={uploading}
-              className="w-full mt-10 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 transition disabled:opacity-50"
-            >
-              {formData.profilePic ? "Continue" : "Skip for now"}
-            </button>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-            <h1 className="text-3xl font-black text-white mb-2">Build your <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">Identity</span></h1>
-            <p className="text-gray-400 mb-8">Tell us the basics to start matching.</p>
-            
-            <div className="space-y-6">
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block ml-1">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                  <input 
-                    type="text" 
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                    placeholder="Enter your name"
-                    className="w-full bg-[#0B0E14] border border-[#1e293b] text-white rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:border-purple-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block ml-1">Age</label>
-                  <input 
-                    type="number" 
-                    value={formData.age}
-                    onChange={(e) => setFormData({...formData, age: e.target.value})}
-                    placeholder="25"
-                    className="w-full bg-[#0B0E14] border border-[#1e293b] text-white rounded-2xl px-4 py-4 focus:outline-none focus:border-purple-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block ml-1">Gender</label>
-                  <select 
-                    value={formData.gender}
-                    onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                    className="w-full bg-[#0B0E14] border border-[#1e293b] text-white rounded-2xl px-4 py-4 focus:outline-none focus:border-purple-500 transition-colors appearance-none"
-                  >
-                    <option value="">Select</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex gap-4 mt-10">
-              <button onClick={() => setStep(1)} className="flex-1 border border-[#1e293b] text-white font-bold py-4 rounded-2xl hover:bg-[#1e293b] transition">Back</button>
-              <button onClick={() => setStep(3)} disabled={!formData.fullName || !formData.age} className="flex-1 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 transition disabled:opacity-50">Continue</button>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-            <h1 className="text-3xl font-black text-white mb-2">Where are you <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">from?</span></h1>
-            <p className="text-gray-400 mb-8">Help us find people near you.</p>
-            
-            <div className="space-y-6">
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block ml-1">Location</label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                  <input 
-                    type="text" 
-                    value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
-                    placeholder="City, Country"
-                    className="w-full bg-[#0B0E14] border border-[#1e293b] text-white rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:border-purple-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block ml-1">About You (Bio)</label>
-                <textarea 
-                  value={formData.bio}
-                  onChange={(e) => setFormData({...formData, bio: e.target.value})}
-                  placeholder="Share a bit about yourself..."
-                  rows="4"
-                  className="w-full bg-[#0B0E14] border border-[#1e293b] text-white rounded-2xl px-4 py-4 focus:outline-none focus:border-purple-500 transition-colors resize-none"
-                ></textarea>
-              </div>
-            </div>
-            
-            <div className="flex gap-4 mt-10">
-              <button onClick={() => setStep(2)} className="flex-1 border border-[#1e293b] text-white font-bold py-4 rounded-2xl hover:bg-[#1e293b] transition">Back</button>
-              <button onClick={() => setStep(4)} disabled={!formData.location} className="flex-1 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 transition disabled:opacity-50">Next</button>
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-            <h1 className="text-3xl font-black text-white mb-2">What <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">Excites</span> you?</h1>
-            <p className="text-gray-400 mb-8">Choose at least 3 interests.</p>
-            
-            <div className="flex flex-wrap gap-2 mb-10">
-              {commonInterests.map((interest) => (
-                <button
-                  key={interest}
-                  onClick={() => handleInterestToggle(interest)}
-                  className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 border ${
-                    formData.interests.includes(interest)
-                      ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white border-transparent shadow-lg shadow-purple-600/20"
-                      : "bg-[#0B0E14] border-[#1e293b] text-gray-400 hover:text-white"
-                  }`}
-                >
-                  {interest}
-                </button>
-              ))}
-            </div>
-            
-            <div className="flex gap-4">
-              <button onClick={() => setStep(3)} className="flex-1 border border-[#1e293b] text-white font-bold py-4 rounded-2xl hover:bg-[#1e293b] transition">Back</button>
+              <p className="mt-8 text-[9px] text-gray-500 font-black uppercase tracking-widest leading-relaxed text-center">
+                JPG, PNG OR WEBP<br/>MAX SIZE 5MB
+              </p>
+              
               <button 
-                onClick={handleSubmit} 
-                disabled={formData.interests.length < 3 || loading}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-500 text-white font-black py-4 rounded-2xl hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                onClick={() => setStep(2)}
+                className="w-full mt-10 py-5 bg-white text-black font-black rounded-[24px] uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/5"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Saving Profile...
-                  </>
-                ) : (
-                  <>Finish Setup <Sparkles className="w-5 h-5 fill-current" /></>
-                )}
+                {formData.profilePic ? "Continue Protocol" : "Skip Identity Layer"}
               </button>
             </div>
-          </div>
-        )}
+          )}
 
+          {step === 2 && (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
+               <InputField label="Full Name" value={formData.fullName} onChange={(val) => setFormData({...formData, fullName: val})} placeholder="Your full name" icon={<User className="w-4 h-4" />} />
+               <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Age" type="number" value={formData.age} onChange={(val) => setFormData({...formData, age: val})} placeholder="e.g. 24" icon={<Sparkles className="w-4 h-4" />} />
+                  <div className="space-y-2">
+                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">Gender</label>
+                    <select 
+                      value={formData.gender}
+                      onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] px-6 py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-xs font-bold appearance-none cursor-pointer"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
+               </div>
+               
+               <div className="flex gap-4 mt-10">
+                  <button onClick={() => setStep(1)} className="w-16 h-16 rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+                  <button onClick={() => setStep(3)} disabled={!formData.fullName || !formData.age} className="flex-1 bg-white text-black font-black rounded-[24px] uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Continue <ChevronRight className="w-4 h-4" /></button>
+               </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
+               <InputField label="Location" value={formData.location} onChange={(val) => setFormData({...formData, location: val})} placeholder="City, Country" icon={<Globe className="w-4 h-4" />} />
+               <div className="space-y-2">
+                  <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">About You (Bio)</label>
+                  <textarea 
+                    value={formData.bio}
+                    onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                    placeholder="Share your story..."
+                    rows="4"
+                    className="w-full bg-white/5 border border-white/10 text-white rounded-[28px] px-6 py-5 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-sm font-medium resize-none placeholder:text-gray-700 min-h-[140px]"
+                  />
+               </div>
+               
+               <div className="flex gap-4 mt-10">
+                  <button onClick={() => setStep(2)} className="w-16 h-16 rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+                  <button onClick={() => setStep(4)} disabled={!formData.location} className="flex-1 bg-white text-black font-black rounded-[24px] uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Next Phase <ChevronRight className="w-4 h-4" /></button>
+               </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+               <div className="flex flex-wrap gap-2 mb-10 max-h-[220px] overflow-y-auto custom-scrollbar pr-2">
+                 {commonInterests.map((interest) => (
+                   <button
+                     key={interest}
+                     onClick={() => handleInterestToggle(interest)}
+                     className={`px-5 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all duration-300 border ${
+                       formData.interests.includes(interest)
+                         ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white border-transparent shadow-lg shadow-purple-600/20"
+                         : "bg-white/5 border-white/10 text-gray-500 hover:text-white"
+                     }`}
+                   >
+                     {interest}
+                   </button>
+                 ))}
+               </div>
+               
+               <div className="flex gap-4 mt-6">
+                 <button onClick={() => setStep(3)} className="w-16 h-16 rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+                 <button 
+                   onClick={handleSubmit} 
+                   disabled={formData.interests.length < 3 || loading}
+                   className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black rounded-[24px] uppercase tracking-widest text-[11px] hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-purple-600/20"
+                 >
+                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Activate Profile <Sparkles className="w-5 h-5 fill-current" /></>}
+                 </button>
+               </div>
+            </div>
+          )}
+
+        </div>
+
+        <p className="text-center text-[8px] text-gray-800 font-black uppercase tracking-[0.4em] mt-10 leading-relaxed opacity-40">
+           Universal Identity Layer v4.0<br/>Ontlo Authentication Protocol
+        </p>
       </div>
     </div>
   );
 };
+
+const InputField = ({ label, value, onChange, placeholder, type = "text", icon }) => (
+  <div className="space-y-2">
+    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">{label}</label>
+    <div className="relative group">
+      {icon && <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-purple-400 transition-colors">{icon}</div>}
+      <input 
+        type={type} 
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`w-full bg-white/5 border border-white/10 text-white rounded-[24px] ${icon ? 'pl-14' : 'px-6'} py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-sm font-medium placeholder:text-gray-700`}
+        placeholder={placeholder}
+        required
+      />
+    </div>
+  </div>
+);
 
 export default Onboarding;

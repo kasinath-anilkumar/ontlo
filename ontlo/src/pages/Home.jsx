@@ -11,14 +11,35 @@ import banner2 from "../assets/banner2.png";
 const Home = () => {
   const navigate = useNavigate();
   const { socket, user } = useSocket();
+  const [counts, setCounts] = useState({ notifications: 0 });
   const [onlineCount, setOnlineCount] = useState(0);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [loadingOnline, setLoadingOnline] = useState(true);
 
+  const fetchCounts = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/api/notifications/counts`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) setCounts(data);
+    } catch (err) {
+      console.error("Failed to fetch notification counts", err);
+    }
+  };
+
   useEffect(() => {
     if (!socket) return;
     socket.on("online-count", ({ count }) => setOnlineCount(count));
-    return () => socket.off("online-count");
+    socket.on("notification-update", fetchCounts);
+    
+    fetchCounts();
+
+    return () => {
+      socket.off("online-count");
+      socket.off("notification-update", fetchCounts);
+    };
   }, [socket]);
 
   useEffect(() => {
@@ -41,10 +62,10 @@ const Home = () => {
   }, [onlineCount]);
 
   return (
-    <div className="flex flex-col h-full space-y-6 sm:space-y-8 pt-8 sm:pt-10 pb-32 sm:pb-16 px-4 sm:px-8 lg:px-12 relative overflow-x-hidden">
+    <div className="flex flex-col h-full space-y-4 sm:space-y-6 pt-6 sm:pt-8 pb-24 sm:pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden">
       {/* Background Glows */}
-      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-600/15 blur-[120px] rounded-full pointer-events-none"></div>
-      <div className="absolute bottom-20 left-0 w-[300px] h-[300px] bg-pink-600/10 blur-[100px] rounded-full pointer-events-none"></div>
+      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="absolute bottom-20 left-0 w-[300px] h-[300px] bg-pink-600/5 blur-[100px] rounded-full pointer-events-none"></div>
 
       {/* Top Bar */}
       <header className="flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-10 px-1">
@@ -55,22 +76,27 @@ const Home = () => {
           <input 
             type="text" 
             placeholder="Search..." 
-            className="w-full bg-[#151923] border border-[#1e293b] text-white text-sm rounded-xl pl-10 pr-4 py-2 sm:py-2.5 focus:outline-none focus:border-purple-500/50 transition-all shadow-lg"
+            className="w-full bg-[#151923] border border-[#1e293b] text-white text-xs rounded-xl pl-10 pr-4 py-2 sm:py-2 focus:outline-none focus:border-purple-500/50 transition-all shadow-lg"
           />
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-          <div className="bg-[#151923]/60 backdrop-blur-md border border-[#1e293b] rounded-full px-3 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2 flex-shrink-0 shadow-lg shadow-green-500/5">
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+          <div className="bg-[#151923]/60 backdrop-blur-md border border-[#1e293b] rounded-xl px-3 py-1.5 flex items-center gap-2 flex-shrink-0 shadow-lg">
             <Users className="w-3.5 h-3.5 text-purple-400" />
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-            <span className="text-[10px] sm:text-sm font-medium text-gray-300">
-              {onlineCount.toLocaleString()} <span className="hidden xxs:inline">Online</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+            <span className="text-[10px] sm:text-xs font-bold text-gray-300 tracking-tight">
+              {onlineCount.toLocaleString()} <span className="hidden xxs:inline uppercase">Online</span>
             </span>
           </div>
-          <button onClick={() => navigate("/messages")} className="w-8 h-8 sm:w-10 sm:h-10 bg-[#151923] border border-[#1e293b] rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:border-purple-500/50 transition-all shadow-lg">
-            <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+          <button onClick={() => navigate("/notifications")} className="relative w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all">
+            <Bell className="h-4 w-4" />
+            <span className={`absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] px-1 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-full flex items-center justify-center text-[8px] font-black text-white border border-[#0B0E14] shadow-lg transition-all duration-300 ${
+              counts.notifications > 0 ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'
+            }`}>
+              {counts.notifications > 99 ? "99+" : counts.notifications}
+            </span>
           </button>
-          <button onClick={() => navigate("/profile")} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-purple-500/20 overflow-hidden transition-all hover:scale-110 hover:border-purple-500 shadow-lg bg-[#151923] flex items-center justify-center">
+          <button onClick={() => navigate("/profile")} className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-purple-500/20 overflow-hidden transition-all hover:scale-105 shadow-lg bg-[#151923] flex items-center justify-center">
             {user?.profilePic ? (
               <img src={user.profilePic} alt={user?.username} className="w-full h-full object-cover" />
             ) : (
@@ -82,65 +108,43 @@ const Home = () => {
 
       {/* Hero Section */}
       <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10">
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-black text-white mb-1 tracking-tight">{getDynamicGreeting()}, {user?.fullName?.split(' ')[0] || user?.username} 👋</h1>
-          <p className="text-sm sm:text-base text-gray-400">Ready to meet someone new?</p>
+        <div className="mb-4 sm:mb-5">
+          <h1 className="text-xl sm:text-2xl font-black text-white mb-0.5 tracking-tight">{getDynamicGreeting()}, {user?.fullName?.split(' ')[0] || user?.username} 👋</h1>
+          <p className="text-xs sm:text-sm text-gray-400 font-medium tracking-tight">Ready to meet someone new?</p>
         </div>
-        <div className="relative rounded-[32px] overflow-hidden bg-gradient-to-br from-[#0B0F1F] via-[#0E1330] to-[#140F2E] p-6 md:p-10 transition-all duration-500 min-h-[380px]">
+        <div className="relative rounded-[24px] overflow-hidden bg-gradient-to-br from-[#0B0F1F] via-[#0E1330] to-[#140F2E] p-5 md:p-8 transition-all duration-500 min-h-[320px]">
           
           {/* Glow background */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(168,85,247,0.25),transparent_40%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(168,85,247,0.15),transparent_40%)] pointer-events-none" />
 
           <div className="relative grid md:grid-cols-2 gap-8 items-center z-20">
 
             {/* LEFT CONTENT */}
-            <div className="space-y-6">
-              {/* Online badge */}
-              <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-2 rounded-full w-fit border border-white/10 shadow-xl">
-                <Globe className="w-4 h-4 text-purple-400" />
-                <div className="flex -space-x-2">
-                  {onlineUsers.length > 0 ? (
-                    onlineUsers.slice(0, 3).map((u) => (
-                      u.profilePic ? (
-                        <img key={u._id} src={u.profilePic} className="w-7 h-7 rounded-full border border-black object-cover" />
-                      ) : (
-                        <div key={u._id} className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center border border-black">
-                          <User className="w-3.5 h-3.5 text-white" />
-                        </div>
-                      )
-                    ))
-                  ) : (
-                    <>
-                      <div className="w-7 h-7 rounded-full bg-purple-600 border border-black"></div>
-                      <div className="w-7 h-7 rounded-full bg-pink-600 border border-black"></div>
-                    </>
-                  )}
-                </div>
-                <span className="text-xs text-white/80">
-                  <span className="font-semibold text-white">{onlineCount.toLocaleString()}</span> people are online now
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full w-fit border border-white/5">
+                <Globe className="w-3.5 h-3.5 text-purple-400" />
+                <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">
+                  <span className="text-white">{onlineCount.toLocaleString()}</span> Active Matches
                 </span>
               </div>
 
-              {/* Heading */}
-              <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight tracking-tight">
+              <h1 className="text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
                 Start a{" "}
-                <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent italic">
                   Video Chat
                 </span>
               </h1>
 
-              {/* Subtitle */}
-              <p className="text-white/70 max-w-sm text-base font-medium">
-                Jump into a conversation and see where it leads.
+              <p className="text-white/60 max-w-sm text-xs sm:text-sm font-medium leading-relaxed">
+                Jump into a conversation and see where it leads. Meet real people instantly.
               </p>
 
-              {/* CTA */}
               <button 
                 onClick={() => navigate("/video")}
-                className="flex items-center gap-3 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold shadow-lg hover:scale-105 transition active:scale-95 shadow-purple-500/20"
+                className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-105 transition active:scale-95"
               >
-                <Video size={20} className="fill-current" />
-                <span className="text-base">Start Video Chat</span>
+                <Video size={16} className="fill-current" />
+                <span>Start Discovery</span>
               </button>
 
               {/* Bottom note */}
@@ -245,7 +249,7 @@ const Home = () => {
           icon={<Heart className="w-5 h-5 text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]" />} 
           title="Matches" 
           desc="See who liked you"
-          onClick={() => navigate("/likes")}
+          onClick={() => navigate("/who-liked-you")}
           color="pink"
         />
         <ActionCard 

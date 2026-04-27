@@ -8,6 +8,13 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     minlength: 3
   },
+  email: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
+    lowercase: true
+  },
   password: {
     type: String,
     required: true,
@@ -71,7 +78,13 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  lastIp: String
+  lastIp: String,
+  settings: {
+    emailNotifications: { type: Boolean, default: true },
+    discoveryMode: { type: Boolean, default: true },
+    stealthMode: { type: Boolean, default: false },
+    language: { type: String, default: 'en' }
+  }
 }, { timestamps: true });
 
 UserSchema.index({ onlineStatus: 1 });

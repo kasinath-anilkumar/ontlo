@@ -4,11 +4,26 @@ const Message = require('./models/Message');
 const Connection = require('./models/Connection');
 const jwt = require('jsonwebtoken');
 const { moderateText } = require('./utils/moderation');
+const AppConfig = require('./models/AppConfig');
+const Notification = require('./models/Notification');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
 module.exports = (io) => {
   const onlineUsers = new Set();
+  let maintenanceMode = false;
+
+  // PERIODIC MAINTENANCE CHECK
+  const checkMaintenance = async () => {
+    try {
+      const config = await AppConfig.findOne();
+      maintenanceMode = config?.maintenanceMode || false;
+    } catch (err) {
+      maintenanceMode = false;
+    }
+  };
+  setInterval(checkMaintenance, 30000); // Check every 30s
+  checkMaintenance();
 
   io.on('connection', async (socket) => {
     const token = socket.handshake.auth?.token;
@@ -16,28 +31,47 @@ module.exports = (io) => {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
         socket.userId = decoded.id;
-        onlineUsers.add(socket.userId.toString());
-        socket.join(`user_${socket.userId}`);
-        await User.findByIdAndUpdate(socket.userId, { onlineStatus: true });
-        broadcastOnlineCount();
+        
+        // Fetch essential user data for the matchmaker once on connection
+        const user = await User.findById(socket.userId).select('age isPremium onlineStatus blockedUsers role');
+        if (user) {
+          socket.age = user.age;
+          socket.isPremium = user.isPremium;
+          socket.role = user.role;
+          socket.blockedUsers = user.blockedUsers.map(id => id.toString());
+          
+          if (user.role === 'user') {
+            onlineUsers.add(socket.userId.toString());
+            broadcastOnlineCount();
+          }
+
+          socket.join(`user_${socket.userId}`);
+          await User.findByIdAndUpdate(socket.userId, { onlineStatus: true });
+        }
       } catch (err) {
         console.error("Socket Auth Error:", err.message);
       }
     }
 
-    socket.on('join-queue', async ({ userId }) => {
-      if (userId) {
-        socket.userId = userId;
-        onlineUsers.add(userId.toString());
-        socket.join(`user_${userId}`);
-        const dbUser = await User.findById(userId).select('onlineStatus blockedUsers');
-        if (dbUser) {
-          dbUser.onlineStatus = true;
-          await dbUser.save();
-          socket.blockedUsers = dbUser.blockedUsers.map(id => id.toString()) || [];
+    // MIDDLEWARE: Block events if maintenance is ON
+    socket.use(([event, ...args], next) => {
+      if (maintenanceMode && !['admin_action', 'notification-update'].includes(event)) {
+        if (socket.role !== 'admin' && socket.role !== 'superadmin') {
+           return next(new Error('System under maintenance'));
         }
-        broadcastOnlineCount();
       }
+      next();
+    });
+
+    socket.on('join-queue', async ({ userId }) => {
+      if (maintenanceMode && socket.role !== 'admin' && socket.role !== 'superadmin') {
+        return socket.emit('error', { message: 'System is under maintenance.' });
+      }
+
+      if (socket.role === 'admin' || socket.role === 'superadmin') {
+        return socket.emit('error', { message: 'Admins cannot join matchmaking.' });
+      }
+      
       matchmaker.joinQueue(socket);
     });
 
@@ -49,14 +83,8 @@ module.exports = (io) => {
       socket.join(roomId);
     });
 
-    socket.on('leave-chat', ({ roomId }) => {
-      socket.leave(roomId);
-    });
-
     socket.on('chat-message', async ({ message, imageUrl, roomId }) => {
       const timestamp = new Date().toISOString();
-      
-      // APPLY AUTOMATIC MODERATION
       const moderation = moderateText(message);
       const finalMessage = moderation.text;
 
@@ -68,7 +96,6 @@ module.exports = (io) => {
         timestamp
       });
 
-      // PERSISTENCE & GLOBAL NOTIFICATION
       if (roomId.length === 24 && /^[0-9a-fA-F]+$/.test(roomId)) {
         try {
           if (socket.userId) {
@@ -81,13 +108,19 @@ module.exports = (io) => {
             });
             await newMessage.save();
 
-            // Find the other user to notify them globally
             const conn = await Connection.findById(roomId);
-            if (conn && conn.users && socket.userId) {
-              const myId = socket.userId.toString();
-              const recipientId = conn.users.find(u => u && u.toString() !== myId);
-              
+            if (conn && conn.users) {
+              const recipientId = conn.users.find(u => u && u.toString() !== socket.userId.toString());
               if (recipientId) {
+                // Create persistent notification for message
+                await Notification.create({
+                  user: recipientId,
+                  type: 'message',
+                  content: finalMessage.length > 50 ? finalMessage.substring(0, 50) + '...' : finalMessage,
+                  fromUser: socket.userId,
+                  relatedId: roomId
+                });
+
                 io.to(`user_${recipientId.toString()}`).emit('notification-update', { 
                   type: 'message', 
                   connectionId: roomId 
@@ -96,7 +129,7 @@ module.exports = (io) => {
             }
           }
         } catch (err) {
-          console.error("Failed to save/notify message:", err);
+          console.error("Message error:", err);
         }
       }
     });
@@ -117,28 +150,25 @@ module.exports = (io) => {
       socket.to(roomId).emit('webrtc-ice-candidate', { candidate });
     });
 
-    socket.on('typing', ({ roomId, username }) => {
-      socket.to(roomId).emit('typing', { username });
-    });
-
-    socket.on('stop-typing', ({ roomId }) => {
-      socket.to(roomId).emit('stop-typing');
-    });
-
     socket.on('action-connect', async ({ roomId, userId }) => {
       socket.to(roomId).emit('peer-wants-connection');
       const users = await matchmaker.registerConnection(roomId, socket.id, userId, io);
-      
-      if (users && Array.isArray(users)) {
-        users.forEach(uId => {
-          if (uId) io.to(`user_${uId}`).emit('notification-update', { type: 'connection' });
-        });
-      }
-    });
+      if (users) {
+        users.forEach(async (uId) => {
+          // Create persistent notification for new connection/match
+          const otherUserId = users.find(id => id.toString() !== uId.toString());
+          if (otherUserId) {
+            await Notification.create({
+              user: uId,
+              type: 'match',
+              content: "You've got a new connection! ✨",
+              fromUser: otherUserId,
+              relatedId: roomId
+            });
+          }
 
-    socket.on('notification-update', (data) => {
-      if (socket.userId) {
-        io.to(`user_${socket.userId}`).emit('notification-update', data);
+          io.to(`user_${uId}`).emit('notification-update', { type: 'connection' });
+        });
       }
     });
 
@@ -151,7 +181,7 @@ module.exports = (io) => {
         if (userSockets.length === 0) {
           onlineUsers.delete(userIdStr);
           await User.findByIdAndUpdate(socket.userId, { onlineStatus: false });
-          broadcastOnlineCount();
+          broadcastOnlineCountThrottled();
         }
       }
     });
@@ -160,10 +190,15 @@ module.exports = (io) => {
       const count = Math.max(onlineUsers.size - 1, 0);
       io.emit('online-count', { count });
     }
-  });
 
-  setInterval(() => {
-    const count = Math.max(onlineUsers.size - 1, 0);
-    io.emit('online-count', { count });
-  }, 10000);
+    // Optimized broadcast: only once per 5 seconds max
+    let lastBroadcast = 0;
+    function broadcastOnlineCountThrottled() {
+      const now = Date.now();
+      if (now - lastBroadcast > 5000) {
+        broadcastOnlineCount();
+        lastBroadcast = now;
+      }
+    }
+  });
 };

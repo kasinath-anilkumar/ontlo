@@ -31,6 +31,11 @@ router.post('/', authenticate, async (req, res) => {
     
     await newReport.save();
     
+    // Notify admins in real-time
+    if (req.io) {
+      req.io.emit('support-update-admin', { type: 'report' });
+    }
+    
     res.status(201).json({ message: 'Report submitted successfully. We will review it shortly.' });
   } catch (error) {
     console.error(error);

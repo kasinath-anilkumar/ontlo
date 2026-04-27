@@ -10,6 +10,11 @@ const AnnouncementSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  type: {
+    type: String,
+    enum: ['announcement', 'alert', 'info'],
+    default: 'announcement'
+  },
   targetCriteria: {
     role: String,
     gender: String,

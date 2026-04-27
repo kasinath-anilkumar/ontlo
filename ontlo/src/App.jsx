@@ -14,6 +14,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const WhoLikedYou = lazy(() => import("./pages/WhoLikedYou"));
 const Favorites = lazy(() => import("./pages/Favorites"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 
 const PageLoader = () => (
   <div className="h-screen w-full flex items-center justify-center bg-[#0B0E14]">
@@ -53,6 +54,7 @@ function App() {
                     <Route path="/messages" element={<Messages />} />
                     <Route path="/who-liked-you" element={<WhoLikedYou />} />
                     <Route path="/favorites" element={<Favorites />} />
+                    <Route path="/notifications" element={<Notifications />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

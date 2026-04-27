@@ -1,4 +1,4 @@
-import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageSquare, Check, X, Timer, User } from "lucide-react";
+import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageSquare, Check, X, Timer, User, ChevronLeft } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
@@ -347,25 +347,39 @@ const VideoContainer = () => {
   }, []);
 
   const reportUser = useCallback(async () => {
-    if (!roomIdRef.current) return;
+    if (!roomIdRef.current || !remoteUser) return;
     
-    // Optimistically skip the match
+    // 1. Instant feedback & disconnect
+    alert("User reported. The call has been ended for your safety.");
+    
+    // 2. Immediately end the call and rejoin queue
     skipMatch();
     
+    // 3. Log the incident for admins AND block the user
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${API_URL}/api/report`, {
+      const reportedUserId = remoteUser._id || remoteUser.id;
+      
+      // Send report
+      fetch(`${API_URL}/api/report`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ 
-          reportedUserId: remoteUser?.id, 
-          reason: "One-click report during call (Details can be added later)", 
+          reportedUserId, 
+          reason: `IMMEDIATE_REPORT: User reported during live video call (Room: ${roomIdRef.current})`, 
           roomId: roomIdRef.current 
         }),
       });
-      // A toast could be added here, but the user is already matched with someone else or in queue
+
+      // Automatically block
+      fetch(`${API_URL}/api/users/block`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ blockedUserId: reportedUserId }),
+      });
+
     } catch (error) {
-      console.error("Failed to report user", error);
+      console.error("Failed to log report/block", error);
     }
   }, [remoteUser, skipMatch]);
 
@@ -428,7 +442,17 @@ const VideoContainer = () => {
 
           {/* Idle / Matching overlay — shown when not in call */}
           {!inCall && (
-            <div className="text-center z-10">
+            <div className="text-center z-10 w-full h-full flex flex-col items-center justify-center relative">
+              {/* Top back button for idle state */}
+              <div className="absolute top-0 left-0 w-full p-4 pt-20 sm:p-6 sm:pt-6 flex justify-between items-start z-10">
+                <button 
+                  onClick={() => navigate('/')}
+                  className="lg:hidden w-10 h-10 rounded-full bg-white/5 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/10 transition border border-white/5"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+              </div>
+
               {cameraError ? (
                 <div className="flex flex-col items-center p-8 bg-red-500/10 border border-red-500/20 rounded-3xl animate-in zoom-in duration-300">
                   <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
@@ -483,7 +507,13 @@ const VideoContainer = () => {
 
             {/* Top bar */}
             <div className="absolute top-0 left-0 w-full p-4 pt-20 sm:p-6 sm:pt-6 flex justify-between items-start z-10 pointer-events-none">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 pointer-events-auto">
+                <button 
+                  onClick={() => navigate('/')}
+                  className="lg:hidden w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/40 transition mr-1"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
                 <div className="w-12 h-12 rounded-full border-2 border-white/20 bg-[#151923] overflow-hidden flex items-center justify-center">
                   {remoteUser?.profilePic
                     ? <img src={remoteUser.profilePic} className="w-full h-full object-cover" alt="remote" />

@@ -1,12 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { Home, Video, Heart, MessageSquare, User } from "lucide-react";
+import { Home, Video, Heart, MessageSquare, User, Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSocket } from "../../context/SocketContext";
 import API_URL from "../../utils/api";
 
 const BottomNav = () => {
   const { socket } = useSocket();
-  const [counts, setCounts] = useState({ messages: 0, connections: 0 });
+  const [counts, setCounts] = useState({ messages: 0, notifications: 0 });
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -28,6 +28,7 @@ const BottomNav = () => {
     if (socket) {
       socket.on("connect", fetchCounts);
       socket.on("notification-update", fetchCounts);
+      socket.on("chat-message", fetchCounts);
     }
 
     // Refresh when user comes back to the tab
@@ -46,20 +47,53 @@ const BottomNav = () => {
       if (socket) {
         socket.off("connect", fetchCounts);
         socket.off("notification-update", fetchCounts);
+        socket.off("chat-message", fetchCounts);
       }
     };
   }, [socket]);
 
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = (e) => {
+      // Get scroll position from the element that actually scrolled
+      const currentScrollY = e.target.scrollTop || window.scrollY;
+      
+      // Ignore very small scrolls or undefined targets
+      if (currentScrollY === undefined) return;
+
+      // Show if scrolling up, hide if scrolling down
+      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+        setIsVisible(false);
+      } else {
+        setIsVisible(true);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    // Use capture: true to catch scroll events from sub-containers (like Profile/Notifications)
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, [lastScrollY]);
+
   const navItems = [
     { name: "Home", path: "/", icon: Home },
     { name: "Video", path: "/video", icon: Video },
-    { name: "Connections", path: "/connections", icon: Heart, badge: counts.connections },
+    { name: "Activity", path: "/notifications", icon: Bell, badge: counts.notifications },
     { name: "Messages", path: "/messages", icon: MessageSquare, badge: counts.messages },
     { name: "Profile", path: "/profile", icon: User },
   ];
 
   return (
-    <div className="bottom-nav md:hidden fixed bottom-0 left-0 w-full z-50 bg-[#0B0E14]/80 backdrop-blur-lg border-t border-white/5 pb-safe">
+    <div 
+      className={`
+        bottom-nav md:hidden fixed bottom-0 left-0 w-full z-50 bg-[#0B0E14]/80 backdrop-blur-lg border-t border-white/5 pb-safe
+        transition-all duration-500 ease-in-out
+        ${isVisible ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}
+      `}
+    >
       <div className="flex items-center justify-around py-3 px-2 relative">
         {/* Animated background indicator matching theme */}
         <div className="absolute inset-0 bg-gradient-to-t from-purple-600/5 to-transparent pointer-events-none"></div>
@@ -85,11 +119,11 @@ const BottomNav = () => {
 
                 <div className="relative">
                   <item.icon className={`w-6 h-6 transition-transform duration-300 ${isActive ? "text-purple-400 scale-110" : "scale-100"}`} />
-                  {item.badge > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-[16px] h-[16px] px-1 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-full flex items-center justify-center text-[9px] font-black text-white border border-[#0B0E14] shadow-lg">
-                      {item.badge > 99 ? "99+" : item.badge}
-                    </span>
-                  )}
+                  <span className={`absolute -top-2 -right-2 min-w-[16px] h-[16px] px-1 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-full flex items-center justify-center text-[9px] font-black text-white border border-[#0B0E14] shadow-lg transition-all duration-300 ${
+                    item.badge > 0 ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'
+                  }`}>
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
                 </div>
                 <span className={`text-[9px] mt-1 font-black uppercase tracking-widest transition-all duration-300 ${isActive ? "opacity-100 translate-y-0" : "opacity-40"}`}>
                   {item.name}

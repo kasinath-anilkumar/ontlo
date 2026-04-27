@@ -11,6 +11,8 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Socket.io
 const io = new Server(server, {
   cors: {
     origin: '*',
@@ -19,10 +21,26 @@ const io = new Server(server, {
   pingTimeout: 60000,
 });
 
+// Security: Rate Limiting
+const rateLimit = require('express-rate-limit');
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 requests per windowMs
+  message: { error: 'Too many login attempts, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Middleware
 app.use(cors());
 app.use(maintenanceMiddleware);
 app.use(express.json());
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 // Routes
 app.get('/', (req, res) => res.send('Ontlo API is running...'));
@@ -34,6 +52,8 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/support', require('./routes/support'));
+app.use('/api/admin/support', require('./routes/support'));
 app.use('/api/admin', require('./routes/admin'));
 
 // Initialize Socket.io Logic
@@ -76,7 +96,7 @@ const startServer = async (port) => {
 // Graceful Shutdown Logic
 const gracefulShutdown = async (signal) => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
-  
+
   // 1. Close Socket.io connections
   io.close(() => {
     console.log('🔌 WebSocket connections closed.');

@@ -34,6 +34,7 @@ router.get('/discover', async (req, res) => {
 
     const query = {
       _id: { $ne: currentUserId },
+      role: 'user', // Hide admins/moderators from discovery
       status: 'active',
       isShadowBanned: false,
       onlineStatus: true
@@ -61,22 +62,30 @@ router.get('/discover', async (req, res) => {
   }
 });
 
-// Get global online users for the Home page indicators
+// Get online users who are also connections for the Home page
 router.get('/online', async (req, res) => {
   try {
     const currentUserId = getUserId(req);
-    
-    // Find any users who are currently online, excluding the current user
-    const query = { onlineStatus: true };
-    if (currentUserId) {
-      query._id = { $ne: currentUserId };
-    }
+    if (!currentUserId) return res.json([]); // Guest sees no one in "Active Now"
 
-    const onlineUsers = await User.find(query)
-      .limit(6)
-      .select('username profilePic fullName');
+    // 1. Find all connection documents for this user
+    const connections = await Connection.find({ users: currentUserId });
     
-    res.json(onlineUsers);
+    // 2. Extract the "other" user IDs
+    const connectedUserIds = connections.map(conn => 
+      conn.users.find(id => id.toString() !== currentUserId.toString())
+    );
+
+    // 3. Find which of those connected users are currently online and ARE NOT admins
+    const onlineConnections = await User.find({
+      _id: { $in: connectedUserIds },
+      onlineStatus: true,
+      role: 'user'
+    })
+    .limit(10)
+    .select('username profilePic fullName');
+    
+    res.json(onlineConnections);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error' });
@@ -162,6 +171,29 @@ router.post('/unblock', async (req, res) => {
     await user.save();
 
     res.json({ message: 'User unblocked successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update user settings
+router.patch('/settings', async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { settings } = req.body;
+    if (!settings) return res.status(400).json({ error: 'Settings object is required' });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Update settings object
+    user.settings = { ...user.settings, ...settings };
+    await user.save();
+
+    res.json({ message: 'Settings updated successfully', settings: user.settings });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error' });

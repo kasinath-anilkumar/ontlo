@@ -15,7 +15,7 @@ const promote = async () => {
     
     const user = await User.findOneAndUpdate(
       { username },
-      { role: 'superadmin', isVerified: true },
+      { role: 'superadmin', isVerified: true, status: 'active' },
       { new: true }
     );
 

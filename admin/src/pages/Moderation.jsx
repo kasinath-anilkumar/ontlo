@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { getReports, performUserAction } from '../api/admin';
 import adminApi from '../api/admin';
+import { io } from 'socket.io-client';
 
 const ModerationPage = () => {
   const [reports, setReports] = useState([]);
@@ -31,6 +32,15 @@ const ModerationPage = () => {
 
   useEffect(() => {
     fetchReports();
+
+    // Real-time moderation updates
+    const socket = io('http://localhost:5000', {
+      auth: { token: localStorage.getItem('admin_token') }
+    });
+
+    socket.on('support-update-admin', fetchReports);
+
+    return () => socket.disconnect();
   }, []);
 
   const handleAction = async (id, action, reportedUserId) => {

@@ -11,6 +11,8 @@ import Logs from './pages/Logs';
 import Login from './pages/Login';
 import Support from './pages/Support';
 import System from './pages/System';
+import BannedUsers from './pages/BannedUsers';
+import SuspendedUsers from './pages/SuspendedUsers';
 
 const App = () => {
   const isAuthenticated = !!localStorage.getItem('admin_token');
@@ -28,6 +30,8 @@ const App = () => {
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/users" element={<Users />} />
+                  <Route path="/banned" element={<BannedUsers />} />
+                  <Route path="/suspended" element={<SuspendedUsers />} />
                   <Route path="/moderation" element={<Moderation />} />
                   <Route path="/broadcast" element={<Broadcast />} />
                   <Route path="/support" element={<Support />} />

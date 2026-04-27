@@ -33,7 +33,7 @@ const AppLayout = ({ children }) => {
           <Sidebar />
         </div>
         
-        <div className="flex-1 overflow-y-auto w-full h-full relative scroll-smooth">
+        <div id="main-scroll-container" className="flex-1 overflow-y-auto w-full h-full relative scroll-smooth">
           <main className="h-full animate-in fade-in slide-in-from-bottom-2 duration-500">
             {children}
           </main>

@@ -11,19 +11,20 @@ import {
   Users, 
   Star, 
   User,
-  ChevronRight
+  ChevronRight,
+  Bell
 } from "lucide-react";
 
 const Sidebar = () => {
   const { user, socket } = useSocket();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ connections: 0, messages: 0, likes: 0 });
+  const [stats, setStats] = useState({ connections: 0, messages: 0, likes: 0, notifications: 0 });
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await fetch(`${API_URL}/api/stats`, {
+        const response = await fetch(`${API_URL}/api/notifications/counts`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const data = await response.json();
@@ -51,6 +52,7 @@ const Sidebar = () => {
   const navItems = [
     { name: "Home", path: "/", icon: Home },
     { name: "Video Chat", path: "/video", icon: Video },
+    { name: "Notifications", path: "/notifications", icon: Bell, badge: stats.notifications },
     { name: "Connections", path: "/connections", icon: Heart, badge: stats.connections },
     { name: "Messages", path: "/messages", icon: MessageSquare, badge: stats.messages },
     { name: "Who Liked You", path: "/who-liked-you", icon: Users, badge: stats.likes },
@@ -65,7 +67,7 @@ const Sidebar = () => {
       <div className="absolute top-0 left-0 w-full h-40 bg-purple-600/15 blur-[80px] pointer-events-none"></div>
 
       {/* Logo */}
-      <div className="flex items-center gap-3 px-2 py-8 cursor-pointer group" onClick={() => navigate("/")}>
+      <div className="flex items-center gap-3 px-2 pb-8 cursor-pointer group" onClick={() => navigate("/")}>
         <img className="w-20" src={logo} alt="Logo" />
       </div>
 
@@ -99,11 +101,11 @@ const Sidebar = () => {
                   </span>
                 </div>
 
-                {item.badge > 0 && (
-                  <span className={`relative z-10 text-[10px] font-black px-2 py-0.5 rounded-full transition-all ${isActive ? 'bg-purple-600 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]' : 'bg-gray-800 text-gray-500'}`}>
-                    {item.badge}
-                  </span>
-                )}
+                <span className={`relative z-10 text-[9px] min-w-[18px] h-[18px] flex items-center justify-center font-black px-1 rounded-full transition-all duration-300 ${
+                  item.badge > 0 ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'
+                } ${isActive ? 'bg-white text-purple-600 shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'bg-gradient-to-tr from-purple-600 to-pink-500 text-white shadow-[0_0_10px_rgba(168,85,247,0.3)]'}`}>
+                  {item.badge > 99 ? '99+' : item.badge}
+                </span>
                 
                 {/* Left active border indicator */}
                 {isActive && (

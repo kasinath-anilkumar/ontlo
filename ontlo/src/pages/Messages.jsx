@@ -45,35 +45,36 @@ const Messages = () => {
     };
   }, [selectedConnection, location.pathname]);
 
-  useEffect(() => {
-    const fetchConnections = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(`${API_URL}/api/connections`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (response.ok) {
-          setConnections(data);
-          setFilteredConnections(data);
-          
-          // Priority 1: ID from navigation state (Connections page)
-          const stateId = location.state?.selectId;
-          if (stateId) {
-            const target = data.find(c => c.id === stateId);
-            if (target) setSelectedConnection(target);
-          } 
-          // Priority 2: Auto-select first one on desktop only
-          else if (data.length > 0 && window.innerWidth > 768) {
-            setSelectedConnection(data[0]);
-          }
+  const fetchConnections = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/api/connections`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setConnections(data);
+        setFilteredConnections(data);
+        
+        // Priority 1: ID from navigation state (Connections page)
+        const stateId = location.state?.selectId;
+        if (stateId) {
+          const target = data.find(c => c.id === stateId);
+          if (target) setSelectedConnection(target);
+        } 
+        // Priority 2: Auto-select first one on desktop only
+        else if (data.length > 0 && window.innerWidth > 768) {
+          setSelectedConnection(data[0]);
         }
-      } catch (err) {
-        console.error("Failed to fetch messages", err);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch messages", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchConnections();
     fetchCounts();
   }, [location.state]);
@@ -81,17 +82,22 @@ const Messages = () => {
   useEffect(() => {
     if (!socket) return;
     
-    socket.on("notification-update", fetchCounts);
-    socket.on("connect", fetchCounts);
+    const refreshAll = () => {
+      fetchConnections();
+      fetchCounts();
+    };
+
+    socket.on("notification-update", refreshAll);
+    socket.on("connect", refreshAll);
 
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") fetchCounts();
+      if (document.visibilityState === "visible") refreshAll();
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      socket.off("notification-update", fetchCounts);
-      socket.off("connect", fetchCounts);
+      socket.off("notification-update", refreshAll);
+      socket.off("connect", refreshAll);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [socket]);

@@ -18,16 +18,18 @@ const LoginPage = () => {
     try {
       const baseUrl = import.meta.env.VITE_API_URL?.replace('/api/admin', '') || 'http://localhost:5000';
       
-      // Use the main auth API
+      // Use the main auth API with admin flag
       const response = await axios.post(`${baseUrl}/api/auth/login`, {
         username,
-        password
+        password,
+        isAdminPanel: true
       });
 
-      const { token } = response.data;
+      const { token, user } = response.data;
       
-      // Store token temporarily to check role
+      // Store token and user data for RBAC
       localStorage.setItem('admin_token', token);
+      localStorage.setItem('admin_user', JSON.stringify(user));
 
       // Verify if user is actually an admin
       const adminCheck = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/admin'}/stats`, {

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const SupportTicketSchema = new mongoose.Schema({
+const supportTicketSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -17,19 +17,24 @@ const SupportTicketSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['open', 'in_progress', 'resolved', 'closed'],
-    default: 'open'
+    enum: ['pending', 'in-progress', 'resolved'],
+    default: 'pending'
   },
-  priority: {
-    type: String,
-    enum: ['low', 'medium', 'high', 'critical'],
-    default: 'medium'
-  },
-  adminNotes: String,
-  assignedTo: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+  responses: [{
+    admin: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin'
+    },
+    message: String,
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('SupportTicket', SupportTicketSchema);
+module.exports = mongoose.model('SupportTicket', supportTicketSchema);

@@ -133,6 +133,53 @@ router.get('/users', adminAuth(['admin', 'superadmin', 'moderator']), async (req
   }
 });
 
+// Create Staff Member (SuperAdmin Only)
+router.post('/users/create-staff', adminAuth(['superadmin']), async (req, res) => {
+  try {
+    const { username, password, email, role } = req.body;
+    const bcrypt = require('bcrypt');
+
+    // SECURITY: Strong Password Validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    if (!passwordRegex.test(String(password))) {
+      return res.status(400).json({ 
+        error: 'Password must be at least 8 characters long and include one uppercase letter, one number, and one special character (@$!%*?&#).' 
+      });
+    }
+
+    // Check if user exists
+    const existing = await User.findOne({ $or: [{ username }, { email }] });
+    if (existing) return res.status(400).json({ error: 'Username or Email already exists' });
+
+    const hashedPassword = await bcrypt.hash(String(password), 10);
+    const newUser = new User({
+      username,
+      email,
+      password: hashedPassword,
+      role: role || 'moderator',
+      status: 'active',
+      isVerified: true
+    });
+
+    await newUser.save();
+    
+    // AUDIT LOG
+    try {
+      await ActivityLog.create({
+        userId: req.user._id,
+        action: 'admin_action',
+        details: `${req.user.username} created a new staff member: ${username} (${role})`,
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+    } catch (e) {}
+
+    res.json({ message: 'Staff member created successfully', user: { username, role } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update User Status (Ban/Suspend/Verify)
 router.post('/users/:id/action', adminAuth(['admin', 'superadmin']), async (req, res) => {
   try {
@@ -145,7 +192,23 @@ router.post('/users/:id/action', adminAuth(['admin', 'superadmin']), async (req,
     const user = await User.findByIdAndUpdate(req.params.id, update, { returnDocument: 'after' }).select('-password');
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    res.json({ message: `Action '${action}' performed successfully`, user });
+    const actionLabel = action || status || (isVerified !== undefined ? 'verification_change' : 'unknown');
+
+    // AUDIT LOG: Record this admin action (wrapped in try-catch to prevent 500s)
+    try {
+      await ActivityLog.create({
+        userId: req.user._id,
+        action: 'admin_action',
+        details: `${req.user.username} performed '${actionLabel}' on user ${user.username}`,
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+    } catch (logError) {
+      console.error('Audit Log Error:', logError.message);
+      // We don't throw here so the main action still succeeds
+    }
+
+    res.json({ message: `Action '${actionLabel}' performed successfully`, user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -172,6 +235,16 @@ router.post('/moderation/reports/:id/resolve', adminAuth(['admin', 'superadmin',
       status: 'resolved', 
       moderatorNote: `Action taken: ${action} by ${req.user.username}` 
     });
+
+    // AUDIT LOG
+    await ActivityLog.create({
+      userId: req.user._id,
+      action: 'admin_action',
+      details: `${req.user.username} resolved report ${req.params.id} with action: ${action}`,
+      ip: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
     res.json({ message: 'Report resolved' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -218,6 +291,33 @@ router.post('/broadcast', adminAuth(['admin', 'superadmin']), async (req, res) =
     const usersCount = await User.countDocuments();
     announcement.stats = { deliveredCount: usersCount };
     await announcement.save();
+
+    // Create persistent notifications for ALL users
+    const Notification = require('../models/Notification');
+    const allUsers = await User.find({}, '_id');
+    const notifications = allUsers.map(u => ({
+      user: u._id,
+      type: type || 'announcement',
+      content: text,
+      fromUser: req.user._id
+    }));
+    await Notification.insertMany(notifications);
+
+    // AUDIT LOG
+    try {
+      await ActivityLog.create({
+        userId: req.user._id,
+        action: 'admin_action',
+        details: `${req.user.username} sent a global ${type} broadcast to ${usersCount} users`,
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+    } catch (e) {}
+
+    // Emit real-time notification update to all connected clients
+    if (req.io) {
+      req.io.emit('notification-update', { type: 'announcement', content: text });
+    }
 
     res.json({ message: `Announcement sent to ${usersCount} users`, announcement });
   } catch (err) {
@@ -424,13 +524,7 @@ router.get('/config', adminAuth(['admin', 'superadmin']), async (req, res) => {
     const AppConfig = require('../models/AppConfig');
     let config = await AppConfig.findOne();
     if (!config) {
-      config = await AppConfig.create({
-        radius: 50,
-        ageGap: 5,
-        boostPremium: true,
-        bannedKeywords: ['offensive', 'scam'],
-        autoModerate: true
-      });
+      config = await AppConfig.create({});
     }
     res.json(config);
   } catch (err) {
@@ -439,18 +533,33 @@ router.get('/config', adminAuth(['admin', 'superadmin']), async (req, res) => {
 });
 
 // Config: Update global settings
-router.post('/config/update', adminAuth(['superadmin']), async (req, res) => {
+router.post('/config/update', adminAuth(['admin', 'superadmin']), async (req, res) => {
   try {
     const AppConfig = require('../models/AppConfig');
     const { refreshKeywords } = require('../utils/moderation');
-    const config = await AppConfig.findOneAndUpdate({}, req.body, { 
+    
+    // We update the single config document
+    const config = await AppConfig.findOneAndUpdate({}, { ...req.body, updatedBy: req.user._id }, { 
       returnDocument: 'after', 
       upsert: true 
     });
     
-    // Trigger immediate refresh in socket moderation engine
-    await refreshKeywords();
+    // Trigger immediate refresh in socket moderation engine if keywords changed
+    if (req.body.bannedKeywords) {
+      await refreshKeywords();
+    }
     
+    // AUDIT LOG
+    try {
+      await ActivityLog.create({
+        userId: req.user._id,
+        action: 'admin_action',
+        details: `${req.user.username} updated global application configuration`,
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+    } catch (logErr) { console.error("Log error:", logErr); }
+
     res.json(config);
   } catch (err) {
     res.status(500).json({ error: err.message });

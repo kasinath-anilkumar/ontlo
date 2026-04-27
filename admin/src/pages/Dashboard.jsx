@@ -17,23 +17,37 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import adminApi from '../api/admin';
+import { io } from 'socket.io-client';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [onlineCount, setOnlineCount] = useState(0);
+
+  const fetchStats = async () => {
+    try {
+      const res = await adminApi.get('/stats');
+      setStats(res.data);
+      if (res.data.overview) setOnlineCount(res.data.overview.onlineUsers);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await adminApi.get('/stats');
-        setStats(res.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStats();
+
+    const socket = io('http://localhost:5000', {
+      auth: { token: localStorage.getItem('admin_token') }
+    });
+
+    socket.on('online-count', (data) => setOnlineCount(data.count));
+    socket.on('support-update-admin', fetchStats);
+    socket.on('notification-update', fetchStats);
+
+    return () => socket.disconnect();
   }, []);
 
   if (loading) return (
@@ -58,7 +72,7 @@ const Dashboard = () => {
       {/* Compact Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard title="Total Users" value={stats?.overview.totalUsers} icon={Users} trend="+12%" gradient="from-blue-500 to-indigo-600" />
-        <StatCard title="Online Now" value={stats?.overview.onlineUsers} icon={Globe} trend="Live" gradient="from-emerald-400 to-teal-500" />
+        <StatCard title="Online Now" value={onlineCount} icon={Globe} trend="Live" gradient="from-emerald-400 to-teal-500" />
         <StatCard title="Match Success" value={`${stats?.overview.matchSuccess}%`} icon={Heart} trend="+5%" gradient="from-rose-500 to-pink-600" />
         <StatCard title="Pending Reports" value={stats?.overview.pendingReports} icon={ShieldAlert} trend="Action" gradient="from-amber-400 to-orange-500" isAlert={stats?.overview.pendingReports > 0} />
       </div>

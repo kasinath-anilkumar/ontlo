@@ -108,6 +108,12 @@ const ConfigPage = () => {
                   value={config.bannedKeywords?.join(', ') || ''} 
                   onChange={(val) => setConfig({...config, bannedKeywords: val.split(',').map(s => s.trim())})} 
                />
+               <InputField 
+                  label="Safety Blur Duration (Seconds)" 
+                  value={config.safetyBlurDuration || 3} 
+                  onChange={(val) => setConfig({...config, safetyBlurDuration: parseInt(val) || 0})} 
+                  type="number"
+               />
                <ToggleField 
                   label="Auto-Moderate Chat" 
                   description="Use AI to block offensive messages instantly" 
