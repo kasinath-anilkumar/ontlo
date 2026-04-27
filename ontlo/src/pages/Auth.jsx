@@ -52,7 +52,7 @@ const Auth = () => {
       <div className="w-full max-w-md bg-[#151923]/80 backdrop-blur-xl border border-[#1e293b] rounded-3xl p-8 relative z-10 shadow-2xl">
         <div className="flex justify-center mb-8">
            <div className="flex items-center gap-2">
-             <img src={logo} alt="Ontlo Logo" srcset="" />
+             <img className="w-25" src={logo} alt="Ontlo Logo" srcset="" />
            </div>
         </div>
 
