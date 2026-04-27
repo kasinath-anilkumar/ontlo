@@ -40,4 +40,13 @@ router.post('/profile-pic', authenticate, (req, res) => {
   });
 });
 
+// Chat image upload
+router.post('/chat-image', authenticate, (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) return res.status(500).json({ error: 'Upload failed' });
+    if (!req.file) return res.status(400).json({ error: 'No file' });
+    res.json({ url: req.file.path });
+  });
+});
+
 module.exports = router;

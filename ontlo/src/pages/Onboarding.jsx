@@ -264,7 +264,14 @@ const Onboarding = () => {
                 disabled={formData.interests.length < 3 || loading}
                 className="flex-1 bg-gradient-to-r from-purple-600 to-pink-500 text-white font-black py-4 rounded-2xl hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {loading ? "Saving..." : <>Finish Setup <Sparkles className="w-5 h-5 fill-current" /></>}
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Saving Profile...
+                  </>
+                ) : (
+                  <>Finish Setup <Sparkles className="w-5 h-5 fill-current" /></>
+                )}
               </button>
             </div>
           </div>

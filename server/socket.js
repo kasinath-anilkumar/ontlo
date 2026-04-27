@@ -52,12 +52,13 @@ module.exports = (io) => {
       socket.leave(roomId);
     });
 
-    socket.on('chat-message', async ({ message, roomId }) => {
+    socket.on('chat-message', async ({ message, imageUrl, roomId }) => {
       const timestamp = new Date().toISOString();
       
       socket.to(roomId).emit('chat-message', {
         sender: socket.id,
         text: message,
+        imageUrl,
         timestamp
       });
 
@@ -69,6 +70,7 @@ module.exports = (io) => {
               connectionId: roomId,
               sender: socket.userId,
               text: message,
+              imageUrl,
               timestamp
             });
             await newMessage.save();

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Video } from "lucide-react";
+import { Video, Loader2 } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
 import API_URL from "../utils/api";
 import logo from "../assets/ontlo_Logo.png";
@@ -10,12 +10,14 @@ const Auth = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { setUser } = useSocket();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
     try {
@@ -39,6 +41,8 @@ const Auth = () => {
       navigate("/");
     } catch (err) {
       setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -84,8 +88,21 @@ const Auth = () => {
               required
             />
           </div>
-          <button type="submit" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold hover:opacity-90 transition-opacity mt-4 flex justify-center items-center gap-2">
-            {isLogin ? "Sign In" : "Sign Up"} <Video className="w-4 h-4 fill-current" />
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold hover:opacity-90 transition-opacity mt-4 flex justify-center items-center gap-2 disabled:opacity-50"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {isLogin ? "Signing In..." : "Signing Up..."}
+              </>
+            ) : (
+              <>
+                {isLogin ? "Sign In" : "Sign Up"} <Video className="w-4 h-4 fill-current" />
+              </>
+            )}
           </button>
         </form>
 

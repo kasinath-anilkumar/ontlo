@@ -13,6 +13,9 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   const [isLoading, setIsLoading] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const unreadMessageRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -169,7 +172,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   }, [socket, effectiveRoomId, isTyping, user?.username]);
 
   const sendMessage = useCallback((e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!inputValue.trim() || !socket || !effectiveRoomId) return;
     socket.emit("chat-message", { message: inputValue, roomId: effectiveRoomId });
     socket.emit("stop-typing", { roomId: effectiveRoomId });
@@ -179,7 +182,39 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     if (onSendMessage) onSendMessage(newMsg);
     else setInternalMessages((prev) => [...prev, newMsg]);
     setInputValue("");
+    setShowEmojiPicker(false);
   }, [inputValue, socket, effectiveRoomId, onSendMessage]);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !socket || !effectiveRoomId) return;
+
+    setIsUploading(true);
+    const data = new FormData();
+    data.append("image", file);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/api/upload/chat-image`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: data
+      });
+      const result = await res.json();
+      if (res.ok) {
+        socket.emit("chat-message", { imageUrl: result.url, roomId: effectiveRoomId });
+        const newMsg = { imageUrl: result.url, sender: "You", timestamp: new Date().toISOString(), type: "self" };
+        if (onSendMessage) onSendMessage(newMsg);
+        else setInternalMessages((prev) => [...prev, newMsg]);
+      }
+    } catch (err) {
+      console.error("Upload failed", err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const COMMON_EMOJIS = ["❤️", "😂", "🔥", "😍", "👍", "🙌", "✨", "😊", "👋", "🎉", "🔥", "💯", "😂", "😮", "😢", "🚀", "💀", "😜", "🙈", "🤝"];
 
   const formatMessageDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -321,10 +356,14 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                       msg.type === "self"
                         ? "bg-gradient-to-br from-purple-600 via-pink-600 to-red-500 text-white rounded-tr-none shadow-purple-900/20"
                         : "bg-[#1e293b]/60 backdrop-blur-md border border-white/5 text-white rounded-tl-none shadow-black/20"
-                    }`}>
-                      <p className="text-[15px] leading-relaxed font-medium tracking-tight whitespace-pre-wrap">
-                        {msg.text}
-                      </p>
+                    } ${msg.imageUrl ? "p-1" : ""}`}>
+                      {msg.imageUrl ? (
+                        <img src={msg.imageUrl} className="max-w-full rounded-[16px] object-cover max-h-60" loading="lazy" alt="sent" />
+                      ) : (
+                        <p className="text-[15px] leading-relaxed font-medium tracking-tight whitespace-pre-wrap">
+                          {msg.text}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-1 px-1 opacity-30">
                       <span className="text-[8px] font-black uppercase tracking-widest text-white">
@@ -356,11 +395,37 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       {/* Input Area */}
       <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:p-6 bg-[#0B0E14] border-t border-[#1e293b]/20">
         <form onSubmit={sendMessage} className="max-w-4xl mx-auto flex items-center gap-2 sm:gap-3">
-          <button type="button" className="p-2.5 text-gray-400 hover:text-white bg-[#151923] rounded-full border border-[#1e293b]/50 transition shadow-lg">
-            <Plus className="w-5 h-5" />
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            className="hidden" 
+            accept="image/*" 
+          />
+          <button 
+            type="button" 
+            disabled={isUploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2.5 text-gray-400 hover:text-white bg-[#151923] rounded-full border border-[#1e293b]/50 transition shadow-lg disabled:opacity-50"
+          >
+            {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
           </button>
 
-          <div className="flex-1 bg-[#151923] border border-[#1e293b] rounded-[24px] sm:rounded-full px-5 py-2.5 flex items-center shadow-inner focus-within:border-purple-500/50 transition-all">
+          <div className="flex-1 bg-[#151923] border border-[#1e293b] rounded-[24px] sm:rounded-full px-5 py-2.5 flex items-center shadow-inner focus-within:border-purple-500/50 transition-all relative">
+            {showEmojiPicker && (
+              <div className="absolute bottom-16 left-0 w-64 bg-[#151923] border border-[#1e293b] rounded-3xl p-4 shadow-2xl grid grid-cols-5 gap-2 animate-in slide-in-from-bottom-4 duration-200 z-30">
+                {COMMON_EMOJIS.map((emoji, i) => (
+                  <button 
+                    key={i} 
+                    type="button"
+                    onClick={() => setInputValue(prev => prev + emoji)}
+                    className="text-xl hover:scale-125 transition active:scale-95 p-1"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
             <input
               type="text"
               value={inputValue}
@@ -370,9 +435,14 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
               autoComplete="off"
               spellCheck={false}
               data-gramm="false"
+              onFocus={() => setShowEmojiPicker(false)}
               className="flex-1 bg-transparent text-white text-[15px] outline-none disabled:opacity-50 font-medium"
             />
-            <button type="button" className="p-1 text-gray-500 hover:text-pink-500 transition ml-2">
+            <button 
+              type="button" 
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className={`p-1 transition ml-2 ${showEmojiPicker ? "text-pink-500" : "text-gray-500 hover:text-pink-500"}`}
+            >
               <Smile className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
