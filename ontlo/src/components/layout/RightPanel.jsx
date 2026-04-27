@@ -1,4 +1,4 @@
-import { Video, MessageSquare, Shield, ChevronRight, Users, MessageCircle } from "lucide-react";
+import { Video, MessageSquare, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API_URL from "../../utils/api";
@@ -72,7 +72,7 @@ const RightPanel = ({ onClose }) => {
               <div key={item.id} className="flex items-center justify-between group">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <img src={item.user.profilePic || "https://i.pravatar.cc/150"} className="w-12 h-12 rounded-full object-cover border-2 border-white/5 group-hover:border-purple-500/50 transition-all shadow-lg" />
+                    <img src={item.user.profilePic || "https://i.pravatar.cc/150"} loading="lazy" className="w-12 h-12 rounded-full object-cover border-2 border-white/5 group-hover:border-purple-500/50 transition-all shadow-lg" />
                     <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-[3px] border-[#151923] shadow-sm" />
                   </div>
                   <div>
@@ -104,7 +104,7 @@ const RightPanel = ({ onClose }) => {
             {recentConnections.length > 0 ? recentConnections.map((conn) => (
               <div key={conn.id} className="flex items-center justify-between group cursor-pointer" onClick={() => navigate("/messages")}>
                 <div className="flex items-center gap-3">
-                  <img src={conn.user.profilePic || "https://i.pravatar.cc/150"} className="w-12 h-12 rounded-full object-cover border-2 border-white/5 group-hover:border-purple-500/50 transition-all shadow-lg" />
+                  <img src={conn.user.profilePic || "https://i.pravatar.cc/150"} loading="lazy" className="w-12 h-12 rounded-full object-cover border-2 border-white/5 group-hover:border-purple-500/50 transition-all shadow-lg" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-sm font-black text-white truncate">{conn.user.username}</p>
@@ -115,8 +115,8 @@ const RightPanel = ({ onClose }) => {
                     </p>
                   </div>
                 </div>
-                <button className="w-10 h-10 rounded-2xl bg-[#0B0E14]/50 border border-white/5 flex items-center justify-center text-gray-600 group-hover:text-purple-400 group-hover:border-purple-500/20 transition-all shadow-lg">
-                  <MessageCircle className="w-5 h-5" />
+                <button onClick={() => navigate("/messages")} className="w-10 h-10 rounded-2xl bg-[#0B0E14]/50 border border-white/5 flex items-center justify-center text-gray-600 group-hover:text-purple-400 group-hover:border-purple-500/20 transition-all shadow-lg">
+                  <MessageSquare className="w-5 h-5" />
                 </button>
               </div>
             )) : (
@@ -129,14 +129,14 @@ const RightPanel = ({ onClose }) => {
         <div className="bg-gradient-to-br from-[#151923] to-[#0B0E14] border border-white/5 p-6 rounded-[32px] relative overflow-hidden shadow-2xl">
           <div className="absolute top-0 right-0 w-24 h-24 bg-purple-600/5 blur-3xl rounded-full"></div>
           <div className="relative z-10 flex flex-col items-center text-center">
-            <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center mb-4 shadow-inner">
-               <Shield className="w-7 h-7 text-purple-500" />
+               <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center mb-4 shadow-inner">
+               <MessageSquare className="w-7 h-7 text-purple-500" />
             </div>
             <h3 className="text-lg font-black text-white mb-2 uppercase tracking-tight">Safety First</h3>
             <p className="text-[11px] text-gray-500 leading-relaxed font-medium uppercase tracking-widest mb-6">
               Advanced technology and human moderation keep our community safe.
             </p>
-            <button className="text-purple-400 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:gap-3 transition-all">
+            <button onClick={() => navigate("/profile")} className="text-purple-400 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:gap-3 transition-all">
               Learn more about safety <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>

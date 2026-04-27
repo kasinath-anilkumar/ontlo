@@ -113,3 +113,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Start the engine
 startServer(PORT);
+
+// Keep-alive for Render (prevents sleep mode)
+const startKeepAlive = require('./scripts/keepAlive');
+startKeepAlive();

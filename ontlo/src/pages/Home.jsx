@@ -1,5 +1,6 @@
 import { getDynamicGreeting } from "../utils/greeting";
 import { Search, Bell, Users, Globe, Video, Heart, MessageSquare, ChevronRight, User, Star } from "lucide-react";
+import Skeleton from "../components/ui/Skeleton";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useSocket } from "../context/SocketContext";
@@ -12,6 +13,7 @@ const Home = () => {
   const { socket, user } = useSocket();
   const [onlineCount, setOnlineCount] = useState(0);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [loadingOnline, setLoadingOnline] = useState(true);
 
   useEffect(() => {
     if (!socket) return;
@@ -21,6 +23,7 @@ const Home = () => {
 
   useEffect(() => {
     const fetchOnlineUsers = async () => {
+      setLoadingOnline(true);
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(`${API_URL}/api/users/online`, {
@@ -30,6 +33,8 @@ const Home = () => {
         if (response.ok) setOnlineUsers(data);
       } catch (err) {
         console.error("Failed to fetch online users", err);
+      } finally {
+        setLoadingOnline(false);
       }
     };
     fetchOnlineUsers();
@@ -62,7 +67,7 @@ const Home = () => {
               {onlineCount.toLocaleString()} <span className="hidden xxs:inline">Online</span>
             </span>
           </div>
-          <button className="w-8 h-8 sm:w-10 sm:h-10 bg-[#151923] border border-[#1e293b] rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:border-purple-500/50 transition-all shadow-lg">
+          <button onClick={() => navigate("/messages")} className="w-8 h-8 sm:w-10 sm:h-10 bg-[#151923] border border-[#1e293b] rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:border-purple-500/50 transition-all shadow-lg">
             <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
           <button onClick={() => navigate("/profile")} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-purple-500/20 overflow-hidden transition-all hover:scale-110 hover:border-purple-500 shadow-lg bg-[#151923] flex items-center justify-center">
@@ -202,16 +207,23 @@ const Home = () => {
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
           <div className="flex justify-between items-center mb-4 sm:mb-6 px-1">
             <h3 className="text-lg font-black text-white uppercase tracking-wider">Active Now</h3>
-            <button className="text-xs font-bold text-purple-400 hover:text-purple-300 transition">View all</button>
+            <button onClick={() => alert("All active users are listed here. Swipe to see more!")} className="text-xs font-bold text-purple-400 hover:text-purple-300 transition">View all</button>
           </div>
           
           <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 scrollbar-hide snap-x">
-            {onlineUsers.map((u) => (
+            {loadingOnline ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex flex-col items-center gap-3 flex-shrink-0">
+                  <Skeleton circle={true} className="w-14 h-14 sm:w-16 sm:h-16" />
+                  <Skeleton className="w-12 h-2 rounded-full" />
+                </div>
+              ))
+            ) : onlineUsers.map((u) => (
               <div key={u._id} className="flex flex-col items-center gap-3 flex-shrink-0 cursor-pointer group snap-center">
                 <div className="relative">
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full p-0.5 bg-gradient-to-b from-purple-500 to-transparent group-hover:from-purple-400 transition-all shadow-lg group-hover:shadow-purple-500/20">
                     {u.profilePic ? (
-                      <img src={u.profilePic} className="w-full h-full rounded-full border-2 border-[#0B0E14] object-cover" />
+                      <img src={u.profilePic} loading="lazy" className="w-full h-full rounded-full border-2 border-[#0B0E14] object-cover" />
                     ) : (
                       <div className="w-full h-full rounded-full border-2 border-[#0B0E14] bg-[#151923] flex items-center justify-center">
                         <User className="w-6 h-6 text-gray-500" />

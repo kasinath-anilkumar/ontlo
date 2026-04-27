@@ -42,4 +42,6 @@ const UserSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
+UserSchema.index({ onlineStatus: 1 });
+
 module.exports = mongoose.model('User', UserSchema);

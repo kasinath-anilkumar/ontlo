@@ -1,4 +1,4 @@
-import { X, Smile, Send, Loader2, MessageCircle, MoreHorizontal, Check, CheckCheck, Plus, ChevronLeft, UserX, ShieldAlert, Users } from "lucide-react";
+import { X, Smile, Send, Loader2, MessageSquare, MoreHorizontal, Check, CheckCheck, Plus, ChevronLeft, UserX, ShieldAlert, Users } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSocket } from "../../context/SocketContext";
 import ProfileModal from "../profile/ProfileModal";
@@ -293,7 +293,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center opacity-10">
-            <MessageCircle className="w-16 h-16 mb-4" />
+            <MessageSquare className="w-16 h-16 mb-4" />
             <p className="text-xs font-bold uppercase tracking-[0.2em]">Start a new conversation</p>
           </div>
         ) : (

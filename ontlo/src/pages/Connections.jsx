@@ -105,7 +105,7 @@ const Connections = () => {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <div className={`w-14 h-14 rounded-full p-0.5 ${conn.user.onlineStatus ? 'bg-gradient-to-b from-green-500 to-transparent' : 'bg-[#1e293b]'}`}>
-                  <img src={conn.user.profilePic || "https://i.pravatar.cc/150"} alt={conn.user.username} className="w-full h-full rounded-full object-cover border-2 border-[#0B0E14]" />
+                  <img src={conn.user.profilePic || "https://i.pravatar.cc/150"} alt={conn.user.username} loading="lazy" className="w-full h-full rounded-full object-cover border-2 border-[#0B0E14]" />
                 </div>
                 {conn.user.onlineStatus && <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0B0E14] rounded-full"></div>}
               </div>

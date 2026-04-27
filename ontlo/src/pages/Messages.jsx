@@ -1,4 +1,5 @@
 import { Search, Edit, Loader2, MessageSquare, Heart, ChevronLeft, MoreVertical, Plus } from "lucide-react";
+import Skeleton from "../components/ui/Skeleton";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import API_URL from "../utils/api";
@@ -114,7 +115,7 @@ const Messages = () => {
         <div className="p-6 pb-4">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-black text-white tracking-tight">Messages</h1>
-            <button className="w-10 h-10 rounded-full bg-[#151923] border border-[#1e293b] flex items-center justify-center text-white hover:bg-[#1e293b] transition shadow-lg">
+            <button onClick={() => navigate("/video")} className="w-10 h-10 rounded-full bg-[#151923] border border-[#1e293b] flex items-center justify-center text-white hover:bg-[#1e293b] transition shadow-lg">
               <Plus className="w-5 h-5" />
             </button>
           </div>
@@ -138,9 +139,16 @@ const Messages = () => {
 
         <div className="flex-1 overflow-y-auto px-2 space-y-1">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Loading Chats</p>
+            <div className="space-y-4 px-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 mx-2">
+                  <Skeleton circle={true} className="w-14 h-14" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="w-24 h-3 rounded-full" />
+                    <Skeleton className="w-32 h-2 rounded-full opacity-50" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredConnections.length === 0 ? (
             <div className="text-center p-12 bg-[#151923]/20 rounded-3xl mx-4 border border-[#1e293b]/50 border-dashed">
@@ -157,7 +165,7 @@ const Messages = () => {
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     <div className={`w-14 h-14 rounded-full p-0.5 ${conn.user.onlineStatus ? 'bg-gradient-to-b from-green-500 to-transparent' : 'bg-[#1e293b]'}`}>
-                      <img src={conn.user.profilePic || "https://i.pravatar.cc/150"} alt={conn.user.username} className="w-full h-full rounded-full object-cover border-2 border-[#0B0E14]" />
+                      <img src={conn.user.profilePic || "https://i.pravatar.cc/150"} alt={conn.user.username} loading="lazy" className="w-full h-full rounded-full object-cover border-2 border-[#0B0E14]" />
                     </div>
                     {conn.user.onlineStatus && <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0B0E14] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>}
                   </div>

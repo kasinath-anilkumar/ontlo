@@ -24,11 +24,8 @@ class Matchmaker {
   }
 
   // Attempt to match two users in the queue
-  async tryMatch() {
+  tryMatch() {
     if (this.queue.length >= 2) {
-      // Find two users who haven't blocked each other
-      const User = require('../models/User');
-      
       let user1Index = -1;
       let user2Index = -1;
 
@@ -38,11 +35,8 @@ class Matchmaker {
           const u2 = this.queue[j];
           
           if (u1.userId && u2.userId) {
-            const dbUser1 = await User.findById(u1.userId).select('blockedUsers');
-            const dbUser2 = await User.findById(u2.userId).select('blockedUsers');
-            
-            const u1Blocked = dbUser1?.blockedUsers?.includes(u2.userId) || false;
-            const u2Blocked = dbUser2?.blockedUsers?.includes(u1.userId) || false;
+            const u1Blocked = u1.blockedUsers?.includes(u2.userId.toString()) || false;
+            const u2Blocked = u2.blockedUsers?.includes(u1.userId.toString()) || false;
             
             if (!u1Blocked && !u2Blocked) {
               user1Index = i;

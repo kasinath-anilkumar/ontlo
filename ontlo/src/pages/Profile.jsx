@@ -13,7 +13,8 @@ const Profile = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    window.location.href = "/auth";
+    setUser(null);
+    navigate("/auth");
   };
 
   const handleFileChange = async (e) => {
@@ -163,11 +164,11 @@ const Profile = () => {
                   <h2 className="text-3xl font-black text-white mb-4 uppercase tracking-tight">Safety Center</h2>
                   <p className="text-gray-500 text-sm max-w-sm mx-auto mb-10 font-medium uppercase tracking-widest leading-loose">Your security is our top priority. Manage your blocked list and privacy settings here.</p>
                   <div className="space-y-3 max-w-md mx-auto">
-                     <button className="w-full p-5 rounded-3xl bg-[#151923] border border-[#1e293b] text-white font-black uppercase tracking-widest text-[10px] hover:border-purple-500/50 transition flex items-center justify-between">
+                     <button onClick={() => navigate("/connections")} className="w-full p-5 rounded-3xl bg-[#151923] border border-[#1e293b] text-white font-black uppercase tracking-widest text-[10px] hover:border-purple-500/50 transition flex items-center justify-between">
                        <span>Blocked Users</span>
                        <ChevronRight className="w-4 h-4 text-gray-600" />
                      </button>
-                     <button className="w-full p-5 rounded-3xl bg-[#151923] border border-[#1e293b] text-white font-black uppercase tracking-widest text-[10px] hover:border-purple-500/50 transition flex items-center justify-between">
+                     <button onClick={() => alert("Privacy Policy coming soon in production.")} className="w-full p-5 rounded-3xl bg-[#151923] border border-[#1e293b] text-white font-black uppercase tracking-widest text-[10px] hover:border-purple-500/50 transition flex items-center justify-between">
                        <span>Privacy Policy</span>
                        <ChevronRight className="w-4 h-4 text-gray-600" />
                      </button>

@@ -59,7 +59,7 @@ const BottomNav = () => {
   ];
 
   return (
-    <div className="bottom-nav md:hidden fixed bottom-0 left-0 w-full z-50 bg-[#0B0E14]/80 backdrop-blur-2xl border-t border-white/5 pb-safe">
+    <div className="bottom-nav md:hidden fixed bottom-0 left-0 w-full z-50 bg-[#0B0E14]/80 backdrop-blur-lg border-t border-white/5 pb-safe">
       <div className="flex items-center justify-around py-3 px-2 relative">
         {/* Animated background indicator matching theme */}
         <div className="absolute inset-0 bg-gradient-to-t from-purple-600/5 to-transparent pointer-events-none"></div>

@@ -1,4 +1,4 @@
-import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageCircle, Check, X, Timer, User } from "lucide-react";
+import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageSquare, Check, X, Timer, User } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
@@ -37,6 +37,7 @@ const VideoContainer = () => {
   const [connectTimer, setConnectTimer] = useState(0);
   const [safetyBlurTimer, setSafetyBlurTimer] = useState(0);
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
 
   // ─────────────────────────────────────────────────────────────────
   // 1. Camera initialisation — runs once, cleans up on unmount
@@ -58,6 +59,7 @@ const VideoContainer = () => {
         setCameraReady(true);
       } catch (err) {
         console.error("Failed to get local stream", err);
+        setCameraError(err.name === 'NotAllowedError' ? 'Permission Denied' : 'Camera Error');
       }
     };
 
@@ -202,6 +204,14 @@ const VideoContainer = () => {
       setChatMessages([]);
       setHasNewMessage(false);
       setIsMatching(false);
+
+      // ── UX Feedback ──
+      if (navigator.vibrate) navigator.vibrate(100);
+      try {
+        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
+        audio.volume = 0.4;
+        audio.play();
+      } catch (_) {}
 
       // Fetch remote user info
       try {
@@ -413,13 +423,22 @@ const VideoContainer = () => {
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className={`w-full h-full object-cover transition-all duration-500 ${isBlurred ? "blur-[80px] grayscale brightness-50 scale-110" : ""} ${inCall ? "block" : "hidden"}`}
+            className={`w-full h-full object-cover transition-all duration-500 ${isBlurred ? "blur-[20px] brightness-90 scale-105" : ""} ${inCall ? "block" : "hidden"}`}
           />
 
           {/* Idle / Matching overlay — shown when not in call */}
           {!inCall && (
             <div className="text-center z-10">
-              {isMatching ? (
+              {cameraError ? (
+                <div className="flex flex-col items-center p-8 bg-red-500/10 border border-red-500/20 rounded-3xl animate-in zoom-in duration-300">
+                  <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
+                  <p className="text-white font-bold mb-2">Camera Blocked</p>
+                  <p className="text-gray-400 text-xs mb-6 max-w-xs">Please enable camera access in your browser settings to start matching.</p>
+                  <button onClick={() => window.location.reload()} className="px-6 py-2 bg-white/5 border border-white/10 text-white rounded-full hover:bg-white/10 transition">
+                    Retry Connection
+                  </button>
+                </div>
+              ) : isMatching ? (
                 <div className="flex flex-col items-center">
                   <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4" />
                   <p className="text-xl text-white font-bold mb-6">Looking for a match...</p>
@@ -510,7 +529,7 @@ const VideoContainer = () => {
                 {isBlurred ? <Eye className="w-6 h-6" /> : <EyeOff className="w-6 h-6" />}
               </button>
               <button onClick={toggleChat} className={`relative w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${showChat ? "bg-purple-600" : "bg-black/40 hover:bg-black/60"}`}>
-                <MessageCircle className="w-6 h-6" />
+                <MessageSquare className="w-6 h-6" />
                 {hasNewMessage && !showChat && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-pink-500 rounded-full border-2 border-[#0B0E14] animate-bounce" />
                 )}

@@ -26,7 +26,7 @@ const AppLayout = ({ children }) => {
   return (
     <div className="flex h-screen h-[100dvh] text-white bg-[#0B0E14] relative overflow-hidden">
       {/* Glow background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-transparent to-pink-900/20 blur-3xl opacity-40"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-transparent to-pink-900/20 blur-2xl opacity-40"></div>
 
       <div className="flex w-full relative z-10 h-full">
         <div className="hidden md:flex">
@@ -34,7 +34,7 @@ const AppLayout = ({ children }) => {
         </div>
         
         <div className="flex-1 overflow-y-auto w-full h-full relative scroll-smooth">
-          <main className="h-full animate-in fade-in duration-700">
+          <main className="h-full animate-in fade-in slide-in-from-bottom-2 duration-500">
             {children}
           </main>
           

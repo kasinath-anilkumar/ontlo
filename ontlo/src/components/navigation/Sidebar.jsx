@@ -59,7 +59,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="w-64 bg-[#0B0E14]/80 backdrop-blur-2xl border-r border-white/5 p-6 flex flex-col h-screen overflow-y-auto relative z-40">
+    <div className="w-64 bg-[#0B0E14]/80 backdrop-blur-lg border-r border-white/5 p-6 flex flex-col h-screen overflow-y-auto relative z-40">
       
       {/* Sidebar background glow */}
       <div className="absolute top-0 left-0 w-full h-40 bg-purple-600/15 blur-[80px] pointer-events-none"></div>

@@ -29,7 +29,12 @@ module.exports = (io) => {
         socket.userId = userId;
         onlineUsers.add(userId.toString());
         socket.join(`user_${userId}`);
-        await User.findByIdAndUpdate(userId, { onlineStatus: true });
+        const dbUser = await User.findById(userId).select('onlineStatus blockedUsers');
+        if (dbUser) {
+          dbUser.onlineStatus = true;
+          await dbUser.save();
+          socket.blockedUsers = dbUser.blockedUsers.map(id => id.toString()) || [];
+        }
         broadcastOnlineCount();
       }
       matchmaker.joinQueue(socket);
