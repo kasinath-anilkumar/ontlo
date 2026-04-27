@@ -1,4 +1,4 @@
-import { X, MapPin, Calendar, Activity, ShieldAlert, Loader2 } from "lucide-react";
+import { X, MapPin, Calendar, Activity, ShieldAlert, Loader2, MessageSquare, Heart, Users, Star, Crown } from "lucide-react";
 import { useEffect, useState } from "react";
 import API_URL from "../../utils/api";
 
@@ -25,85 +25,102 @@ const ProfileModal = ({ userId, onClose, onMessage }) => {
   if (!userId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-[#0B0E14] w-full sm:max-w-md h-[85vh] sm:h-auto sm:rounded-3xl rounded-t-3xl overflow-y-auto overflow-x-hidden shadow-2xl relative flex flex-col animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 border-t sm:border border-[#1e293b]">
-        {/* Top Navigation Bar */}
-        <div className="sticky top-0 z-10 bg-[#0B0E14]/80 backdrop-blur-md flex items-center justify-between p-4 border-b border-[#1e293b]">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-white tracking-tight">{profile?.username || 'Loading...'}</h2>
-            {profile?.isPremium && <ShieldAlert className="w-4 h-4 text-purple-500" />}
-          </div>
-          <button onClick={onClose} className="p-2 bg-white/5 rounded-full text-gray-400 hover:text-white transition">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300 px-4">
+      <div className="bg-[#0B0E14] w-full max-w-sm rounded-[40px] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 relative animate-in zoom-in-95 duration-300">
         
+        {/* Close Button - Floating */}
+        <button onClick={onClose} className="absolute top-5 right-5 z-20 p-2 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white/70 hover:text-white transition">
+          <X className="w-5 h-5" />
+        </button>
+
         {loading ? (
-          <div className="flex-1 flex items-center justify-center p-20">
+          <div className="py-40 flex items-center justify-center">
              <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
           </div>
         ) : (
-          <div className="p-6">
-            {/* Header: Photo and Stats */}
-            <div className="flex items-center justify-between mb-6">
-              {/* Profile Photo */}
-              <div className="relative shrink-0">
-                 <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full p-[3px] bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600">
-                    <div className="w-full h-full rounded-full border-[3px] border-[#0B0E14] overflow-hidden bg-[#151923]">
-                      <img src={profile.profilePic || "https://i.pravatar.cc/150"} alt={profile.username} className="w-full h-full object-cover" />
-                    </div>
+          <div className="flex flex-col">
+            {/* Hero Header Background */}
+            <div className="h-40 bg-gradient-to-br from-purple-600 via-pink-600 to-red-500 relative">
+               <div className="absolute inset-0 bg-black/20" />
+               <div className="absolute -bottom-1 left-0 right-0 h-20 bg-gradient-to-t from-[#0B0E14] to-transparent" />
+            </div>
+
+            {/* Profile Avatar Overlay */}
+            <div className="px-6 -mt-16 relative z-10 flex flex-col items-center">
+               <div className="w-32 h-32 rounded-[32px] p-1 bg-[#0B0E14] shadow-2xl">
+                  <div className="w-full h-full rounded-[28px] overflow-hidden border-2 border-white/10">
+                     <img 
+                        src={profile.profilePic || "https://i.pravatar.cc/150"} 
+                        alt={profile.username} 
+                        className="w-full h-full object-cover" 
+                     />
+                  </div>
+               </div>
+               
+               {/* Online Badge */}
+               {profile.onlineStatus && (
+                 <div className="mt-2 flex items-center gap-1.5 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-green-500">Online now</span>
                  </div>
-              </div>
-
-              {/* Stats */}
-              <div className="flex gap-6 sm:gap-8 ml-6">
-                <div className="flex flex-col items-center">
-                  <span className="text-white font-bold text-lg">{profile.connectionsCount || 0}</span>
-                  <span className="text-gray-400 text-xs font-medium">Connections</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <span className="text-white font-bold text-lg">{profile.age || '--'}</span>
-                  <span className="text-gray-400 text-xs font-medium">Age</span>
-                </div>
-              </div>
+               )}
             </div>
 
-            {/* Bio Section */}
-            <div className="mb-6">
-              <h1 className="text-white font-bold text-sm mb-1">{profile.fullName || profile.username}</h1>
-              <p className="text-gray-400 text-sm mb-2">{profile.gender === 'Prefer not to say' ? '' : profile.gender}</p>
-              {profile.bio && <p className="text-white text-sm whitespace-pre-wrap">{profile.bio}</p>}
-              {profile.location && (
-                <div className="mt-2 flex items-center gap-1 text-gray-400 text-sm">
-                  <MapPin className="w-4 h-4" />
-                  <span>{profile.location}</span>
-                </div>
-              )}
-            </div>
+            {/* Info Section */}
+            <div className="px-8 pt-4 pb-10 flex flex-col items-center text-center">
+               <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-1 flex items-center gap-2">
+                  {profile.username}
+                  {profile.isPremium && <Crown className="w-5 h-5 text-yellow-400 fill-current" />}
+               </h2>
+               <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-4">
+                  {profile.fullName || "Member"} • {profile.age || "--"} Y.O
+               </p>
 
-            {/* Action Buttons */}
-            <div className="flex gap-2 mb-6">
-              <button 
-                onClick={() => { onClose(); if (onMessage) onMessage(); }}
-                className="flex-1 bg-[#1e293b] hover:bg-[#334155] text-white font-bold py-2 rounded-lg transition"
-              >
-                Message
-              </button>
-            </div>
+               {profile.bio && (
+                 <p className="text-gray-300 text-sm leading-relaxed mb-6 italic">
+                    "{profile.bio}"
+                 </p>
+               )}
 
-            {/* Interests / Highlights (Optional if available) */}
-            {profile.interests && profile.interests.length > 0 && (
-              <div className="border-t border-[#1e293b] pt-6">
-                <h3 className="text-white font-bold mb-4">Interests</h3>
-                <div className="flex flex-wrap gap-2">
-                  {profile.interests.map((interest, idx) => (
-                    <span key={idx} className="bg-[#151923] text-purple-400 border border-[#1e293b] px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+               {/* Stats Grid */}
+               <div className="grid grid-cols-2 w-full gap-4 mb-8">
+                  <div className="bg-white/5 border border-white/5 rounded-3xl p-4 flex flex-col items-center">
+                     <Users className="w-4 h-4 text-purple-400 mb-1" />
+                     <span className="text-white font-black text-lg">{profile.connectionsCount || 0}</span>
+                     <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Connections</span>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-3xl p-4 flex flex-col items-center">
+                     <MapPin className="w-4 h-4 text-pink-400 mb-1" />
+                     <span className="text-white font-black text-sm truncate w-full">{profile.location || "Earth"}</span>
+                     <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Location</span>
+                  </div>
+               </div>
+
+               {/* Interests Pill */}
+               {profile.interests && profile.interests.length > 0 && (
+                 <div className="flex flex-wrap justify-center gap-2 mb-8">
+                    {profile.interests.slice(0, 3).map((interest, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest rounded-full">
+                         {interest}
+                      </span>
+                    ))}
+                    {profile.interests.length > 3 && (
+                      <span className="px-3 py-1 bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-full">
+                         +{profile.interests.length - 3} More
+                      </span>
+                    )}
+                 </div>
+               )}
+
+               {/* Action Button */}
+               <button 
+                  onClick={() => { onClose(); if (onMessage) onMessage(); }}
+                  className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-red-500 text-white font-black uppercase tracking-widest py-5 rounded-[24px] shadow-xl shadow-purple-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+               >
+                  <MessageSquare className="w-4 h-4" />
+                  Say Hello
+               </button>
+            </div>
           </div>
         )}
       </div>
