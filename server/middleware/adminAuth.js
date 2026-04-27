@@ -22,7 +22,10 @@ const adminAuth = (roles = ['admin', 'superadmin']) => {
         return res.status(403).json({ error: 'Forbidden: Account is ' + user.status });
       }
 
-      if (!roles.includes(user.role)) {
+      // Ensure roles is always an array and check both the role and specific admin permissions
+      const allowedRoles = Array.isArray(roles) ? roles : ['admin', 'superadmin'];
+      
+      if (!allowedRoles.includes(user.role)) {
         return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
       }
 
