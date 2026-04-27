@@ -23,7 +23,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.get('/', (req, res) => res.send('Cyou API is running...'));
+app.get('/', (req, res) => res.send('Ontlo API is running...'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/connections', require('./routes/connections'));
 app.use('/api/report', require('./routes/report'));
@@ -38,7 +38,7 @@ require('./socket')(io);
 
 // Config
 let PORT = parseInt(process.env.PORT) || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/cyou';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ontlo';
 
 // Robust Startup Function
 const startServer = async (port) => {
