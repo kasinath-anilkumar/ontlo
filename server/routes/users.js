@@ -87,4 +87,42 @@ router.post('/block', async (req, res) => {
   }
 });
 
+// Get blocked users list
+router.get('/blocked/list', async (req, res) => {
+  try {
+    const currentUserId = getUserId(req);
+    if (!currentUserId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const user = await User.findById(currentUserId).populate('blockedUsers', 'username profilePic fullName');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json(user.blockedUsers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Unblock a user
+router.post('/unblock', async (req, res) => {
+  try {
+    const currentUserId = getUserId(req);
+    if (!currentUserId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { unblockUserId } = req.body;
+    if (!unblockUserId) return res.status(400).json({ error: 'User ID to unblock is required' });
+
+    const user = await User.findById(currentUserId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.blockedUsers = user.blockedUsers.filter(id => id.toString() !== unblockUserId);
+    await user.save();
+
+    res.json({ message: 'User unblocked successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

@@ -8,6 +8,9 @@ const Profile = () => {
   const { user, setUser } = useSocket();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(window.innerWidth > 768 ? "profile" : null); // null means show menu on mobile
+  const [showBlockedUsers, setShowBlockedUsers] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [loadingBlocked, setLoadingBlocked] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const handleLogout = () => {
@@ -156,25 +159,93 @@ const Profile = () => {
                 </div>
               )}
 
-              {activeTab === "safety" && (
-                <div className="text-center py-10">
-                  <div className="w-24 h-24 rounded-[32px] bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-8 shadow-2xl">
-                    <ShieldCheck className="w-10 h-10 text-green-500" />
-                  </div>
-                  <h2 className="text-3xl font-black text-white mb-4 uppercase tracking-tight">Safety Center</h2>
-                  <p className="text-gray-500 text-sm max-w-sm mx-auto mb-10 font-medium uppercase tracking-widest leading-loose">Your security is our top priority. Manage your blocked list and privacy settings here.</p>
-                  <div className="space-y-3 max-w-md mx-auto">
-                     <button onClick={() => navigate("/connections")} className="w-full p-5 rounded-3xl bg-[#151923] border border-[#1e293b] text-white font-black uppercase tracking-widest text-[10px] hover:border-purple-500/50 transition flex items-center justify-between">
-                       <span>Blocked Users</span>
-                       <ChevronRight className="w-4 h-4 text-gray-600" />
-                     </button>
-                     <button onClick={() => alert("Privacy Policy coming soon in production.")} className="w-full p-5 rounded-3xl bg-[#151923] border border-[#1e293b] text-white font-black uppercase tracking-widest text-[10px] hover:border-purple-500/50 transition flex items-center justify-between">
-                       <span>Privacy Policy</span>
-                       <ChevronRight className="w-4 h-4 text-gray-600" />
-                     </button>
-                  </div>
-                </div>
-              )}
+               {activeTab === "safety" && !showBlockedUsers && (
+                 <div className="text-center py-10">
+                   <div className="w-24 h-24 rounded-[32px] bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                     <ShieldCheck className="w-10 h-10 text-green-500" />
+                   </div>
+                   <h2 className="text-3xl font-black text-white mb-4 uppercase tracking-tight">Safety Center</h2>
+                   <p className="text-gray-500 text-sm max-w-sm mx-auto mb-10 font-medium uppercase tracking-widest leading-loose">Your security is our top priority. Manage your blocked list and privacy settings here.</p>
+                   <div className="space-y-3 max-w-md mx-auto">
+                      <button onClick={async () => {
+                        setShowBlockedUsers(true);
+                        setLoadingBlocked(true);
+                        try {
+                          const token = localStorage.getItem("token");
+                          const res = await fetch(`${API_URL}/api/users/blocked/list`, {
+                            headers: { "Authorization": `Bearer ${token}` }
+                          });
+                          const data = await res.json();
+                          if (res.ok) setBlockedUsers(data);
+                        } catch (_) {} finally { setLoadingBlocked(false); }
+                      }} className="w-full p-5 rounded-3xl bg-[#151923] border border-[#1e293b] text-white font-black uppercase tracking-widest text-[10px] hover:border-purple-500/50 transition flex items-center justify-between">
+                        <span>Blocked Users</span>
+                        <ChevronRight className="w-4 h-4 text-gray-600" />
+                      </button>
+                      <button onClick={() => alert("Privacy Policy coming soon in production.")} className="w-full p-5 rounded-3xl bg-[#151923] border border-[#1e293b] text-white font-black uppercase tracking-widest text-[10px] hover:border-purple-500/50 transition flex items-center justify-between">
+                        <span>Privacy Policy</span>
+                        <ChevronRight className="w-4 h-4 text-gray-600" />
+                      </button>
+                   </div>
+                 </div>
+               )}
+
+               {activeTab === "safety" && showBlockedUsers && (
+                 <div className="animate-in slide-in-from-right duration-300">
+                    <div className="flex items-center gap-4 mb-8">
+                       <button onClick={() => setShowBlockedUsers(false)} className="p-2 bg-white/5 rounded-xl text-gray-400 hover:text-white transition">
+                          <ChevronLeft className="w-5 h-5" />
+                       </button>
+                       <h2 className="text-xl font-black text-white uppercase tracking-tight">Blocked Users</h2>
+                    </div>
+
+                    {loadingBlocked ? (
+                      <div className="space-y-3">
+                         {[1,2,3].map(i => <div key={i} className="h-20 w-full rounded-3xl bg-white/5 animate-pulse" />)}
+                      </div>
+                    ) : blockedUsers.length === 0 ? (
+                      <div className="text-center py-20 bg-[#151923]/20 rounded-[40px] border border-white/5 border-dashed">
+                         <ShieldCheck className="w-12 h-12 text-gray-700 mx-auto mb-4 opacity-20" />
+                         <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No blocked users</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                         {blockedUsers.map(u => (
+                           <div key={u._id} className="flex items-center justify-between p-4 bg-[#151923] border border-white/5 rounded-3xl hover:border-purple-500/30 transition group">
+                              <div className="flex items-center gap-4">
+                                 <img src={u.profilePic} className="w-12 h-12 rounded-full object-cover border-2 border-[#0B0E14]" loading="lazy" />
+                                 <div>
+                                    <p className="text-white font-black uppercase tracking-tight text-sm">{u.username}</p>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{u.fullName || "Member"}</p>
+                                 </div>
+                              </div>
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    const token = localStorage.getItem("token");
+                                    const res = await fetch(`${API_URL}/api/users/unblock`, {
+                                      method: "POST",
+                                      headers: { 
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${token}` 
+                                      },
+                                      body: JSON.stringify({ unblockUserId: u._id })
+                                    });
+                                    if (res.ok) {
+                                      setBlockedUsers(prev => prev.filter(item => item._id !== u._id));
+                                    }
+                                  } catch (_) {}
+                                }}
+                                className="px-4 py-2 bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500 hover:text-white transition"
+                              >
+                                Unblock
+                              </button>
+                           </div>
+                         ))}
+                      </div>
+                    )}
+                 </div>
+               )}
             </div>
           </div>
         ) : (
