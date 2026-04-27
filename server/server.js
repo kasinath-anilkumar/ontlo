@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const maintenanceMiddleware = require('./middleware/maintenance');
 
 // Load environment variables
 dotenv.config();
@@ -20,6 +21,7 @@ const io = new Server(server, {
 
 // Middleware
 app.use(cors());
+app.use(maintenanceMiddleware);
 app.use(express.json());
 
 // Routes
@@ -32,6 +34,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Initialize Socket.io Logic
 require('./socket')(io);

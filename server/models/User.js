@@ -39,7 +39,39 @@ const UserSchema = new mongoose.Schema({
   blockedUsers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  role: {
+    type: String,
+    enum: ['user', 'moderator', 'admin', 'superadmin'],
+    default: 'user'
+  },
+  status: {
+    type: String,
+    enum: ['active', 'suspended', 'banned'],
+    default: 'active'
+  },
+  lastLogin: {
+    type: Date,
+    default: Date.now
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  isShadowBanned: {
+    type: Boolean,
+    default: false
+  },
+  lastIp: String
 }, { timestamps: true });
 
 UserSchema.index({ onlineStatus: 1 });

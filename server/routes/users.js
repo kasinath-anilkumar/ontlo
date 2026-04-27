@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
+const AppConfig = require('../models/AppConfig');
+
 // Helper to get userId from token if exists
 const getUserId = (req) => {
   const token = req.headers.authorization;
@@ -17,6 +19,47 @@ const getUserId = (req) => {
     return null;
   }
 };
+
+// Discover: Get potential matches based on Admin algorithm settings
+router.get('/discover', async (req, res) => {
+  try {
+    const currentUserId = getUserId(req);
+    if (!currentUserId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const currentUser = await User.findById(currentUserId);
+    
+    // Fetch algorithm settings from Admin Panel config
+    const config = await AppConfig.findOne({ key: 'matchmaking_settings' });
+    const settings = config ? config.value : { radius: 50, ageGap: 5, boostPremium: true };
+
+    const query = {
+      _id: { $ne: currentUserId },
+      status: 'active',
+      isShadowBanned: false,
+      onlineStatus: true
+    };
+
+    // Apply Age Filter from Admin settings
+    if (currentUser.age) {
+      query.age = { 
+        $gte: currentUser.age - settings.ageGap, 
+        $lte: currentUser.age + settings.ageGap 
+      };
+    }
+
+    // Apply Location Filter (Mocking radius for now as we don't have GeoJSON indices yet)
+    // In a real production app, we would use $near with settings.radius
+
+    const matches = await User.find(query)
+      .sort(settings.boostPremium ? { isPremium: -1, createdAt: -1 } : { createdAt: -1 })
+      .limit(20)
+      .select('username profilePic age gender bio isPremium');
+
+    res.json(matches);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // Get global online users for the Home page indicators
 router.get('/online', async (req, res) => {

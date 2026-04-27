@@ -3,6 +3,7 @@ const User = require('./models/User');
 const Message = require('./models/Message');
 const Connection = require('./models/Connection');
 const jwt = require('jsonwebtoken');
+const { moderateText } = require('./utils/moderation');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
@@ -55,10 +56,15 @@ module.exports = (io) => {
     socket.on('chat-message', async ({ message, imageUrl, roomId }) => {
       const timestamp = new Date().toISOString();
       
+      // APPLY AUTOMATIC MODERATION
+      const moderation = moderateText(message);
+      const finalMessage = moderation.text;
+
       socket.to(roomId).emit('chat-message', {
         sender: socket.id,
-        text: message,
+        text: finalMessage,
         imageUrl,
+        isFlagged: !moderation.clean,
         timestamp
       });
 
@@ -69,7 +75,7 @@ module.exports = (io) => {
             const newMessage = new Message({
               connectionId: roomId,
               sender: socket.userId,
-              text: message,
+              text: finalMessage,
               imageUrl,
               timestamp
             });
