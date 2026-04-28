@@ -519,7 +519,7 @@ const VideoContainer = () => {
                     : <User className="w-6 h-6 text-gray-500" />
                   }
                 </div>
-                <h3 className="text-white font-bold text-lg leading-tight">
+                <div  className="text-white font-bold text-lg leading-tight">
                   <h3 className="text-white font-bold text-base sm:text-lg leading-tight truncate max-w-[120px] sm:max-w-none">
                     {remoteUser?.fullName || remoteUser?.username || "Connecting..."}
                   </h3>
@@ -530,6 +530,7 @@ const VideoContainer = () => {
                   </button>
                   <div className="bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full text-white font-black text-[9px] sm:text-[10px] mt-1 font-mono tracking-widest border border-white/5">LIVE</div>
                 </div>
+              </div>
               </div>
 
             {/* Connect request modal */}
