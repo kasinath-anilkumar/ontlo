@@ -106,7 +106,7 @@ const Onboarding = () => {
   const commonInterests = ["Travel", "Music", "Gaming", "Art", "Movies", "Tech", "Cooking", "Fitness", "Photography", "Reading"];
 
   return (
-    <div className="min-h-screen bg-[#05070A] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#05070A] flex items-center justify-center p-4 relative overflow-hidden font-sans overflow-y-hidden">
       {/* Immersive 3D Background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[150px] animate-pulse"></div>
