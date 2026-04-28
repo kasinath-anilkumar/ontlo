@@ -97,7 +97,7 @@ const Auth = () => {
           <div className="flex flex-col items-center mb-8">
             <img className="w-20 sm:w-24 mb-4 drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]" src={logo} alt="Ontlo Logo" />
             <h2 className="text-xl font-black text-white uppercase tracking-tight italic mb-1">
-              {isLogin ? "Welcome Back" : "Security"}
+              {isLogin ? "Welcome Back" : "Personal Information"}
             </h2>
             {!isLogin && (
                <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em]">
@@ -112,77 +112,122 @@ const Auth = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">Username</label>
-              <input 
-                type="text" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] px-6 py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-sm font-medium placeholder:text-gray-700"
-                placeholder="Pick a username"
-                required
-              />
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
 
-            <div className="space-y-2 relative">
-              <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">Password</label>
-              <input 
-                type={showPassword ? "text" : "password"} 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] px-6 py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-sm font-medium placeholder:text-gray-700 pr-12"
-                placeholder="••••••••"
-                required
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-5 top-[38px] text-gray-500 hover:text-white transition-colors"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+  {/* USERNAME */}
+  <div className="space-y-1.5 sm:space-y-2">
+    <label className="block text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-[0.15em] ml-2 sm:ml-4">
+      Username
+    </label>
+    <input 
+      type="text" 
+      value={username}
+      onChange={(e) => setUsername(e.target.value)}
+      className="w-full bg-white/5 border border-white/10 text-white 
+        rounded-xl sm:rounded-[20px] 
+        px-4 sm:px-6 py-3 sm:py-4
+        text-[13px] sm:text-sm
+        focus:outline-none focus:border-purple-500/50 focus:bg-white/10 
+        transition-all font-medium placeholder:text-gray-700"
+      placeholder="Pick a username"
+      required
+    />
+  </div>
 
-            {!isLogin && (
-              <div className="space-y-2">
-                <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">Date of Birth</label>
-                <input
-                  type="date"
-                  value={dob}
-                  onChange={(e) => setDob(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] px-6 py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-sm font-medium placeholder:text-gray-700"
-                  required={!isLogin}
-                />
-              </div>
-            )}
+  {/* PASSWORD */}
+  <div className="space-y-1.5 sm:space-y-2 relative">
+    <label className="block text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-[0.15em] ml-2 sm:ml-4">
+      Password
+    </label>
+    <input 
+      type={showPassword ? "text" : "password"} 
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      className="w-full bg-white/5 border border-white/10 text-white 
+        rounded-xl sm:rounded-[20px] 
+        px-4 sm:px-6 py-3 sm:py-4 pr-10 sm:pr-12
+        text-[13px] sm:text-sm
+        focus:outline-none focus:border-purple-500/50 focus:bg-white/10 
+        transition-all font-medium placeholder:text-gray-700"
+      placeholder="••••••••"
+      required
+    />
 
-            {!isLogin && (
-              <div className="bg-black/40 border border-white/5 rounded-[20px] p-4 space-y-2 animate-in fade-in zoom-in-95 duration-500">
-                <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest px-1">Security Matrix</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <ReqItem label="8+ Chars" active={reqs.length} />
-                  <ReqItem label="Uppercase" active={reqs.upper} />
-                  <ReqItem label="Numeric" active={reqs.number} />
-                  <ReqItem label="Special" active={reqs.symbol} />
-                </div>
-              </div>
-            )}
+    <button 
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute right-3 sm:right-5 top-[34px] sm:top-[38px] text-gray-500 hover:text-white transition-colors"
+    >
+      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+    </button>
+  </div>
 
-            <button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full py-4 rounded-[20px] bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/10 mt-2 flex justify-center items-center gap-3 disabled:opacity-50"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <>
-                  {isLogin ? "Access System" : "Complete Protocol"} <Sparkles className="w-3.5 h-3.5" />
-                </>
-              )}
-            </button>
-          </form>
+  {/* DOB */}
+  {!isLogin && (
+    <div className="space-y-1.5 sm:space-y-2">
+      <label className="block text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-[0.15em] ml-2 sm:ml-4">
+        Date of Birth
+      </label>
+      <input
+        type="date"
+        value={dob}
+        onChange={(e) => setDob(e.target.value)}
+        className="w-full bg-white/5 border border-white/10 text-white 
+          rounded-xl sm:rounded-[20px] 
+          px-4 sm:px-6 py-3 sm:py-4
+          text-[13px] sm:text-sm
+          focus:outline-none focus:border-purple-500/50 focus:bg-white/10 
+          transition-all font-medium"
+        required={!isLogin}
+      />
+    </div>
+  )}
+
+  {/* SECURITY MATRIX */}
+  {!isLogin && (
+    <div className="bg-black/40 border border-white/5 rounded-xl sm:rounded-2xl
+      p-2 sm:p-4
+      space-y-1.5 sm:space-y-3
+      animate-in fade-in zoom-in-95 duration-500 w-full">
+
+      <p className="text-[7px] sm:text-[10px] font-black text-gray-500 uppercase tracking-wider px-1">
+        Security Matrix
+      </p>
+
+      <div className="grid grid-cols-2 gap-1 sm:gap-2">
+        <ReqItem label="8+ Chars" active={reqs.length} />
+        <ReqItem label="Uppercase" active={reqs.upper} />
+        <ReqItem label="Numeric" active={reqs.number} />
+        <ReqItem label="Special" active={reqs.symbol} />
+      </div>
+    </div>
+  )}
+
+  {/* BUTTON */}
+  <button 
+    type="submit" 
+    disabled={isLoading}
+    className="w-full py-3 sm:py-4 
+      rounded-xl sm:rounded-[20px] 
+      bg-white text-black font-black uppercase 
+      tracking-[0.15em] sm:tracking-[0.2em] 
+      text-[9px] sm:text-[10px]
+      hover:scale-[1.02] active:scale-95 
+      transition-all shadow-xl shadow-white/10 mt-2 
+      flex justify-center items-center gap-2 sm:gap-3 
+      disabled:opacity-50"
+  >
+    {isLoading ? (
+      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+    ) : (
+      <>
+        {isLogin ? "Login" : "Signup"} 
+        <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+      </>
+    )}
+  </button>
+
+</form>
 
           <div className="mt-10 text-center">
             <button 
