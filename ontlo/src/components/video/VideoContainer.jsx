@@ -78,7 +78,6 @@ const VideoContainer = () => {
       }
       if (socket) socket.emit("leave-queue");
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally empty — camera starts once
 
   // ─────────────────────────────────────────────────────────────────

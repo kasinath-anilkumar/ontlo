@@ -3,8 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const { JWT_SECRET } = require('../config/jwt');
 
 // Middleware for auth
 const authenticate = (req, res, next) => {
@@ -43,14 +42,38 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const newUser = new User({ 
-      username, 
+    const allowedGenders = ['Male', 'Female', 'Other', 'Prefer not to say'];
+    const age = req.body.age !== undefined && req.body.age !== null && req.body.age !== ''
+      ? Number(req.body.age)
+      : undefined;
+    const dob = req.body.dob !== undefined && req.body.dob !== null && req.body.dob !== ''
+      ? new Date(req.body.dob)
+      : undefined;
+    const profileFields = {
+      fullName: typeof req.body.fullName === 'string' ? req.body.fullName.trim() : undefined,
+      age: Number.isFinite(age) ? age : undefined,
+      dob: dob && !Number.isNaN(dob.getTime()) ? dob : undefined,
+      gender: allowedGenders.includes(req.body.gender) ? req.body.gender : undefined,
+      location: typeof req.body.location === 'string' ? req.body.location.trim() : undefined,
+      interests: Array.isArray(req.body.interests)
+        ? req.body.interests.map((interest) => String(interest).trim()).filter(Boolean)
+        : [],
+      bio: typeof req.body.bio === 'string' ? req.body.bio.trim() : undefined,
+      profilePic: typeof req.body.profilePic === 'string' && req.body.profilePic ? req.body.profilePic : undefined
+    };
+    const hasRequiredProfile = Boolean(
+      profileFields.fullName &&
+      profileFields.age &&
+      profileFields.gender &&
+      profileFields.location &&
+      profileFields.interests.length >= 3
+    );
+
+    const newUser = new User({
+      username,
       password: hashedPassword,
-      fullName: req.body.fullName || "",
-      age: req.body.age || null,
-      gender: req.body.gender || "",
-      interests: req.body.interests || [],
-      isProfileComplete: !!req.body.fullName
+      ...profileFields,
+      isProfileComplete: hasRequiredProfile
     });
     await newUser.save();
 
@@ -71,6 +94,7 @@ router.post('/register', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Registration Error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -107,7 +131,15 @@ router.post('/login', async (req, res) => {
         id: user._id,
         username: user.username,
         role: user.role, // Added role for RBAC
+        fullName: user.fullName,
         profilePic: user.profilePic,
+        age: user.age,
+        dob: user.dob,
+        gender: user.gender,
+        location: user.location,
+        interests: user.interests,
+        bio: user.bio,
+        settings: user.settings,
         isProfileComplete: user.isProfileComplete
       }
     });
@@ -120,20 +152,51 @@ router.post('/login', async (req, res) => {
 router.post('/complete-profile', authenticate, async (req, res) => {
   try {
     const { fullName, age, dob, gender, location, interests, bio, profilePic } = req.body;
+    const allowedGenders = ['Male', 'Female', 'Other', 'Prefer not to say'];
     
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Type casting to prevent DB validation errors (500)
-    if (fullName !== undefined) user.fullName = String(fullName);
-    if (age !== undefined) user.age = Number(age);
-    if (gender !== undefined) user.gender = String(gender);
-    if (location !== undefined) user.location = String(location);
-    if (interests !== undefined) user.interests = Array.isArray(interests) ? interests : [];
-    if (bio !== undefined) user.bio = String(bio);
-    if (profilePic !== undefined) user.profilePic = String(profilePic);
-    
-    user.isProfileComplete = true;
+    // Type casting and validation to prevent DB validation errors (500)
+    if (fullName !== undefined) user.fullName = String(fullName).trim();
+    if (age !== undefined && age !== null && age !== '') {
+      const numericAge = Number(age);
+      if (!Number.isFinite(numericAge) || numericAge < 13 || numericAge > 120) {
+        return res.status(400).json({ error: 'Please enter a valid age between 13 and 120.' });
+      }
+      user.age = numericAge;
+    }
+    if (dob !== undefined && dob !== null && dob !== '') {
+      const parsedDob = new Date(dob);
+      if (Number.isNaN(parsedDob.getTime())) {
+        return res.status(400).json({ error: 'Please enter a valid date of birth.' });
+      }
+      user.dob = parsedDob;
+    }
+    if (gender !== undefined) {
+      if (!allowedGenders.includes(gender)) {
+        return res.status(400).json({ error: 'Please select a valid gender.' });
+      }
+      user.gender = gender;
+    }
+    if (location !== undefined) user.location = String(location).trim();
+    if (interests !== undefined) {
+      if (!Array.isArray(interests)) {
+        return res.status(400).json({ error: 'Interests must be a list.' });
+      }
+      user.interests = interests.map((interest) => String(interest).trim()).filter(Boolean);
+    }
+    if (bio !== undefined) user.bio = String(bio).trim();
+    if (profilePic !== undefined && profilePic !== '') user.profilePic = String(profilePic);
+
+    const hasRequiredProfile = Boolean(
+      user.fullName &&
+      user.age &&
+      user.gender &&
+      user.location &&
+      user.interests.length >= 3
+    );
+    user.isProfileComplete = hasRequiredProfile;
 
     await user.save();
 
@@ -149,6 +212,7 @@ router.post('/complete-profile', authenticate, async (req, res) => {
         location: user.location,
         interests: user.interests,
         bio: user.bio,
+        dob: user.dob,
         isProfileComplete: user.isProfileComplete
       }
     });

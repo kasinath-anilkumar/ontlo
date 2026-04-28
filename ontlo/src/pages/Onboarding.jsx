@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera, MapPin, User, Sparkles, Upload, Loader2, ChevronRight, ChevronLeft, Heart, Globe, MessageSquare } from "lucide-react";
+import { Camera, User, Sparkles, Upload, Loader2, ChevronRight, ChevronLeft, Globe, Calendar } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
 import API_URL from "../utils/api";
 
@@ -18,6 +18,7 @@ const Onboarding = () => {
   });
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
   const { user, setUser } = useSocket();
 
@@ -59,6 +60,7 @@ const Onboarding = () => {
   };
 
   const handleSubmit = async () => {
+    setError("");
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -74,12 +76,12 @@ const Onboarding = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to save profile");
 
-      const updatedUser = { ...user, ...data.user, isProfileComplete: true };
+      const updatedUser = { ...user, ...data.user };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       setUser(updatedUser);
       navigate("/");
     } catch (err) {
-      alert(err.message);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -115,6 +117,12 @@ const Onboarding = () => {
                Onboarding Phase {step + 1} of 5
             </p>
           </div>
+
+          {error && (
+            <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest text-center animate-in zoom-in-95">
+              {error}
+            </div>
+          )}
 
           {step === 1 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center">
@@ -155,6 +163,7 @@ const Onboarding = () => {
           {step === 2 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
                <InputField label="Full Name" value={formData.fullName} onChange={(val) => setFormData({...formData, fullName: val})} placeholder="Your full name" icon={<User className="w-4 h-4" />} />
+               <InputField label="Date of Birth" type="date" value={formData.dob} onChange={(val) => setFormData({...formData, dob: val})} placeholder="Date of birth" icon={<Calendar className="w-4 h-4" />} />
                <div className="grid grid-cols-2 gap-4">
                   <InputField label="Age" type="number" value={formData.age} onChange={(val) => setFormData({...formData, age: val})} placeholder="e.g. 24" icon={<Sparkles className="w-4 h-4" />} />
                   <div className="space-y-2">
@@ -174,7 +183,7 @@ const Onboarding = () => {
                
                <div className="flex gap-4 mt-10">
                   <button onClick={() => setStep(1)} className="w-16 h-16 rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
-                  <button onClick={() => setStep(3)} disabled={!formData.fullName || !formData.age} className="flex-1 bg-white text-black font-black rounded-[24px] uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Continue <ChevronRight className="w-4 h-4" /></button>
+                  <button onClick={() => setStep(3)} disabled={!formData.fullName || !formData.age || !formData.dob} className="flex-1 bg-white text-black font-black rounded-[24px] uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Continue <ChevronRight className="w-4 h-4" /></button>
                </div>
             </div>
           )}

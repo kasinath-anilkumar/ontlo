@@ -59,7 +59,7 @@ const Auth = () => {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       setUser(data.user);
-      navigate("/");
+      navigate(data.user.isProfileComplete ? "/" : "/setup-profile");
     } catch (err) {
       setError(err.message);
     } finally {

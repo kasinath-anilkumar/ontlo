@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Connection = require('../models/Connection');
 const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../config/jwt');
 
 // Middleware to mock authentication for now, or use JWT verification
 // In a real app, you would have a middleware that sets req.userId from the JWT
@@ -9,8 +11,7 @@ const authenticate = (req, res, next) => {
   const token = req.headers.authorization;
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   try {
-    const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token.split(' ')[1], process.env.JWT_SECRET || 'fallback_secret');
+    const decoded = jwt.verify(token.split(' ')[1], JWT_SECRET);
     req.userId = decoded.id;
     next();
   } catch (err) {

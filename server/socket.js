@@ -6,8 +6,7 @@ const jwt = require('jsonwebtoken');
 const { moderateText } = require('./utils/moderation');
 const AppConfig = require('./models/AppConfig');
 const Notification = require('./models/Notification');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const { JWT_SECRET } = require('./config/jwt');
 
 module.exports = (io) => {
   const onlineUsers = new Set();

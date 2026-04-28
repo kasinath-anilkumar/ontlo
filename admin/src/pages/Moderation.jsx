@@ -12,7 +12,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { getReports, performUserAction } from '../api/admin';
-import adminApi from '../api/admin';
+import adminApi, { API_BASE_URL } from '../api/admin';
 import { io } from 'socket.io-client';
 
 const ModerationPage = () => {
@@ -34,7 +34,7 @@ const ModerationPage = () => {
     fetchReports();
 
     // Real-time moderation updates
-    const socket = io('http://localhost:5000', {
+    const socket = io(API_BASE_URL, {
       auth: { token: localStorage.getItem('admin_token') }
     });
 

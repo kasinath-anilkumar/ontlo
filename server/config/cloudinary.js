@@ -1,5 +1,4 @@
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 
 cloudinary.config({
@@ -8,15 +7,27 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'ontlo_profiles',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
-    transformation: [{ width: 500, height: 500, crop: 'limit' }]
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024
   },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return cb(new Error('Only JPG, PNG, and WEBP images are allowed'));
+    }
+    cb(null, true);
+  }
 });
 
-const upload = multer({ storage: storage });
+const uploadImage = (file, folder) => {
+  const dataUri = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+  return cloudinary.uploader.upload(dataUri, {
+    folder,
+    resource_type: 'image',
+    transformation: [{ width: 500, height: 500, crop: 'limit' }]
+  });
+};
 
-module.exports = { cloudinary, upload };
+module.exports = { cloudinary, upload, uploadImage };

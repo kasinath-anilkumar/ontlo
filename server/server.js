@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
 const maintenanceMiddleware = require('./middleware/maintenance');
 
 // Load environment variables
@@ -11,13 +12,36 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+const isProduction = process.env.NODE_ENV === 'production';
+const requiredEnvVars = [
+  'MONGO_URI',
+  'JWT_SECRET',
+  'CORS_ORIGIN',
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET'
+];
+const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+
+if (isProduction && missingEnvVars.length > 0) {
+  console.error(`Missing required production environment variables: ${missingEnvVars.join(', ')}`);
+  process.exit(1);
+}
+
+const allowedOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: allowedOrigins.length > 0 ? allowedOrigins : !isProduction,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  credentials: true
+};
 
 // Socket.io
 const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  },
+  cors: corsOptions,
   pingTimeout: 60000,
 });
 
@@ -32,7 +56,8 @@ const authLimiter = rateLimit({
 });
 
 // Middleware
-app.use(cors());
+app.use(helmet());
+app.use(cors(corsOptions));
 app.use(maintenanceMiddleware);
 app.use(express.json());
 app.use((req, res, next) => {
@@ -44,6 +69,13 @@ app.use('/api/auth/register', authLimiter);
 
 // Routes
 app.get('/', (req, res) => res.send('Ontlo API is running...'));
+app.get('/health', (req, res) => {
+  const dbReady = mongoose.connection.readyState === 1;
+  res.status(dbReady ? 200 : 503).json({
+    status: dbReady ? 'ok' : 'degraded',
+    database: dbReady ? 'connected' : 'disconnected'
+  });
+});
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/connections', require('./routes/connections'));
 app.use('/api/report', require('./routes/report'));
@@ -87,8 +119,10 @@ const startServer = async (port) => {
 
   } catch (err) {
     console.error('❌ Database connection failed:', err.message);
+    if (isProduction) {
+      process.exit(1);
+    }
     console.log('🔄 Attempting to start server in offline mode...');
-    // Fallback start without DB
     server.listen(port);
   }
 };

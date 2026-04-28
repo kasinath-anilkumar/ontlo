@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Lock, User, ShieldCheck, Loader2 } from 'lucide-react';
+import { API_BASE_URL } from '../api/admin';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
@@ -16,10 +17,8 @@ const LoginPage = () => {
     setError('');
     
     try {
-      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api/admin', '') || 'http://localhost:5000';
-      
       // Use the main auth API with admin flag
-      const response = await axios.post(`${baseUrl}/api/auth/login`, {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         username,
         password,
         isAdminPanel: true
@@ -32,7 +31,7 @@ const LoginPage = () => {
       localStorage.setItem('admin_user', JSON.stringify(user));
 
       // Verify if user is actually an admin
-      const adminCheck = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/admin'}/stats`, {
+      const adminCheck = await axios.get(`${API_BASE_URL}/api/admin/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

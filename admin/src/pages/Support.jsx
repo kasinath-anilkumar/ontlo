@@ -10,7 +10,7 @@ import {
   Filter,
   ArrowRight
 } from 'lucide-react';
-import adminApi from '../api/admin';
+import adminApi, { API_BASE_URL } from '../api/admin';
 import { io } from 'socket.io-client';
 
 const SupportPage = () => {
@@ -24,7 +24,7 @@ const SupportPage = () => {
     fetchTickets();
 
     // Setup real-time socket for admin
-    const socket = io('http://localhost:5000', {
+    const socket = io(API_BASE_URL, {
       auth: { token: localStorage.getItem('admin_token') }
     });
 

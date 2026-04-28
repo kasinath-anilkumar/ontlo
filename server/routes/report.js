@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Report = require('../models/Report');
 const jwt = require('jsonwebtoken');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const { JWT_SECRET } = require('../config/jwt');
 
 const authenticate = (req, res, next) => {
   const token = req.headers.authorization;

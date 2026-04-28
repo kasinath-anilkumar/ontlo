@@ -1,9 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { upload } = require('../config/cloudinary');
+const { upload, uploadImage } = require('../config/cloudinary');
 const jwt = require('jsonwebtoken');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const { JWT_SECRET } = require('../config/jwt');
 
 const authenticate = (req, res, next) => {
   const token = req.headers.authorization;
@@ -23,7 +22,7 @@ const authenticate = (req, res, next) => {
 
 // Single image upload
 router.post('/profile-pic', authenticate, (req, res) => {
-  upload.single('image')(req, res, (err) => {
+  upload.single('image')(req, res, async (err) => {
     if (err) {
       console.error('Multer/Cloudinary Error:', err);
       return res.status(500).json({ error: 'Cloudinary upload failed', details: err.message });
@@ -34,18 +33,29 @@ router.post('/profile-pic', authenticate, (req, res) => {
       console.warn('No file in request');
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    
-    console.log('File uploaded to Cloudinary:', req.file.path);
-    res.json({ url: req.file.path });
+
+    try {
+      const result = await uploadImage(req.file, 'ontlo_profiles');
+      console.log('File uploaded to Cloudinary:', result.secure_url);
+      res.json({ url: result.secure_url });
+    } catch (uploadErr) {
+      console.error('Cloudinary upload failed:', uploadErr.message);
+      res.status(500).json({ error: 'Cloudinary upload failed', details: uploadErr.message });
+    }
   });
 });
 
 // Chat image upload
 router.post('/chat-image', authenticate, (req, res) => {
-  upload.single('image')(req, res, (err) => {
+  upload.single('image')(req, res, async (err) => {
     if (err) return res.status(500).json({ error: 'Upload failed' });
     if (!req.file) return res.status(400).json({ error: 'No file' });
-    res.json({ url: req.file.path });
+    try {
+      const result = await uploadImage(req.file, 'ontlo_chat');
+      res.json({ url: result.secure_url });
+    } catch (uploadErr) {
+      res.status(500).json({ error: 'Upload failed', details: uploadErr.message });
+    }
   });
 });
 

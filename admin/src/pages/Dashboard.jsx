@@ -16,7 +16,7 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
-import adminApi from '../api/admin';
+import adminApi, { API_BASE_URL } from '../api/admin';
 import { io } from 'socket.io-client';
 
 const Dashboard = () => {
@@ -39,7 +39,7 @@ const Dashboard = () => {
   useEffect(() => {
     fetchStats();
 
-    const socket = io('http://localhost:5000', {
+    const socket = io(API_BASE_URL, {
       auth: { token: localStorage.getItem('admin_token') }
     });
 
