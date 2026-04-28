@@ -146,10 +146,10 @@ const Auth = () => {
                 </div>
               )}
               <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">
-                {isLogin ? "Access Portal" : "Create Account"}
+                {isLogin ? "Login" : "Create Account"}
               </h2>
               <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.4em] mt-1.5">
-                {isLogin ? "Identity verification required" : "Onboarding Phase 1 of 5"}
+                {isLogin ? "Enter your credentials" : "Onboarding Phase 1 of 5"}
               </p>
             </div>
 
@@ -164,7 +164,7 @@ const Auth = () => {
               {/* USERNAME */}
               <div className="space-y-1.5">
                 <label className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-5">
-                  Username handle
+                  Username
                 </label>
                 <div className="relative group/input">
                   <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-purple-400 transition-colors">
@@ -184,7 +184,7 @@ const Auth = () => {
               {/* PASSWORD */}
               <div className="space-y-1.5">
                 <label className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-5">
-                  Security phrase
+                  Password
                 </label>
                 <div className="relative group/input">
                   <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-purple-400 transition-colors">
@@ -230,7 +230,7 @@ const Auth = () => {
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
-                    {isLogin ? "Authorize Access" : "Initialize Protocol"} 
+                    {isLogin ? "Log In" : "Sign Up"} 
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
@@ -246,7 +246,7 @@ const Auth = () => {
                 className="group text-[9px] font-black text-gray-500 hover:text-white uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 mx-auto"
               >
                 <div className="w-8 h-px bg-white/5 group-hover:w-12 group-hover:bg-purple-500/50 transition-all"></div>
-                {isLogin ? "Need an Identity?" : "Already Authorized?"}
+                {isLogin ? "Create Account" : "Back to Login"}
                 <div className="w-8 h-px bg-white/5 group-hover:w-12 group-hover:bg-purple-500/50 transition-all"></div>
               </button>
             </div>
