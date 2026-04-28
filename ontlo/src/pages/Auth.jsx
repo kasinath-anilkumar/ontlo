@@ -103,9 +103,9 @@ const Auth = () => {
           </div>
 
           <h1 className="text-5xl xl:text-6xl font-black mb-4 leading-tight tracking-tighter uppercase italic">
-            EVERY CONNECTION  <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 animate-gradient-x">STARTS SOMEWHERE.</span>
-            <br /> This could be yours.
+            YOU’RE NOT ALONE.<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 animate-gradient-x">STARTS Start a.</span>
+            <br />Conversation.
           </h1>
 
           <p className="text-gray-400 text-base mb-8 leading-relaxed font-medium max-w-md">
