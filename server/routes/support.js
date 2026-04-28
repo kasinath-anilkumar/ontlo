@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const adminAuth = require('../middleware/adminAuth');
 const SupportTicket = require('../models/SupportTicket');
 
 // USER: Create a ticket
@@ -34,7 +35,7 @@ router.get('/my-tickets', auth, async (req, res) => {
 });
 
 // ADMIN: Get all tickets
-router.get('/all', auth, async (req, res) => {
+router.get('/all', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
   try {
     const tickets = await SupportTicket.find()
       .populate('user', 'username profilePic')
@@ -46,7 +47,7 @@ router.get('/all', auth, async (req, res) => {
 });
 
 // ADMIN: Reply to ticket
-router.post('/reply/:id', auth, async (req, res) => {
+router.post('/reply/:id', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
   try {
     const { message } = req.body;
     const ticket = await SupportTicket.findById(req.params.id);
@@ -69,7 +70,7 @@ router.post('/reply/:id', auth, async (req, res) => {
 });
 
 // ADMIN: Update status
-router.patch('/status/:id', auth, async (req, res) => {
+router.patch('/status/:id', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
   try {
     const { status } = req.body;
     const ticket = await SupportTicket.findByIdAndUpdate(

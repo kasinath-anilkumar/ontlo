@@ -55,8 +55,32 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const cspDirectives = {
+  defaultSrc: ["'self'"],
+  baseUri: ["'self'"],
+  objectSrc: ["'none'"],
+  frameAncestors: ["'none'"],
+  scriptSrc: ["'self'"],
+  scriptSrcAttr: ["'none'"],
+  styleSrc: ["'self'", "'unsafe-inline'"],
+  imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+  fontSrc: ["'self'", 'data:'],
+  connectSrc: ["'self'", 'https:', 'wss:'],
+  formAction: ["'self'"],
+  upgradeInsecureRequests: isProduction ? [] : null
+};
+
+Object.keys(cspDirectives).forEach((key) => {
+  if (cspDirectives[key] === null) delete cspDirectives[key];
+});
+
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: cspDirectives
+  }
+}));
 app.use(cors(corsOptions));
 app.use(maintenanceMiddleware);
 app.use(express.json());
@@ -85,7 +109,6 @@ app.use('/api/upload', require('./routes/upload'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/support', require('./routes/support'));
-app.use('/api/admin/support', require('./routes/support'));
 app.use('/api/admin', require('./routes/admin'));
 
 // Initialize Socket.io Logic

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Message = require('../models/Message');
+const Connection = require('../models/Connection');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/jwt');
 
@@ -17,8 +18,26 @@ const auth = (req, res, next) => {
   }
 };
 
+const requireConnectionMember = async (req, res, next) => {
+  try {
+    const connection = await Connection.findOne({
+      _id: req.params.connectionId,
+      users: req.user.id
+    });
+
+    if (!connection) {
+      return res.status(404).json({ error: 'Connection not found' });
+    }
+
+    req.connection = connection;
+    next();
+  } catch (error) {
+    res.status(400).json({ error: 'Invalid connection id' });
+  }
+};
+
 // Get message history for a connection
-router.get('/:connectionId', auth, async (req, res) => {
+router.get('/:connectionId', auth, requireConnectionMember, async (req, res) => {
   try {
     const messages = await Message.find({ connectionId: req.params.connectionId })
       .sort({ timestamp: 1 })
@@ -41,7 +60,7 @@ router.get('/:connectionId', auth, async (req, res) => {
 });
 
 // Mark messages as read
-router.post('/:connectionId/read', auth, async (req, res) => {
+router.post('/:connectionId/read', auth, requireConnectionMember, async (req, res) => {
   try {
     await Message.updateMany(
       { connectionId: req.params.connectionId, sender: { $ne: req.user.id } },

@@ -348,7 +348,7 @@ router.post('/config/keywords', adminAuth(['admin', 'superadmin']), async (req, 
 const SupportTicket = require('../models/SupportTicket');
 
 // Support: List Tickets
-router.get('/support', adminAuth(['admin', 'superadmin', 'support']), async (req, res) => {
+router.get('/support', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
   try {
     const tickets = await SupportTicket.find()
       .populate('user', 'username profilePic')
@@ -359,7 +359,57 @@ router.get('/support', adminAuth(['admin', 'superadmin', 'support']), async (req
   }
 });
 
-router.post('/support/:id/resolve', adminAuth(['admin', 'superadmin', 'support']), async (req, res) => {
+router.get('/support/all', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
+  try {
+    const tickets = await SupportTicket.find()
+      .populate('user', 'username profilePic')
+      .sort({ createdAt: -1 });
+    res.json(tickets);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/support/reply/:id', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
+  try {
+    const { message } = req.body;
+    const ticket = await SupportTicket.findById(req.params.id);
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+
+    ticket.responses.push({
+      admin: req.user.id,
+      message
+    });
+    ticket.status = 'in-progress';
+    await ticket.save();
+
+    req.io.to(`user_${ticket.user}`).emit('support-update');
+
+    res.json(ticket);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.patch('/support/status/:id', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
+  try {
+    const { status } = req.body;
+    const ticket = await SupportTicket.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+
+    req.io.to(`user_${ticket.user}`).emit('support-update');
+
+    res.json(ticket);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post('/support/:id/resolve', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
   try {
     await SupportTicket.findByIdAndUpdate(req.params.id, { status: 'resolved' });
     res.json({ message: 'Ticket resolved' });

@@ -7,10 +7,22 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const ensureAdmin = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ontlo');
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminUsername || !adminPassword) {
+      throw new Error('ADMIN_USERNAME and ADMIN_PASSWORD are required to ensure an admin user.');
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{12,}$/;
+    if (!passwordRegex.test(adminPassword)) {
+      throw new Error('ADMIN_PASSWORD must be at least 12 characters and include uppercase, lowercase, number, and symbol.');
+    }
+
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('admin123', salt);
+    const hashedPassword = await bcrypt.hash(adminPassword, salt);
     const admin = await User.findOneAndUpdate(
-      { username: 'admin' },
+      { username: adminUsername },
       {
         $set: {
           password: hashedPassword,

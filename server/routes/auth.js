@@ -5,6 +5,48 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { JWT_SECRET } = require('../config/jwt');
 
+const MINIMUM_AGE = 13;
+const MAXIMUM_AGE = 120;
+
+const calculateAge = (dob, now = new Date()) => {
+  let age = now.getFullYear() - dob.getFullYear();
+  const monthDelta = now.getMonth() - dob.getMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < dob.getDate())) {
+    age -= 1;
+  }
+  return age;
+};
+
+const validateAgeGate = ({ age, dob }) => {
+  if (dob !== undefined) {
+    if (Number.isNaN(dob.getTime()) || dob > new Date()) {
+      return { error: 'Please enter a valid date of birth.' };
+    }
+
+    const ageFromDob = calculateAge(dob);
+    if (ageFromDob < MINIMUM_AGE) {
+      return { error: `You must be at least ${MINIMUM_AGE} years old to use Ontlo.` };
+    }
+    if (ageFromDob > MAXIMUM_AGE) {
+      return { error: `Please enter a valid age between ${MINIMUM_AGE} and ${MAXIMUM_AGE}.` };
+    }
+    if (age !== undefined && Math.abs(age - ageFromDob) > 1) {
+      return { error: 'Age does not match the provided date of birth.' };
+    }
+
+    return { age: ageFromDob, dob };
+  }
+
+  if (age !== undefined) {
+    if (!Number.isFinite(age) || age < MINIMUM_AGE || age > MAXIMUM_AGE) {
+      return { error: `Please enter a valid age between ${MINIMUM_AGE} and ${MAXIMUM_AGE}.` };
+    }
+    return { age };
+  }
+
+  return {};
+};
+
 // Middleware for auth
 const authenticate = (req, res, next) => {
   const token = req.headers.authorization;
@@ -49,10 +91,19 @@ router.post('/register', async (req, res) => {
     const dob = req.body.dob !== undefined && req.body.dob !== null && req.body.dob !== ''
       ? new Date(req.body.dob)
       : undefined;
+    if (age === undefined && dob === undefined) {
+      return res.status(400).json({ error: 'Date of birth is required to create an account.' });
+    }
+
+    const ageGate = validateAgeGate({ age, dob });
+    if (ageGate.error) {
+      return res.status(400).json({ error: ageGate.error });
+    }
+
     const profileFields = {
       fullName: typeof req.body.fullName === 'string' ? req.body.fullName.trim() : undefined,
-      age: Number.isFinite(age) ? age : undefined,
-      dob: dob && !Number.isNaN(dob.getTime()) ? dob : undefined,
+      age: ageGate.age,
+      dob: ageGate.dob,
       gender: allowedGenders.includes(req.body.gender) ? req.body.gender : undefined,
       location: typeof req.body.location === 'string' ? req.body.location.trim() : undefined,
       interests: Array.isArray(req.body.interests)
@@ -161,17 +212,20 @@ router.post('/complete-profile', authenticate, async (req, res) => {
     if (fullName !== undefined) user.fullName = String(fullName).trim();
     if (age !== undefined && age !== null && age !== '') {
       const numericAge = Number(age);
-      if (!Number.isFinite(numericAge) || numericAge < 13 || numericAge > 120) {
-        return res.status(400).json({ error: 'Please enter a valid age between 13 and 120.' });
+      const ageGate = validateAgeGate({ age: numericAge });
+      if (ageGate.error) {
+        return res.status(400).json({ error: ageGate.error });
       }
-      user.age = numericAge;
+      user.age = ageGate.age;
     }
     if (dob !== undefined && dob !== null && dob !== '') {
       const parsedDob = new Date(dob);
-      if (Number.isNaN(parsedDob.getTime())) {
-        return res.status(400).json({ error: 'Please enter a valid date of birth.' });
+      const ageGate = validateAgeGate({ age: user.age, dob: parsedDob });
+      if (ageGate.error) {
+        return res.status(400).json({ error: ageGate.error });
       }
-      user.dob = parsedDob;
+      user.age = ageGate.age;
+      user.dob = ageGate.dob;
     }
     if (gender !== undefined) {
       if (!allowedGenders.includes(gender)) {

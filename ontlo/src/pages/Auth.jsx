@@ -9,6 +9,7 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [dob, setDob] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +42,10 @@ const Auth = () => {
         setError("Security check failed. Please strengthen your password.");
         return;
       }
+      if (!dob) {
+        setError("Date of birth is required.");
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -50,7 +55,7 @@ const Auth = () => {
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, ...(isLogin ? {} : { dob }) }),
       });
 
       const data = await response.json();
@@ -138,6 +143,19 @@ const Auth = () => {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+
+            {!isLogin && (
+              <div className="space-y-2">
+                <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">Date of Birth</label>
+                <input
+                  type="date"
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] px-6 py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-sm font-medium placeholder:text-gray-700"
+                  required={!isLogin}
+                />
+              </div>
+            )}
 
             {!isLogin && (
               <div className="bg-black/40 border border-white/5 rounded-[20px] p-4 space-y-2 animate-in fade-in zoom-in-95 duration-500">
