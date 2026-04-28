@@ -99,13 +99,13 @@ const Auth = () => {
               <img src={logo} alt="Logo" className="w-10 h-10" />
             </div>
             <div className="h-6 w-px bg-white/10"></div>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">v4.0 Protocol</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Beyond your Circle</span>
           </div>
 
           <h1 className="text-5xl xl:text-6xl font-black mb-4 leading-tight tracking-tighter uppercase italic">
-            Connect to the <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 animate-gradient-x">Intelligence</span>
-            <br /> Network
+            EVERY CONNECTION  <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 animate-gradient-x">STARTS SOMEWHERE.</span>
+            <br /> This could be yours.
           </h1>
 
           <p className="text-gray-400 text-base mb-8 leading-relaxed font-medium max-w-md">
@@ -114,10 +114,10 @@ const Auth = () => {
           </p>
 
           <div className="grid grid-cols-2 gap-4 max-w-md">
-            <FeatureCard icon={<Zap className="w-4 h-4 text-yellow-400" />} title="Instant" desc="Sub-100ms latency" />
-            <FeatureCard icon={<ShieldCheck className="w-4 h-4 text-green-400" />} title="Secure" desc="E2E Encryption" />
-            <FeatureCard icon={<Globe className="w-4 h-4 text-blue-400" />} title="Global" desc="Edge-optimized" />
-            <FeatureCard icon={<Video className="w-4 h-4 text-purple-400" />} title="HD Video" desc="WebRTC Native" />
+            <FeatureCard icon={<Zap className="w-4 h-4 text-yellow-400" />} title="Instant" desc="no more waiting" />
+            <FeatureCard icon={<ShieldCheck className="w-4 h-4 text-green-400" />} title="Secure" desc="Your safety is our priority" />
+            <FeatureCard icon={<Globe className="w-4 h-4 text-blue-400" />} title="Global" desc="Meet people around the world" />
+            <FeatureCard icon={<Video className="w-4 h-4 text-purple-400" />} title="Video Call" desc="Not some photos" />
           </div>
         </div>
       </div>
