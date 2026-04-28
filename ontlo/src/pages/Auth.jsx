@@ -185,19 +185,16 @@ const Auth = () => {
 
   {/* SECURITY MATRIX */}
   {!isLogin && (
-    <div className="bg-black/40 border border-white/5 rounded-xl sm:rounded-2xl
-      p-2 sm:p-4
-      space-y-1.5 sm:space-y-3
-      animate-in fade-in zoom-in-95 duration-500 w-full">
+    <div className="">
 
-      <p className="text-[7px] sm:text-[10px] font-black text-gray-500 uppercase tracking-wider px-1">
-        Security Matrix
+      <p className="text-[7px] sm:text-[10px] font-black text-gray-500 uppercase tracking-wider px-1 ">
+        Password must contain:
       </p>
 
-      <div className="grid grid-cols-2 gap-1 sm:gap-2">
-        <ReqItem label="8+ Chars" active={reqs.length} />
-        <ReqItem label="Uppercase" active={reqs.upper} />
-        <ReqItem label="Numeric" active={reqs.number} />
+      <div className="grid grid-cols-4 gap-1 sm:gap-2 sm:pt-4">
+        <ReqItem label="8+Chars" active={reqs.length} />
+        <ReqItem label="A-Z" active={reqs.upper} />
+        <ReqItem label="0-9" active={reqs.number} />
         <ReqItem label="Special" active={reqs.symbol} />
       </div>
     </div>
