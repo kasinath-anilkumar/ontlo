@@ -1,0 +1,21 @@
+# Env files
+.env
+.env.*
+server/.env
+admin/.env
+ontlo/.env
+
+# Node
+node_modules/
+
+# Logs
+logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
