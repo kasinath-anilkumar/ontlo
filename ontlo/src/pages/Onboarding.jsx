@@ -22,6 +22,22 @@ const Onboarding = () => {
   const navigate = useNavigate();
   const { user, setUser } = useSocket();
 
+  const calculateAge = (birthDate) => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const month = today.getMonth() - birth.getMonth();
+    if (month < 0 || (month === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const handleDobChange = (val) => {
+    const age = calculateAge(val);
+    setFormData(prev => ({ ...prev, dob: val, age: age }));
+  };
+
   const handleInterestToggle = (interest) => {
     setFormData(prev => ({
       ...prev,
@@ -99,8 +115,8 @@ const Onboarding = () => {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.02]"></div>
       </div>
 
-      <div className="w-full max-w-[500px] relative z-10">
-        <div className="bg-[#0D1117]/40 backdrop-blur-3xl border border-white/5 rounded-[48px] p-8 md:p-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden">
+      <div className="w-full max-w-[480px] relative z-10 animate-in fade-in zoom-in-95 duration-700">
+        <div className="bg-[#0D1117]/60 backdrop-blur-3xl border border-white/5 rounded-[40px] p-6 sm:p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] relative overflow-hidden group">
           
           {/* Enhanced Progress Header - 5 Steps global */}
           <div className="flex items-center gap-3 mb-10">
@@ -109,11 +125,11 @@ const Onboarding = () => {
             ))}
           </div>
 
-          <div className="mb-10 text-center">
-            <h1 className="text-3xl font-black text-white uppercase tracking-tight italic mb-2">
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight italic mb-1.5">
               {step === 1 ? "Avatar" : step === 2 ? "Identity" : step === 3 ? "Origins" : "Vibe"}
             </h1>
-            <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em]">
+            <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em]">
                Onboarding Phase {step + 1} of 5
             </p>
           </div>
@@ -127,12 +143,12 @@ const Onboarding = () => {
           {step === 1 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center">
               <div className="relative group">
-                <div className="w-44 h-44 rounded-[48px] bg-black border-4 border-white/5 overflow-hidden flex items-center justify-center transition-all group-hover:border-purple-500/50 shadow-2xl relative">
+                <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-[32px] sm:rounded-[48px] bg-black border-4 border-white/5 overflow-hidden flex items-center justify-center transition-all group-hover:border-purple-500/50 shadow-2xl relative">
                   {formData.profilePic ? (
                     <img src={formData.profilePic} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
                     <div className="flex flex-col items-center gap-3 opacity-20">
-                       <Camera className="w-12 h-12 text-white" />
+                       <Camera className="w-10 h-10 text-white" />
                        <p className="text-[8px] font-black uppercase tracking-widest text-white">No Image</p>
                     </div>
                   )}
@@ -142,8 +158,8 @@ const Onboarding = () => {
                     </div>
                   )}
                 </div>
-                <label className="absolute -bottom-3 -right-3 w-14 h-14 bg-white text-black rounded-[24px] flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-all shadow-2xl border-4 border-[#0D1117] z-30">
-                  <Upload className="w-6 h-6" />
+                <label className="absolute -bottom-2 -right-2 w-12 h-12 sm:w-14 sm:h-14 bg-white text-black rounded-[20px] sm:rounded-[24px] flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-all shadow-2xl border-4 border-[#0D1117] z-30">
+                  <Upload className="w-5 h-5 sm:w-6 sm:h-6" />
                   <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" disabled={uploading} />
                 </label>
               </div>
@@ -153,7 +169,7 @@ const Onboarding = () => {
               
               <button 
                 onClick={() => setStep(2)}
-                className="w-full mt-10 py-5 bg-white text-black font-black rounded-[24px] uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/5"
+                className="w-full mt-8 py-4 sm:py-5 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/5"
               >
                 {formData.profilePic ? "Continue Protocol" : "Skip Identity Layer"}
               </button>
@@ -162,28 +178,40 @@ const Onboarding = () => {
 
           {step === 2 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
-               <InputField label="Full Name" value={formData.fullName} onChange={(val) => setFormData({...formData, fullName: val})} placeholder="Your full name" icon={<User className="w-4 h-4" />} />
-               <InputField label="Date of Birth" type="date" value={formData.dob} onChange={(val) => setFormData({...formData, dob: val})} placeholder="Date of birth" icon={<Calendar className="w-4 h-4" />} />
-               <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Age" type="number" value={formData.age} onChange={(val) => setFormData({...formData, age: val})} placeholder="e.g. 24" icon={<Sparkles className="w-4 h-4" />} />
+               <InputField label="Full Name" value={formData.fullName} onChange={(val) => setFormData({...formData, fullName: val})} placeholder="Enter your full name" icon={<User className="w-4 h-4" />} />
+               
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <InputField label="Date of Birth" type="date" value={formData.dob} onChange={handleDobChange} placeholder="Date of birth" icon={<Calendar className="w-4 h-4" />} />
+                  
                   <div className="space-y-2">
                     <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">Gender</label>
-                    <select 
-                      value={formData.gender}
-                      onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                      className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] px-6 py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-xs font-bold appearance-none cursor-pointer"
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                      <option value="Prefer not to say">Prefer not to say</option>
-                    </select>
+                    <div className="relative group">
+                      <select 
+                        value={formData.gender}
+                        onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                        className="w-full bg-white/5 border border-white/10 text-white rounded-[24px] px-6 py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-xs font-bold appearance-none cursor-pointer"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
+                      </select>
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                        <ChevronRight className="w-4 h-4 rotate-90" />
+                      </div>
+                    </div>
                   </div>
                </div>
-               
-               <div className="flex gap-4 mt-10">
-                  <button onClick={() => setStep(1)} className="w-16 h-16 rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
-                  <button onClick={() => setStep(3)} disabled={!formData.fullName || !formData.age || !formData.dob} className="flex-1 bg-white text-black font-black rounded-[24px] uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Continue <ChevronRight className="w-4 h-4" /></button>
+
+               {formData.dob && (
+                 <div className="px-6 py-3 rounded-2xl bg-purple-500/5 border border-purple-500/10 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Calculated Age</span>
+                    <span className="text-sm font-black text-purple-400">{formData.age} Years</span>
+                 </div>
+               )}
+                              <div className="flex gap-4 mt-8 sm:mt-10">
+                  <button onClick={() => setStep(1)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+                  <button onClick={() => setStep(3)} disabled={!formData.fullName || !formData.dob || formData.age < 13} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Continue <ChevronRight className="w-4 h-4" /></button>
                </div>
             </div>
           )}
@@ -202,9 +230,9 @@ const Onboarding = () => {
                   />
                </div>
                
-               <div className="flex gap-4 mt-10">
-                  <button onClick={() => setStep(2)} className="w-16 h-16 rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
-                  <button onClick={() => setStep(4)} disabled={!formData.location} className="flex-1 bg-white text-black font-black rounded-[24px] uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Next Phase <ChevronRight className="w-4 h-4" /></button>
+                              <div className="flex gap-4 mt-8 sm:mt-10">
+                  <button onClick={() => setStep(2)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+                  <button onClick={() => setStep(4)} disabled={!formData.location} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Next Phase <ChevronRight className="w-4 h-4" /></button>
                </div>
             </div>
           )}
@@ -227,15 +255,15 @@ const Onboarding = () => {
                  ))}
                </div>
                
-               <div className="flex gap-4 mt-6">
-                 <button onClick={() => setStep(3)} className="w-16 h-16 rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
-                 <button 
-                   onClick={handleSubmit} 
-                   disabled={formData.interests.length < 3 || loading}
-                   className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black rounded-[24px] uppercase tracking-widest text-[11px] hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-purple-600/20"
-                 >
-                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Activate Profile <Sparkles className="w-5 h-5 fill-current" /></>}
-                 </button>
+                              <div className="flex gap-4 mt-8">
+                  <button onClick={() => setStep(3)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+                  <button 
+                    onClick={handleSubmit} 
+                    disabled={formData.interests.length < 3 || loading}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-purple-600/20"
+                  >
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Activate Profile <Sparkles className="w-5 h-5 fill-current" /></>}
+                  </button>
                </div>
             </div>
           )}
@@ -259,7 +287,7 @@ const InputField = ({ label, value, onChange, placeholder, type = "text", icon }
         type={type} 
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full bg-white/5 border border-white/10 text-white rounded-[24px] ${icon ? 'pl-14' : 'px-6'} py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-sm font-medium placeholder:text-gray-700`}
+        className={`w-full bg-white/5 border border-white/10 text-white rounded-[20px] sm:rounded-[24px] ${icon ? 'pl-12 sm:pl-14' : 'px-5 sm:px-6'} py-3.5 sm:py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-xs sm:text-sm font-medium placeholder:text-gray-700`}
         placeholder={placeholder}
         required
       />

@@ -199,8 +199,8 @@ const Profile = () => {
 
       {/* Sidebar */}
       <div className={`w-full md:w-80 flex flex-col h-full bg-[#0B0E14] z-10 transition-all duration-300 ${activeTab && 'hidden md:flex'}`}>
-        <div className="p-6 pb-4">
-          <h1 className="text-3xl font-black text-white tracking-tight mb-8">Settings</h1>
+        <div className="p-4 sm:p-6 pb-4">
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-6 sm:mb-8">Settings</h1>
           <div className="space-y-1">
             <TabButton active={activeTab === "profile"} onClick={() => setActiveTab("profile")} icon={<User className="w-5 h-5 text-purple-400" />} label="Edit Profile" />
             <TabButton active={activeTab === "settings"} onClick={() => setActiveTab("settings")} icon={<Settings className="w-5 h-5 text-blue-400" />} label="Account Settings" />
@@ -246,7 +246,7 @@ const Profile = () => {
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-10 max-w-4xl mx-auto w-full">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 lg:p-10 max-w-4xl mx-auto w-full scrollbar-hide">
               {activeTab === "profile" && (
                 <div className="space-y-6 sm:space-y-10">
                   <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -609,7 +609,7 @@ const Profile = () => {
 };
 
 const TabButton = ({ active, onClick, icon, label }) => (
-  <button onClick={onClick} className={`flex items-center justify-between p-5 rounded-[24px] w-full transition-all group ${active ? "bg-[#151923] shadow-xl border border-[#1e293b]/50" : "hover:bg-[#151923]/40"}`}>
+  <button onClick={onClick} className={`flex items-center justify-between p-4 sm:p-5 rounded-[20px] sm:rounded-[24px] w-full transition-all group ${active ? "bg-[#151923] shadow-xl border border-[#1e293b]/50" : "hover:bg-[#151923]/40"}`}>
     <div className="flex items-center gap-4">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${active ? 'bg-purple-600/10' : 'bg-[#0B0E14] group-hover:scale-110'}`}>{icon}</div>
       <span className={`font-black text-[10px] uppercase tracking-[0.2em] ${active ? "text-white" : "text-gray-500 group-hover:text-gray-300"}`}>{label}</span>
@@ -627,10 +627,10 @@ const EditField = ({ label, value, isEditing, onChange, type = "text", placehold
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-[#151923] border border-[#1e293b] p-5 rounded-2xl text-white font-black uppercase tracking-tight focus:outline-none focus:border-purple-500/50"
+        className="w-full bg-[#151923] border border-[#1e293b] p-4 sm:p-5 rounded-xl sm:rounded-2xl text-white font-black uppercase tracking-tight focus:outline-none focus:border-purple-500/50"
       />
     ) : (
-      <div className="bg-[#151923] border border-[#1e293b] p-5 rounded-2xl text-white font-black uppercase tracking-tight shadow-inner">{value || "Not set"}</div>
+      <div className="bg-[#151923] border border-[#1e293b] p-4 sm:p-5 rounded-xl sm:rounded-2xl text-white font-black uppercase tracking-tight shadow-inner">{value || "Not set"}</div>
     )}
   </div>
 );

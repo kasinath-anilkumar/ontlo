@@ -443,10 +443,10 @@ const VideoContainer = () => {
           {!inCall && (
             <div className="text-center z-10 w-full h-full flex flex-col items-center justify-center relative">
               {/* Top back button for idle state */}
-              <div className="absolute top-0 left-0 w-full p-4 pt-20 sm:p-6 sm:pt-6 flex justify-between items-start z-10">
+              <div className="absolute top-0 left-0 w-full p-4 pt-safe sm:pt-6 flex justify-between items-start z-10">
                 <button 
                   onClick={() => navigate('/')}
-                  className="lg:hidden w-10 h-10 rounded-full bg-white/5 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/10 transition border border-white/5"
+                  className="lg:hidden w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 transition border border-white/10"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
@@ -505,7 +505,7 @@ const VideoContainer = () => {
             )}
 
             {/* Top bar */}
-            <div className="absolute top-0 left-0 w-full p-4 pt-20 sm:p-6 sm:pt-6 flex justify-between items-start z-10 pointer-events-none">
+            <div className="absolute top-0 left-0 w-full p-4 pt-safe sm:pt-6 flex justify-between items-start z-10 pointer-events-none">
               <div className="flex items-center gap-3 pointer-events-auto">
                 <button 
                   onClick={() => navigate('/')}
@@ -520,16 +520,17 @@ const VideoContainer = () => {
                   }
                 </div>
                 <h3 className="text-white font-bold text-lg leading-tight">
-                  {remoteUser?.fullName || remoteUser?.username || "Connecting..."}
-                </h3>
+                  <h3 className="text-white font-bold text-base sm:text-lg leading-tight truncate max-w-[120px] sm:max-w-none">
+                    {remoteUser?.fullName || remoteUser?.username || "Connecting..."}
+                  </h3>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 pointer-events-auto">
+                  <button onClick={reportUser} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-red-500/20 backdrop-blur-md flex items-center justify-center text-red-500 hover:bg-red-500/40 transition">
+                    <AlertTriangle className="w-5 h-5" />
+                  </button>
+                  <div className="bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full text-white font-black text-[9px] sm:text-[10px] mt-1 font-mono tracking-widest border border-white/5">LIVE</div>
+                </div>
               </div>
-              <div className="flex flex-col items-end gap-2 pointer-events-auto">
-                <button onClick={reportUser} className="w-10 h-10 rounded-full bg-red-500/20 backdrop-blur-md flex items-center justify-center text-red-500 hover:bg-red-500/40 transition">
-                  <AlertTriangle className="w-5 h-5" />
-                </button>
-                <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-white font-medium text-sm mt-2 font-mono tracking-widest">LIVE</div>
-              </div>
-            </div>
 
             {/* Connect request modal */}
             {showConnectRequest && (
@@ -553,18 +554,18 @@ const VideoContainer = () => {
             )}
 
             {/* Side controls - moved to left on mobile to avoid overlap with local camera */}
-            <div className="absolute left-4 md:left-auto md:right-4 xl:right-12 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-10">
-              <button onClick={() => setIsBlurred(b => !b)} className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${isBlurred ? "bg-purple-600 shadow-[0_0_15px_rgba(168,85,247,0.5)]" : "bg-black/40 hover:bg-black/60"}`}>
-                {isBlurred ? <Eye className="w-6 h-6" /> : <EyeOff className="w-6 h-6" />}
+            <div className="absolute left-3 sm:left-4 md:left-auto md:right-4 xl:right-12 top-1/2 -translate-y-1/2 flex flex-col gap-3 sm:gap-4 z-10">
+              <button onClick={() => setIsBlurred(b => !b)} className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${isBlurred ? "bg-purple-600 shadow-[0_0_15px_rgba(168,85,247,0.5)]" : "bg-black/40 hover:bg-black/60"}`}>
+                {isBlurred ? <Eye className="w-5 h-5 sm:w-6 sm:h-6" /> : <EyeOff className="w-5 h-5 sm:w-6 sm:h-6" />}
               </button>
-              <button onClick={toggleChat} className={`relative w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${showChat ? "bg-purple-600" : "bg-black/40 hover:bg-black/60"}`}>
-                <MessageSquare className="w-6 h-6" />
+              <button onClick={toggleChat} className={`relative w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${showChat ? "bg-purple-600" : "bg-black/40 hover:bg-black/60"}`}>
+                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
                 {hasNewMessage && !showChat && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-pink-500 rounded-full border-2 border-[#0B0E14] animate-bounce" />
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-pink-500 rounded-full border-2 border-[#0B0E14] animate-bounce" />
                 )}
               </button>
-              <button onClick={toggleMic} className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${micEnabled ? "bg-black/40 hover:bg-black/60" : "bg-red-500 hover:bg-red-600"}`}>
-                <Mic className="w-6 h-6" />
+              <button onClick={toggleMic} className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${micEnabled ? "bg-black/40 hover:bg-black/60" : "bg-red-500 hover:bg-red-600"}`}>
+                <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
@@ -615,7 +616,7 @@ const VideoContainer = () => {
         {/* Local video — always in DOM, always visible */}
         <div className={`absolute rounded-2xl overflow-hidden border-2 border-white/20 shadow-xl z-20 transition-all duration-300 ${
           isPiP ? "w-12 h-16 bottom-2 right-2" : 
-          inCall ? "w-24 h-36 top-32 sm:top-6 right-4 sm:right-20" : "w-24 h-36 top-32 sm:top-6 right-4 sm:right-6"
+          inCall ? "w-24 h-36 bottom-[240px] sm:bottom-auto sm:top-6 right-4 sm:right-20" : "w-24 h-36 top-24 sm:top-6 right-4 sm:right-6"
         }`}>
           <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
           {!cameraEnabled && (

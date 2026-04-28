@@ -73,8 +73,8 @@ router.post('/register', async (req, res) => {
     // SECURITY: Strong Password Validation
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!passwordRegex.test(String(password))) {
-      return res.status(400).json({ 
-        error: 'Security Warning: Password must be 8+ chars with 1 Uppercase, 1 Number, and 1 Symbol.' 
+      return res.status(400).json({
+        error: 'Security Warning: Password must be 8+ chars with 1 Uppercase, 1 Number, and 1 Symbol.'
       });
     }
 
@@ -91,13 +91,14 @@ router.post('/register', async (req, res) => {
     const dob = req.body.dob !== undefined && req.body.dob !== null && req.body.dob !== ''
       ? new Date(req.body.dob)
       : undefined;
-    if (age === undefined && dob === undefined) {
-      return res.status(400).json({ error: 'Date of birth is required to create an account.' });
-    }
 
-    const ageGate = validateAgeGate({ age, dob });
-    if (ageGate.error) {
-      return res.status(400).json({ error: ageGate.error });
+    // Optional age gate during registration
+    let ageGate = {};
+    if (age !== undefined || dob !== undefined) {
+      ageGate = validateAgeGate({ age, dob });
+      if (ageGate.error) {
+        return res.status(400).json({ error: ageGate.error });
+      }
     }
 
     const profileFields = {
@@ -154,12 +155,12 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     let { username, password } = req.body;
-    
+
     // SECURITY: Prevent NoSQL Injection
     if (typeof username !== 'string' || typeof password !== 'string') {
       return res.status(400).json({ error: 'Invalid input format' });
     }
-    
+
     const user = await User.findOne({ username });
     if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
@@ -204,7 +205,7 @@ router.post('/complete-profile', authenticate, async (req, res) => {
   try {
     const { fullName, age, dob, gender, location, interests, bio, profilePic } = req.body;
     const allowedGenders = ['Male', 'Female', 'Other', 'Prefer not to say'];
-    
+
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -272,9 +273,9 @@ router.post('/complete-profile', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Profile Update Error:', error);
-    res.status(400).json({ 
-      error: 'Failed to update profile', 
-      details: error.message 
+    res.status(400).json({
+      error: 'Failed to update profile',
+      details: error.message
     });
   }
 });

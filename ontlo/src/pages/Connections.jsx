@@ -68,11 +68,11 @@ const Connections = () => {
   };
 
   return (
-    <div className="h-full bg-transparent p-4 lg:p-10 overflow-y-auto w-full max-w-3xl mx-auto">
+    <div className="h-full bg-transparent p-4 sm:p-6 lg:p-8 xl:p-10 overflow-y-auto w-full max-w-3xl mx-auto scrollbar-hide">
       
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-black text-white tracking-tight">Connections</h1>
+        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight italic">Connections</h1>
       </div>
 
       {/* Loading State */}

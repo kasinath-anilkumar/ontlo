@@ -34,7 +34,7 @@ const AppLayout = ({ children }) => {
         </div>
         
         <div id="main-scroll-container" className="flex-1 overflow-y-auto w-full h-full relative scroll-smooth">
-          <main className="h-full animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <main className="min-h-full pb-24 md:pb-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {children}
           </main>
           

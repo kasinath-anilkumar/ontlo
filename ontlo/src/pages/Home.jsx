@@ -108,9 +108,9 @@ const Home = () => {
 
       {/* Hero Section */}
       <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10">
-        <div className="mb-4 sm:mb-5">
-          <h1 className="text-xl sm:text-2xl font-black text-white mb-0.5 tracking-tight">{getDynamicGreeting()}, {user?.fullName?.split(' ')[0] || user?.username} 👋</h1>
-          <p className="text-xs sm:text-sm text-gray-400 font-medium tracking-tight">Ready to meet someone new?</p>
+        <div className="mb-5 sm:mb-6">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-black text-white mb-0.5 tracking-tight">{getDynamicGreeting()}, {user?.fullName?.split(' ')[0] || user?.username} 👋</h1>
+          <p className="text-[11px] sm:text-xs md:text-sm text-gray-400 font-medium tracking-tight">Ready to meet someone new?</p>
         </div>
         <div className="relative rounded-[24px] overflow-hidden bg-gradient-to-br from-[#0B0F1F] via-[#0E1330] to-[#140F2E] p-5 md:p-8 transition-all duration-500 min-h-[320px]">
           
@@ -128,7 +128,7 @@ const Home = () => {
                 </span>
               </div>
 
-              <h1 className="text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
                 Start a{" "}
                 <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent italic">
                   Video Chat
@@ -210,7 +210,7 @@ const Home = () => {
       {onlineUsers.length > 0 && (
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
           <div className="flex justify-between items-center mb-4 sm:mb-6 px-1">
-            <h3 className="text-lg font-black text-white uppercase tracking-wider">Active Now</h3>
+            <h3 className="text-sm sm:text-base md:text-lg font-black text-white uppercase tracking-wider">Active Now</h3>
             <button onClick={() => alert("All active users are listed here. Swipe to see more!")} className="text-xs font-bold text-purple-400 hover:text-purple-300 transition">View all</button>
           </div>
           
