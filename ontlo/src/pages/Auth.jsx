@@ -52,7 +52,7 @@ const Auth = () => {
     if (!isLogin) {
       const allPassed = Object.values(reqs).every(val => val === true);
       if (!allPassed) {
-        setError("Security check failed. Please strengthen your password.");
+        setError("Please strengthen your password.");
         return;
       }
     }
@@ -109,8 +109,8 @@ const Auth = () => {
           </h1>
 
           <p className="text-gray-400 text-base mb-8 leading-relaxed font-medium max-w-md">
-            Join the most advanced real-time identity layer. 
-            Secure, encrypted, and built for the future of digital interaction.
+            Just a simple way to connect and be you.
+            That’s it.
           </p>
 
           <div className="grid grid-cols-2 gap-4 max-w-md">

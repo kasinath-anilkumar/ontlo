@@ -127,7 +127,7 @@ const Onboarding = () => {
 
           <div className="mb-8 text-center">
             <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight italic mb-1.5">
-              {step === 1 ? "Avatar" : step === 2 ? "Identity" : step === 3 ? "Origins" : "Vibe"}
+              {step === 1 ? "Profile Picture" : step === 2 ? "Personal Details" : step === 3 ? "Origins" : "Pick Your Interests"}
             </h1>
             <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em]">
                Onboarding Phase {step + 1} of 5
@@ -171,7 +171,7 @@ const Onboarding = () => {
                 onClick={() => setStep(2)}
                 className="w-full mt-8 py-4 sm:py-5 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/5"
               >
-                {formData.profilePic ? "Continue Protocol" : "Skip Identity Layer"}
+                {formData.profilePic ? "Upload" : "Skip"}
               </button>
             </div>
           )}
@@ -205,7 +205,7 @@ const Onboarding = () => {
 
                {formData.dob && (
                  <div className="px-6 py-3 rounded-2xl bg-purple-500/5 border border-purple-500/10 flex items-center justify-between">
-                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Calculated Age</span>
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Age</span>
                     <span className="text-sm font-black text-purple-400">{formData.age} Years</span>
                  </div>
                )}
@@ -232,7 +232,7 @@ const Onboarding = () => {
                
                               <div className="flex gap-4 mt-8 sm:mt-10">
                   <button onClick={() => setStep(2)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
-                  <button onClick={() => setStep(4)} disabled={!formData.location} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Next Phase <ChevronRight className="w-4 h-4" /></button>
+                  <button onClick={() => setStep(4)} disabled={!formData.location} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Next<ChevronRight className="w-4 h-4" /></button>
                </div>
             </div>
           )}
@@ -262,7 +262,7 @@ const Onboarding = () => {
                     disabled={formData.interests.length < 3 || loading}
                     className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-purple-600/20"
                   >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Activate Profile <Sparkles className="w-5 h-5 fill-current" /></>}
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Create Account<Sparkles className="w-5 h-5 fill-current" /></>}
                   </button>
                </div>
             </div>
