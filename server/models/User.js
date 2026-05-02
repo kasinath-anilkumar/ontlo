@@ -125,8 +125,6 @@ const UserSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-UserSchema.index({ username: 1 });
-UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isPremium: 1 });
 UserSchema.index({ onlineStatus: 1 });

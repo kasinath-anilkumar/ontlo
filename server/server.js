@@ -95,12 +95,28 @@ app.use(helmet({
   }
 }));
 app.use(cors(corsOptions));
-app.use(maintenanceMiddleware);
-app.use(express.json());
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
+
+// SHIM: Express 5 makes req.query a getter. 
+// express-mongo-sanitize needs to mutate it, so we redefine it.
+app.use((req, res, next) => {
+  if (req.query) {
+    Object.defineProperty(req, 'query', {
+      value: { ...req.query },
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+  }
+  next();
+});
+
 app.use(mongoSanitize());
 app.use(xss());
 app.use(monitor.requestMonitor);
+app.use(maintenanceMiddleware);
 app.use((req, res, next) => {
   if (isProduction && req.headers['x-forwarded-proto'] !== 'https') {
     return res.redirect(`https://${req.get('host')}${req.url}`);

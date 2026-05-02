@@ -219,6 +219,15 @@ const Auth = () => {
                 </div>
               )}
 
+              {!isLogin && (
+                <p className="text-[8px] text-gray-700 font-bold uppercase tracking-[0.1em] text-center px-4 mb-2">
+                  By clicking Sign Up, you agree to our{' '}
+                  <button type="button" onClick={() => navigate('/terms')} className="text-purple-500 hover:underline">Terms of Service</button>
+                  {' '}and acknowledge our{' '}
+                  <button type="button" onClick={() => navigate('/privacy')} className="text-purple-500 hover:underline">Privacy Policy</button>.
+                </p>
+              )}
+
               {/* BUTTON */}
               <button 
                 type="submit" 

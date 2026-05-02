@@ -25,6 +25,7 @@ const VideoContainer = () => {
   // ── UI state ──
   const [isMatching, setIsMatching] = useState(false);
   const [inCall, setInCall] = useState(false);
+  const [showMatchSuccess, setShowMatchSuccess] = useState(false);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [isBlurred, setIsBlurred] = useState(false);
@@ -283,7 +284,9 @@ const VideoContainer = () => {
 
     const onConnectionEstablished = () => {
       setConnectionStatus("accepted");
-      alert("It's a Match! You are now connected.");
+      setShowMatchSuccess(true);
+      setTimeout(() => setShowMatchSuccess(false), 3000);
+      console.log("Connection established!");
     };
 
     const onOffer = async ({ offer }) => {
@@ -580,6 +583,17 @@ const VideoContainer = () => {
                 </div>
               </div>
               </div>
+
+      {/* Match Success Overlay */}
+      {showMatchSuccess && (
+        <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none animate-in zoom-in-50 duration-500">
+          <div className="bg-gradient-to-br from-purple-600/90 to-pink-600/90 backdrop-blur-xl px-12 py-6 rounded-[30px] border border-white/20 shadow-[0_0_100px_rgba(168,85,247,0.5)] flex flex-col items-center">
+            <div className="text-4xl sm:text-6xl mb-2">✨</div>
+            <h2 className="text-white text-3xl sm:text-5xl font-black uppercase tracking-[0.2em]">Match!</h2>
+            <p className="text-white/70 text-[10px] font-black uppercase tracking-[0.3em] mt-2">You are now connected</p>
+          </div>
+        </div>
+      )}
 
             {/* Connect request modal */}
             {showConnectRequest && (
