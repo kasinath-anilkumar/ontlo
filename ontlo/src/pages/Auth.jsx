@@ -74,8 +74,12 @@ const Auth = () => {
       if (!response.ok) throw new Error(data.error || "Something went wrong");
 
       localStorage.setItem("user", JSON.stringify(data.user));
+      console.log('[AUTH] Login Success! User data saved. Navigating...');
       setUser(data.user);
-      navigate(data.user.isProfileComplete ? "/" : "/setup-profile");
+      
+      const target = data.user.isProfileComplete ? "/" : "/setup-profile";
+      console.log(`[AUTH] Target path: ${target}`);
+      navigate(target);
     } catch (err) {
       setError(err.message);
     } finally {

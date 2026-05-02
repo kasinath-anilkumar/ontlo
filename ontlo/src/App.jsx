@@ -26,10 +26,16 @@ const PageLoader = () => (
 
 // A wrapper to protect routes
 const ProtectedRoute = ({ children, requiresProfile = true }) => {
-  const token = localStorage.getItem('token');
-  const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-  if (!token) return <Navigate to="/auth" replace />;
-  if (requiresProfile && !storedUser.isProfileComplete) return <Navigate to="/setup-profile" replace />;
+  const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+  
+  if (!storedUser) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  if (requiresProfile && !storedUser.isProfileComplete) {
+    return <Navigate to="/setup-profile" replace />;
+  }
+  
   return children;
 };
 
