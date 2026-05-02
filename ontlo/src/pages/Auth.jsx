@@ -16,7 +16,7 @@ import {
   Zap
 } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
-import API_URL from "../utils/api";
+import API_URL, { apiFetch } from "../utils/api";
 import logo from "../assets/ontlo_Logo.png";
 
 const Auth = () => {
@@ -61,7 +61,7 @@ const Auth = () => {
 
     const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
     try {
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const response = await apiFetch(`${API_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -70,7 +70,6 @@ const Auth = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Something went wrong");
 
-      localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       setUser(data.user);
       navigate(data.user.isProfileComplete ? "/" : "/setup-profile");
@@ -252,6 +251,22 @@ const Auth = () => {
             </div>
           </div>
 
+          <div className="mt-8 text-center space-x-4">
+            <button 
+              onClick={() => navigate('/privacy')}
+              className="text-[8px] font-black text-gray-700 hover:text-indigo-400 uppercase tracking-[0.3em] transition-all"
+            >
+              Privacy Policy
+            </button>
+            <span className="text-gray-800">•</span>
+            <button 
+              onClick={() => navigate('/terms')}
+              className="text-[8px] font-black text-gray-700 hover:text-indigo-400 uppercase tracking-[0.3em] transition-all"
+            >
+              Terms of Service
+            </button>
+          </div>
+          
           <p className="text-center text-[8px] text-gray-800 font-black uppercase tracking-[0.4em] mt-8 leading-relaxed opacity-40">
             Ontlo Universal Identity Layer<br/>Quantum-Safe Authentication
           </p>

@@ -2,7 +2,7 @@ import { Settings, ShieldCheck, HelpCircle, LogOut, ChevronRight, User, Camera, 
 import { useSocket } from "../context/SocketContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import API_URL from "../utils/api";
+import API_URL, { apiFetch } from "../utils/api";
 
 const Profile = () => {
   const { user, setUser, socket } = useSocket();
@@ -69,7 +69,7 @@ const Profile = () => {
   const fetchMyTickets = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/support/my-tickets`, {
+      const res = await apiFetch(`${API_URL}/api/support/my-tickets`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json();
@@ -81,7 +81,7 @@ const Profile = () => {
     setLoadingTickets(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/support/create`, {
+      const res = await apiFetch(`${API_URL}/api/support/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify(ticketData)
@@ -110,7 +110,7 @@ const Profile = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/users/settings`, {
+      const response = await apiFetch(`${API_URL}/api/users/settings`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -137,7 +137,7 @@ const Profile = () => {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/auth/complete-profile`, {
+      const response = await apiFetch(`${API_URL}/api/auth/complete-profile`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -168,14 +168,14 @@ const Profile = () => {
     data.append("image", file);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/upload/profile-pic`, {
+      const response = await apiFetch(`${API_URL}/api/upload/profile-pic`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
         body: data
       });
       const result = await response.json();
       if (response.ok) {
-        const updateRes = await fetch(`${API_URL}/api/auth/complete-profile`, {
+        const updateRes = await apiFetch(`${API_URL}/api/auth/complete-profile`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
           body: JSON.stringify({ profilePic: result.url }),
@@ -410,7 +410,7 @@ const Profile = () => {
                             onClick={async () => {
                               try {
                                 const token = localStorage.getItem("token");
-                                await fetch(`${API_URL}/api/users/unblock`, {
+                                await apiFetch(`${API_URL}/api/users/unblock`, {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                                   body: JSON.stringify({ unblockUserId: u._id })
@@ -486,7 +486,7 @@ const Profile = () => {
                       setLoadingBlocked(true);
                       try {
                         const token = localStorage.getItem("token");
-                        const res = await fetch(`${API_URL}/api/users/blocked/list`, {
+                        const res = await apiFetch(`${API_URL}/api/users/blocked/list`, {
                           headers: { "Authorization": `Bearer ${token}` }
                         });
                         const data = await res.json();

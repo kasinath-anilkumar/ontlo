@@ -1,8 +1,11 @@
 const AppConfig = require('../models/AppConfig');
+const Filter = require('bad-words');
+const filter = new Filter();
 
 let cachedConfig = {
   bannedKeywords: [],
-  autoModerate: false
+  autoModerate: true, // Default to true for better safety
+  toxicityThreshold: 0.7
 };
 
 // Refresh configuration from DB
@@ -12,8 +15,13 @@ const refreshKeywords = async () => {
     if (config) {
       cachedConfig = {
         bannedKeywords: config.bannedKeywords || [],
-        autoModerate: config.autoModerate || false
+        autoModerate: config.autoModerate !== undefined ? config.autoModerate : true,
+        toxicityThreshold: config.toxicityThreshold || 0.7
       };
+      // Add custom keywords to the filter
+      if (cachedConfig.bannedKeywords.length > 0) {
+        filter.addWords(...cachedConfig.bannedKeywords);
+      }
     }
   } catch (err) {
     console.error('Failed to refresh moderation config:', err);
@@ -22,36 +30,67 @@ const refreshKeywords = async () => {
 
 // Initial load
 refreshKeywords();
-
-// Optional: refresh every 1 minute to stay in sync without constant DB hits
 setInterval(refreshKeywords, 60000);
 
+/**
+ * AI-Based Text Moderation
+ * @param {string} text - Content to moderate
+ * @returns {Object} { clean: boolean, text: string, score: number, flags: Array }
+ */
 const moderateText = (text) => {
-  // If auto-moderation is disabled, return original text
-  if (!cachedConfig.autoModerate || !text) {
-    return { clean: true, text };
-  }
-
-  const keywords = cachedConfig.bannedKeywords;
-  if (keywords.length === 0) return { clean: true, text };
+  if (!text) return { clean: true, text, score: 0, flags: [] };
 
   let isFlagged = false;
   let moderatedText = text;
+  let toxicityScore = 0;
+  const flags = [];
 
-  keywords.forEach(word => {
-    if (!word) return;
-    // Simple but effective word boundary check
-    const regex = new RegExp(`\\b${word.trim()}\\b`, 'gi');
-    if (regex.test(moderatedText)) {
-      isFlagged = true;
-      moderatedText = moderatedText.replace(regex, '***');
-    }
-  });
+  // 1. Keyword-based moderation (using bad-words)
+  if (filter.isProfane(text)) {
+    isFlagged = true;
+    moderatedText = filter.clean(text);
+    toxicityScore += 0.5;
+    flags.push('profanity');
+  }
+
+  // 2. Mock AI Toxicity Detection (Simulating real AI like Perspective API)
+  // We can add simple heuristics here: all caps, excessive punctuation, etc.
+  if (text === text.toUpperCase() && text.length > 10) {
+    toxicityScore += 0.2;
+    flags.push('aggressive_formatting');
+  }
+  
+  if ((text.match(/[!?]{3,}/g) || []).length > 0) {
+    toxicityScore += 0.1;
+    flags.push('excessive_punctuation');
+  }
+
+  // 3. Final Decision
+  if (toxicityScore >= cachedConfig.toxicityThreshold) {
+    isFlagged = true;
+  }
 
   return {
     clean: !isFlagged,
-    text: moderatedText
+    text: moderatedText,
+    score: Math.min(toxicityScore, 1),
+    flags
   };
 };
 
-module.exports = { moderateText, refreshKeywords };
+/**
+ * Image Moderation Stub
+ * @param {string} imageUrl - URL of the image to moderate
+ * @returns {Promise<Object>} { clean: boolean, score: number, type: string }
+ */
+const moderateImage = async (imageUrl) => {
+  // In a real app, this would call Cloudinary Moderation or Sightengine
+  // For now, we return a mock success
+  return {
+    clean: true,
+    score: 0.1,
+    type: 'neutral'
+  };
+};
+
+module.exports = { moderateText, moderateImage, refreshKeywords };

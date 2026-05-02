@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { Home, Video, Heart, MessageSquare, User, Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSocket } from "../../context/SocketContext";
-import API_URL from "../../utils/api";
+import API_URL, { apiFetch } from "../../utils/api";
 
 const BottomNav = () => {
   const { socket } = useSocket();
@@ -12,7 +12,7 @@ const BottomNav = () => {
     const fetchCounts = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await fetch(`${API_URL}/api/notifications/counts`, {
+        const response = await apiFetch(`${API_URL}/api/notifications/counts`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const data = await response.json();

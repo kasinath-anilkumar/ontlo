@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera, User, Sparkles, Upload, Loader2, ChevronRight, ChevronLeft, Globe, Calendar } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
-import API_URL from "../utils/api";
+import API_URL, { apiFetch } from "../utils/api";
 
 const Onboarding = () => {
   const [step, setStep] = useState(1);
@@ -56,7 +56,7 @@ const Onboarding = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/upload/profile-pic`, {
+      const response = await apiFetch(`${API_URL}/api/upload/profile-pic`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
         body: data
@@ -80,7 +80,7 @@ const Onboarding = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/auth/complete-profile`, {
+      const response = await apiFetch(`${API_URL}/api/auth/complete-profile`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

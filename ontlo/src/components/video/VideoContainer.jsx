@@ -3,10 +3,10 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
 import ChatPanel from "../chat/ChatPanel";
-import API_URL from "../../utils/api";
+import API_URL, { apiFetch } from "../../utils/api";
 
 const VideoContainer = () => {
-  const { socket, user } = useSocket();
+  const { socket, user, setUser } = useSocket();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -38,6 +38,7 @@ const VideoContainer = () => {
   const [safetyBlurTimer, setSafetyBlurTimer] = useState(0);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState(null);
+  const [penaltyMessage, setPenaltyMessage] = useState(null);
 
   // ─────────────────────────────────────────────────────────────────
   // 1. Camera initialisation — runs once, cleans up on unmount
@@ -47,7 +48,13 @@ const VideoContainer = () => {
 
     const startCamera = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const constraints = {
+          audio: true,
+          video: user?.lowBandwidth 
+            ? { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { max: 15 } }
+            : { width: { ideal: 1280 }, height: { ideal: 720 } }
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         if (!mounted) {
           stream.getTracks().forEach(t => t.stop());
           return;
@@ -154,7 +161,25 @@ const VideoContainer = () => {
   // ─────────────────────────────────────────────────────────────────
   const createPeerConnection = useCallback((rId) => {
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443?transport=tcp",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        }
+      ]
     });
 
     pc.onicecandidate = (event) => {
@@ -171,8 +196,15 @@ const VideoContainer = () => {
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
+      if (pc.connectionState === "failed") {
         endCallLocally(true);
+      } else if (pc.connectionState === "disconnected") {
+        // Wait 5 seconds to allow WebRTC to automatically reconnect (ICE restart)
+        setTimeout(() => {
+          if (peerConnectionRef.current === pc && pc.connectionState === "disconnected") {
+            endCallLocally(true);
+          }
+        }, 5000);
       }
     };
 
@@ -214,7 +246,7 @@ const VideoContainer = () => {
 
       // Fetch remote user info
       try {
-        const res = await fetch(`${API_URL}/api/users/${remoteId}`);
+        const res = await apiFetch(`${API_URL}/api/users/${remoteId}`);
         const data = await res.json();
         if (res.ok) setRemoteUser(data);
       } catch (_) {}
@@ -289,6 +321,14 @@ const VideoContainer = () => {
       endCallLocally(true);
     };
 
+    const onSkipPenalty = ({ message, timeout }) => {
+      setPenaltyMessage(message);
+      setIsMatching(false); // Stop trying to match
+      setTimeout(() => {
+        setPenaltyMessage(null);
+      }, timeout);
+    };
+
     socket.on("match-found", onMatchFound);
     socket.on("chat-message", onChatMessage);
     socket.on("peer-wants-connection", onPeerWantsConnection);
@@ -297,6 +337,7 @@ const VideoContainer = () => {
     socket.on("webrtc-answer", onAnswer);
     socket.on("webrtc-ice-candidate", onIceCandidate);
     socket.on("match-ended", onMatchEnded);
+    socket.on("skip-penalty", onSkipPenalty);
 
     return () => {
       socket.off("match-found", onMatchFound);
@@ -307,6 +348,7 @@ const VideoContainer = () => {
       socket.off("webrtc-answer", onAnswer);
       socket.off("webrtc-ice-candidate", onIceCandidate);
       socket.off("match-ended", onMatchEnded);
+      socket.off("skip-penalty", onSkipPenalty);
     };
   }, [socket, createPeerConnection, endCallLocally]);
 
@@ -360,7 +402,7 @@ const VideoContainer = () => {
       const reportedUserId = remoteUser._id || remoteUser.id;
       
       // Send report
-      fetch(`${API_URL}/api/report`, {
+      apiFetch(`${API_URL}/api/report`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ 
@@ -371,7 +413,7 @@ const VideoContainer = () => {
       });
 
       // Automatically block
-      fetch(`${API_URL}/api/users/block`, {
+      apiFetch(`${API_URL}/api/users/block`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ blockedUserId: reportedUserId }),
@@ -460,6 +502,12 @@ const VideoContainer = () => {
                   <button onClick={() => window.location.reload()} className="px-6 py-2 bg-white/5 border border-white/10 text-white rounded-full hover:bg-white/10 transition">
                     Retry Connection
                   </button>
+                </div>
+              ) : penaltyMessage ? (
+                <div className="flex flex-col items-center p-8 bg-orange-500/10 border border-orange-500/20 rounded-3xl animate-in zoom-in duration-300 mx-4">
+                  <Timer className="w-12 h-12 text-orange-500 mb-4 animate-pulse" />
+                  <p className="text-white font-bold mb-2">Slow Down!</p>
+                  <p className="text-gray-400 text-sm mb-6 text-center">{penaltyMessage}</p>
                 </div>
               ) : isMatching ? (
                 <div className="flex flex-col items-center">
@@ -567,6 +615,21 @@ const VideoContainer = () => {
               </button>
               <button onClick={toggleMic} className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${micEnabled ? "bg-black/40 hover:bg-black/60" : "bg-red-500 hover:bg-red-600"}`}>
                 <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+              <button 
+                onClick={() => {
+                  // This is a local toggle for the session
+                  // Ideally would be saved to DB too, but for now we just toggle the state
+                  const newMode = !user?.lowBandwidth;
+                  if (typeof setUser === 'function') {
+                    setUser({ ...user, lowBandwidth: newMode });
+                  }
+                  window.location.reload(); // Reload to re-initialize camera with new constraints
+                }} 
+                title="Low Bandwidth Mode"
+                className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${user?.lowBandwidth ? "bg-orange-600 shadow-[0_0_15px_rgba(234,179,8,0.5)]" : "bg-black/40 hover:bg-black/60"}`}
+              >
+                <div className="text-[10px] font-black uppercase tracking-tighter">HD</div>
               </button>
             </div>
 

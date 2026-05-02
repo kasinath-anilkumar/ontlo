@@ -2,7 +2,7 @@ import { Heart, MessageSquare, Loader2, MoreVertical, ShieldAlert, UserX, X, Map
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProfileModal from "../components/profile/ProfileModal";
-import API_URL from "../utils/api";
+import API_URL, { apiFetch } from "../utils/api";
 
 const Connections = () => {
   const [connections, setConnections] = useState([]);
@@ -14,7 +14,7 @@ const Connections = () => {
   const fetchConnections = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/connections`, {
+      const response = await apiFetch(`${API_URL}/api/connections`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -38,7 +38,7 @@ const Connections = () => {
     
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${API_URL}/api/connections/${id}`, {
+      await apiFetch(`${API_URL}/api/connections/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -55,7 +55,7 @@ const Connections = () => {
     
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${API_URL}/api/users/block`, {
+      await apiFetch(`${API_URL}/api/users/block`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ blockedUserId: userId })

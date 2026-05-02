@@ -1,7 +1,7 @@
 import { Video, MessageSquare, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import API_URL from "../../utils/api";
+import API_URL, { apiFetch } from "../../utils/api";
 
 const RightPanel = ({ onClose }) => {
   const [onlineUsers, setOnlineUsers] = useState([]);
@@ -15,14 +15,14 @@ const RightPanel = ({ onClose }) => {
         if (!token) return;
 
         // Fetch Online Connections
-        const onlineRes = await fetch(`${API_URL}/api/connections/online`, {
+        const onlineRes = await apiFetch(`${API_URL}/api/connections/online`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const onlineData = await onlineRes.json();
         if (onlineRes.ok) setOnlineUsers(onlineData);
 
         // Fetch All Connections (for Recent)
-        const connectionsRes = await fetch(`${API_URL}/api/connections`, {
+        const connectionsRes = await apiFetch(`${API_URL}/api/connections`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const connectionsData = await connectionsRes.json();

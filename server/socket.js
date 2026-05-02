@@ -25,17 +25,35 @@ module.exports = (io) => {
   checkMaintenance();
 
   io.on('connection', async (socket) => {
-    const token = socket.handshake.auth?.token;
+    let token = socket.handshake.auth?.token;
+    
+    // Parse cookies manually if token is not in auth
+    if (!token && socket.handshake.headers.cookie) {
+      const cookies = socket.handshake.headers.cookie.split(';').reduce((res, c) => {
+        const [key, val] = c.trim().split('=').map(decodeURIComponent);
+        try {
+          return Object.assign(res, { [key]: JSON.parse(val) });
+        } catch (e) {
+          return Object.assign(res, { [key]: val });
+        }
+      }, {});
+      token = cookies.token;
+    }
+
     if (token) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
         socket.userId = decoded.id;
         
         // Fetch essential user data for the matchmaker once on connection
-        const user = await User.findById(socket.userId).select('age isPremium onlineStatus blockedUsers role');
+        const user = await User.findById(socket.userId).select('age isPremium lastBoostedAt onlineStatus blockedUsers role interests location region');
         if (user) {
           socket.age = user.age;
           socket.isPremium = user.isPremium;
+          socket.lastBoostedAt = user.lastBoostedAt;
+          socket.interests = user.interests || [];
+          socket.location = user.location;
+          socket.region = user.region || 'Global';
           socket.role = user.role;
           socket.blockedUsers = user.blockedUsers.map(id => id.toString());
           
@@ -46,6 +64,9 @@ module.exports = (io) => {
 
           socket.join(`user_${socket.userId}`);
           await User.findByIdAndUpdate(socket.userId, { onlineStatus: true });
+
+          // CHECK FOR RECONNECTION TO ACTIVE MATCH
+          matchmaker.handleReconnect(socket, io);
         }
       } catch (err) {
         console.error("Socket Auth Error:", err.message);
@@ -78,37 +99,93 @@ module.exports = (io) => {
       matchmaker.leaveQueue(socket.id);
     });
 
-    socket.on('join-chat', ({ roomId }) => {
-      socket.join(roomId);
+    socket.on('join-chat', async ({ roomId }) => {
+      if (!socket.userId) return;
+      try {
+        const conn = await Connection.findById(roomId);
+        if (conn && conn.users.includes(socket.userId)) {
+          socket.join(roomId);
+        }
+      } catch (err) {
+        console.error('Error joining chat:', err);
+      }
+    });
+
+    socket.on('leave-chat', ({ roomId }) => {
+      socket.leave(roomId);
+    });
+
+    socket.on('typing', ({ roomId, username }) => {
+      if (!socket.rooms.has(roomId)) return;
+      socket.to(roomId).emit('typing', { username });
+    });
+
+    socket.on('stop-typing', ({ roomId }) => {
+      if (!socket.rooms.has(roomId)) return;
+      socket.to(roomId).emit('stop-typing');
+    });
+
+    socket.on('messages-read', ({ connectionId }) => {
+      if (!socket.rooms.has(connectionId)) return;
+      socket.to(connectionId).emit('messages-read', { connectionId });
     });
 
     socket.on('chat-message', async ({ message, imageUrl, roomId }) => {
+      if (!socket.rooms.has(roomId)) return;
+
       const timestamp = new Date().toISOString();
       const moderation = moderateText(message);
       const finalMessage = moderation.text;
+
+      let imageModerated = { clean: true };
+      if (imageUrl) {
+        imageModerated = await require('./utils/moderation').moderateImage(imageUrl);
+      }
+
+      const isFlagged = !moderation.clean || !imageModerated.clean;
 
       socket.to(roomId).emit('chat-message', {
         sender: socket.id,
         text: finalMessage,
         imageUrl,
-        isFlagged: !moderation.clean,
+        isFlagged,
+        moderationScore: moderation.score,
         timestamp
       });
 
       if (roomId.length === 24 && /^[0-9a-fA-F]+$/.test(roomId)) {
         try {
           if (socket.userId) {
-            const newMessage = new Message({
-              connectionId: roomId,
-              sender: socket.userId,
-              text: finalMessage,
-              imageUrl,
-              timestamp
-            });
-            await newMessage.save();
-
             const conn = await Connection.findById(roomId);
-            if (conn && conn.users) {
+            
+            // SECURITY: Verify user belongs to this connection
+            if (conn && conn.users && conn.users.includes(socket.userId)) {
+              const newMessage = new Message({
+                connectionId: roomId,
+                sender: socket.userId,
+                text: finalMessage,
+                imageUrl,
+                isFlagged,
+                moderationScore: moderation.score,
+                timestamp
+              });
+              await newMessage.save();
+
+              // AUTO-REPORT if very toxic
+              if (moderation.score > 0.8) {
+                const Report = require('./models/Report');
+                const autoReport = new Report({
+                  reporter: socket.userId, // Or a system user ID
+                  reportedUser: conn.users.find(u => u && u.toString() !== socket.userId.toString()),
+                  reason: `Auto-flagged: High toxicity score (${moderation.score}). Flags: ${moderation.flags.join(', ')}`,
+                  severity: 'high',
+                  status: 'pending',
+                  aiConfidence: moderation.score * 100,
+                  aiSummary: `Auto-moderator detected toxic content: "${message}"`
+                });
+                await autoReport.save();
+              }
+
               const recipientId = conn.users.find(u => u && u.toString() !== socket.userId.toString());
               if (recipientId) {
                 // Create persistent notification for message
@@ -133,19 +210,22 @@ module.exports = (io) => {
       }
     });
 
-    socket.on('action-skip', () => {
-      matchmaker.skipMatch(socket.id, io);
+    socket.on('action-skip', async () => {
+      await matchmaker.skipMatch(socket.id, io);
     });
 
     socket.on('webrtc-offer', ({ offer, roomId }) => {
+      if (!socket.rooms.has(roomId)) return;
       socket.to(roomId).emit('webrtc-offer', { offer });
     });
 
     socket.on('webrtc-answer', ({ answer, roomId }) => {
+      if (!socket.rooms.has(roomId)) return;
       socket.to(roomId).emit('webrtc-answer', { answer });
     });
 
     socket.on('webrtc-ice-candidate', ({ candidate, roomId }) => {
+      if (!socket.rooms.has(roomId)) return;
       socket.to(roomId).emit('webrtc-ice-candidate', { candidate });
     });
 
@@ -172,8 +252,7 @@ module.exports = (io) => {
     });
 
     socket.on('disconnect', async () => {
-      matchmaker.leaveQueue(socket.id);
-      matchmaker.skipMatch(socket.id, io);
+      matchmaker.handleDisconnect(socket, io);
       if (socket.userId) {
         const userIdStr = socket.userId.toString();
         const userSockets = await io.in(`user_${userIdStr}`).fetchSockets();

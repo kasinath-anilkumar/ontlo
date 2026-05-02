@@ -2,27 +2,13 @@ const express = require('express');
 const router = express.Router();
 const Connection = require('../models/Connection');
 const User = require('../models/User');
-const jwt = require('jsonwebtoken');
-const { JWT_SECRET } = require('../config/jwt');
-
-// Middleware to mock authentication for now, or use JWT verification
-// In a real app, you would have a middleware that sets req.userId from the JWT
-const authenticate = (req, res, next) => {
-  const token = req.headers.authorization;
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  try {
-    const decoded = jwt.verify(token.split(' ')[1], JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
-};
-
+const auth = require('../middleware/auth');
 const Message = require('../models/Message');
+const validate = require('../middleware/validate');
+const { connectionIdParamSchema } = require('../validators/connection.validator');
 
 // Get user connections with last message
-router.get('/', authenticate, async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const connections = await Connection.find({ users: req.userId })
       .populate('users', 'username profilePic onlineStatus age gender location bio fullName');
@@ -59,7 +45,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // Delete a connection
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', auth, validate({ params: connectionIdParamSchema }), async (req, res) => {
   try {
     const connection = await Connection.findOne({ _id: req.params.id, users: req.userId });
     if (!connection) return res.status(404).json({ error: 'Connection not found' });
@@ -75,7 +61,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 // Get only online connections
-router.get('/online', authenticate, async (req, res) => {
+router.get('/online', auth, async (req, res) => {
   try {
     const connections = await Connection.find({ users: req.userId })
       .populate('users', 'username profilePic onlineStatus age gender location bio fullName');

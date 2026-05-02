@@ -2,21 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Message = require('../models/Message');
 const Connection = require('../models/Connection');
-const jwt = require('jsonwebtoken');
-const { JWT_SECRET } = require('../config/jwt');
+const auth = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const { connectionIdParamSchema } = require('../validators/message.validator');
 
-// Middleware to protect routes
-const auth = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
-};
 
 const requireConnectionMember = async (req, res, next) => {
   try {
@@ -37,7 +26,7 @@ const requireConnectionMember = async (req, res, next) => {
 };
 
 // Get message history for a connection
-router.get('/:connectionId', auth, requireConnectionMember, async (req, res) => {
+router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema }), requireConnectionMember, async (req, res) => {
   try {
     const messages = await Message.find({ connectionId: req.params.connectionId })
       .sort({ timestamp: 1 })
@@ -60,7 +49,7 @@ router.get('/:connectionId', auth, requireConnectionMember, async (req, res) => 
 });
 
 // Mark messages as read
-router.post('/:connectionId/read', auth, requireConnectionMember, async (req, res) => {
+router.post('/:connectionId/read', auth, validate({ params: connectionIdParamSchema }), requireConnectionMember, async (req, res) => {
   try {
     await Message.updateMany(
       { connectionId: req.params.connectionId, sender: { $ne: req.user.id } },

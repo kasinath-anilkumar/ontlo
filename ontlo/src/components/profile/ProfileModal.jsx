@@ -1,6 +1,6 @@
 import { X, MapPin, Calendar, Activity, ShieldAlert, Loader2, MessageSquare, Heart, Users, Star, Crown } from "lucide-react";
 import { useEffect, useState } from "react";
-import API_URL from "../../utils/api";
+import API_URL, { apiFetch } from "../../utils/api";
 
 const ProfileModal = ({ userId, onClose, onMessage }) => {
   const [profile, setProfile] = useState(null);
@@ -10,7 +10,7 @@ const ProfileModal = ({ userId, onClose, onMessage }) => {
     if (!userId) return;
     const fetchProfile = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/users/${userId}`);
+        const response = await apiFetch(`${API_URL}/api/users/${userId}`);
         const data = await response.json();
         setProfile(data);
       } catch (err) {

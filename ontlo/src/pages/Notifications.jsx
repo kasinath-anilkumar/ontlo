@@ -1,7 +1,7 @@
 import { Bell, MessageSquare, Heart, Shield, Check, Trash2, Loader2, ChevronLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import API_URL from "../utils/api";
+import API_URL, { apiFetch } from "../utils/api";
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -11,7 +11,7 @@ const Notifications = () => {
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/notifications`, {
+      const response = await apiFetch(`${API_URL}/api/notifications`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -31,7 +31,7 @@ const Notifications = () => {
   const markAsRead = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${API_URL}/api/notifications/${id}/read`, {
+      await apiFetch(`${API_URL}/api/notifications/${id}/read`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -44,7 +44,7 @@ const Notifications = () => {
   const markAllRead = async () => {
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${API_URL}/api/notifications/read-all`, {
+      await apiFetch(`${API_URL}/api/notifications/read-all`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` }
       });

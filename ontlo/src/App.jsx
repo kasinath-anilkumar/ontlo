@@ -15,6 +15,8 @@ const Onboarding = lazy(() => import("./pages/Onboarding"));
 const WhoLikedYou = lazy(() => import("./pages/WhoLikedYou"));
 const Favorites = lazy(() => import("./pages/Favorites"));
 const Notifications = lazy(() => import("./pages/Notifications"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 
 const PageLoader = () => (
   <div className="h-screen w-full flex items-center justify-center bg-[#0B0E14]">
@@ -38,6 +40,8 @@ function App() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
             <Route path="/setup-profile" element={
               <ProtectedRoute requiresProfile={false}>
                 <Onboarding />

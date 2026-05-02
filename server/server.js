@@ -5,7 +5,12 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
 const maintenanceMiddleware = require('./middleware/maintenance');
+const { logger } = require('./utils/logger');
+const monitor = require('./utils/monitor');
 
 // Load environment variables
 dotenv.config();
@@ -55,6 +60,14 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // Limit each IP to 200 requests per windowMs for general API routes
+  message: { error: 'Too many requests, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const cspDirectives = {
   defaultSrc: ["'self'"],
   baseUri: ["'self'"],
@@ -84,12 +97,26 @@ app.use(helmet({
 app.use(cors(corsOptions));
 app.use(maintenanceMiddleware);
 app.use(express.json());
+app.use(cookieParser());
+app.use(mongoSanitize());
+app.use(xss());
+app.use(monitor.requestMonitor);
+app.use((req, res, next) => {
+  if (isProduction && req.headers['x-forwarded-proto'] !== 'https') {
+    return res.redirect(`https://${req.get('host')}${req.url}`);
+  }
+  next();
+});
+
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+
+// Apply rate limits
+app.use('/api/', apiLimiter); // General rate limit for all API routes
+app.use('/api/auth/login', authLimiter); // Stricter rate limit for login
+app.use('/api/auth/register', authLimiter); // Stricter rate limit for registration
 
 // Routes
 app.get('/', (req, res) => res.send('Ontlo API is running...'));
@@ -109,7 +136,22 @@ app.use('/api/upload', require('./routes/upload'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/support', require('./routes/support'));
+app.use('/api/billing', require('./routes/billing'));
 app.use('/api/admin', require('./routes/admin'));
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  logger.error('Unhandled Exception:', { 
+    error: err.message, 
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
+  
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message
+  });
+});
 
 // Initialize Socket.io Logic
 require('./socket')(io);
@@ -123,7 +165,7 @@ const startServer = async (port) => {
   try {
     // Attempt MongoDB Connection first
     await mongoose.connect(MONGO_URI);
-    console.log('✅ MongoDB Connected');
+    logger.info('✅ MongoDB Connected');
 
     server.listen(port)
       .on('listening', () => {
@@ -192,8 +234,13 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Start the engine
+const startCleanupJobs = require('./scripts/cleanup');
+startCleanupJobs();
+
 startServer(PORT);
 
 // Keep-alive for Render (prevents sleep mode)
 const startKeepAlive = require('./scripts/keepAlive');
 startKeepAlive();
+
+module.exports = { app, server };

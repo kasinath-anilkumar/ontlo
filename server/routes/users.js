@@ -2,28 +2,29 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Connection = require('../models/Connection');
+const Message = require('../models/Message');
+const Notification = require('../models/Notification');
+const Report = require('../models/Report');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/jwt');
+const { deleteImage } = require('../config/cloudinary');
+
+const auth = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const {
+  blockUserSchema,
+  unblockUserSchema,
+  settingsSchema,
+  userIdParamSchema,
+} = require('../validators/user.validator');
+const { logActivity } = require('../utils/logger');
 
 const AppConfig = require('../models/AppConfig');
 
-// Helper to get userId from token if exists
-const getUserId = (req) => {
-  const token = req.headers.authorization;
-  if (!token) return null;
-  try {
-    const decoded = jwt.verify(token.split(' ')[1], JWT_SECRET);
-    return decoded.id;
-  } catch (err) {
-    return null;
-  }
-};
-
 // Discover: Get potential matches based on Admin algorithm settings
-router.get('/discover', async (req, res) => {
+router.get('/discover', auth, async (req, res) => {
   try {
-    const currentUserId = getUserId(req);
-    if (!currentUserId) return res.status(401).json({ error: 'Unauthorized' });
+    const currentUserId = req.userId;
 
     const currentUser = await User.findById(currentUserId);
     
@@ -62,9 +63,9 @@ router.get('/discover', async (req, res) => {
 });
 
 // Get online users who are also connections for the Home page
-router.get('/online', async (req, res) => {
+router.get('/online', auth.optional, async (req, res) => {
   try {
-    const currentUserId = getUserId(req);
+    const currentUserId = req.userId;
     if (!currentUserId) return res.json([]); // Guest sees no one in "Active Now"
 
     // 1. Find all connection documents for this user
@@ -91,8 +92,23 @@ router.get('/online', async (req, res) => {
   }
 });
 
+// Get blocked users list
+router.get('/blocked/list', auth, async (req, res) => {
+  try {
+    const currentUserId = req.userId;
+
+    const user = await User.findById(currentUserId).populate('blockedUsers', 'username profilePic fullName');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json(user.blockedUsers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get single user by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', validate({ params: userIdParamSchema }), async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('username profilePic fullName age gender location interests bio isPremium onlineStatus');
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -109,14 +125,14 @@ router.get('/:id', async (req, res) => {
 });
 
 // Block a user
-router.post('/block', async (req, res) => {
+router.post('/block', auth, validate({ body: blockUserSchema }), async (req, res) => {
   try {
-    const currentUserId = getUserId(req);
-    if (!currentUserId) return res.status(401).json({ error: 'Unauthorized' });
-    
+    const currentUserId = req.userId;
     const { blockedUserId } = req.body;
-    if (!blockedUserId) return res.status(400).json({ error: 'Blocked user ID is required' });
-    if (currentUserId === blockedUserId) return res.status(400).json({ error: 'Cannot block yourself' });
+
+    if (currentUserId.toString() === blockedUserId) {
+      return res.status(400).json({ error: 'Cannot block yourself' });
+    }
 
     const currentUser = await User.findById(currentUserId);
     if (!currentUser) return res.status(404).json({ error: 'User not found' });
@@ -132,22 +148,13 @@ router.post('/block', async (req, res) => {
     });
 
     res.json({ message: 'User blocked successfully' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
 
-// Get blocked users list
-router.get('/blocked/list', async (req, res) => {
-  try {
-    const currentUserId = getUserId(req);
-    if (!currentUserId) return res.status(401).json({ error: 'Unauthorized' });
-
-    const user = await User.findById(currentUserId).populate('blockedUsers', 'username profilePic fullName');
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    res.json(user.blockedUsers);
+    await logActivity({
+      userId: currentUserId,
+      action: 'user_block',
+      req,
+      metadata: { blockedUserId }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error' });
@@ -155,13 +162,10 @@ router.get('/blocked/list', async (req, res) => {
 });
 
 // Unblock a user
-router.post('/unblock', async (req, res) => {
+router.post('/unblock', auth, validate({ body: unblockUserSchema }), async (req, res) => {
   try {
-    const currentUserId = getUserId(req);
-    if (!currentUserId) return res.status(401).json({ error: 'Unauthorized' });
-
+    const currentUserId = req.userId;
     const { unblockUserId } = req.body;
-    if (!unblockUserId) return res.status(400).json({ error: 'User ID to unblock is required' });
 
     const user = await User.findById(currentUserId);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -170,6 +174,13 @@ router.post('/unblock', async (req, res) => {
     await user.save();
 
     res.json({ message: 'User unblocked successfully' });
+
+    await logActivity({
+      userId: currentUserId,
+      action: 'user_unblock',
+      req,
+      metadata: { unblockUserId }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error' });
@@ -177,13 +188,10 @@ router.post('/unblock', async (req, res) => {
 });
 
 // Update user settings
-router.patch('/settings', async (req, res) => {
+router.patch('/settings', auth, validate({ body: settingsSchema }), async (req, res) => {
   try {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
+    const userId = req.userId;
     const { settings } = req.body;
-    if (!settings) return res.status(400).json({ error: 'Settings object is required' });
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -195,6 +203,101 @@ router.patch('/settings', async (req, res) => {
     res.json({ message: 'Settings updated successfully', settings: user.settings });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete account completely
+router.delete('/account', auth, async (req, res) => {
+  try {
+    const currentUserId = req.userId;
+
+    const user = await User.findById(currentUserId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // 1. Delete Profile Picture from Cloudinary
+    if (user.profilePic) {
+      await deleteImage(user.profilePic);
+    }
+
+    // 2. Find all connections
+    const connections = await Connection.find({ users: currentUserId });
+    const connectionIds = connections.map(c => c._id);
+
+    // 3. Delete all messages in those connections (and any sent by user)
+    await Message.deleteMany({
+      $or: [
+        { connectionId: { $in: connectionIds } },
+        { sender: currentUserId }
+      ]
+    });
+
+    // 4. Delete the connections
+    await Connection.deleteMany({ users: currentUserId });
+
+    // 5. Delete notifications
+    await Notification.deleteMany({
+      $or: [{ user: currentUserId }, { fromUser: currentUserId }]
+    });
+
+    // 6. Delete reports where user is reporter
+    await Report.deleteMany({ reporter: currentUserId });
+
+    // 7. Finally delete the user
+    await User.findByIdAndDelete(currentUserId);
+
+    res.json({ message: 'Account deleted successfully' });
+
+    await logActivity({
+      userId: currentUserId,
+      action: 'account_deletion',
+      req
+    });
+  } catch (error) {
+    console.error('Account deletion error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Export user data as JSON
+router.get('/export', auth, async (req, res) => {
+  try {
+    const currentUserId = req.userId;
+
+    const user = await User.findById(currentUserId).lean();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const connections = await Connection.find({ users: currentUserId }).lean();
+    const connectionIds = connections.map(c => c._id);
+
+    const messages = await Message.find({
+      $or: [
+        { connectionId: { $in: connectionIds } },
+        { sender: currentUserId }
+      ]
+    }).lean();
+
+    const notifications = await Notification.find({ user: currentUserId }).lean();
+
+    const exportData = {
+      profile: user,
+      connections: connections,
+      messages: messages,
+      notifications: notifications,
+      exportedAt: new Date().toISOString()
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename=ontlo_data_export_${currentUserId}.json`);
+    res.json(exportData);
+
+    await logActivity({
+      userId: currentUserId,
+      action: 'export_data',
+      req
+    });
+  } catch (error) {
+    console.error('Data export error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });

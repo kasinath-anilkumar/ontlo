@@ -30,4 +30,17 @@ const uploadImage = (file, folder) => {
   });
 };
 
-module.exports = { cloudinary, upload, uploadImage };
+const deleteImage = async (url) => {
+  if (!url || !url.includes('cloudinary')) return;
+  try {
+    const parts = url.split('/');
+    const folder = parts[parts.length - 2];
+    const filename = parts[parts.length - 1].split('.')[0];
+    const publicId = `${folder}/${filename}`;
+    await cloudinary.uploader.destroy(publicId);
+  } catch (err) {
+    console.error("Cloudinary delete error:", err);
+  }
+};
+
+module.exports = { cloudinary, upload, uploadImage, deleteImage };

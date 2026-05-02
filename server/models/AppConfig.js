@@ -9,7 +9,11 @@ const AppConfigSchema = new mongoose.Schema({
   // Safety
   bannedKeywords: { type: [String], default: [] },
   autoModerate: { type: Boolean, default: true },
+  toxicityThreshold: { type: Number, default: 0.7 },
   safetyBlurDuration: { type: Number, default: 3 }, // In seconds
+  
+  // Admin & Security
+  allowedAdminIPs: { type: [String], default: [] },
   
   // Platform Limits
   dailyMessageLimit: { type: Number, default: 50 },

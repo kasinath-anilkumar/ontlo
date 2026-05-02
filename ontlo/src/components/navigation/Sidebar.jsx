@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
 import { useEffect, useState } from "react";
-import API_URL from "../../utils/api";
+import API_URL, { apiFetch } from "../../utils/api";
 import logo from "../../assets/ontlo_Logo.png";
 import { 
   Home, 
@@ -24,7 +24,7 @@ const Sidebar = () => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await fetch(`${API_URL}/api/notifications/counts`, {
+        const response = await apiFetch(`${API_URL}/api/notifications/counts`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const data = await response.json();

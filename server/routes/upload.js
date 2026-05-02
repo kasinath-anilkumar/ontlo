@@ -1,27 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { upload, uploadImage } = require('../config/cloudinary');
-const jwt = require('jsonwebtoken');
-const { JWT_SECRET } = require('../config/jwt');
-
-const authenticate = (req, res, next) => {
-  const token = req.headers.authorization;
-  if (!token) {
-    console.warn('No token provided in upload request');
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  try {
-    const decoded = jwt.verify(token.split(' ')[1], JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch (err) {
-    console.error('JWT Verification failed in upload:', err.message);
-    res.status(401).json({ error: 'Invalid token' });
-  }
-};
+const auth = require('../middleware/auth');
 
 // Single image upload
-router.post('/profile-pic', authenticate, (req, res) => {
+router.post('/profile-pic', auth, (req, res) => {
   upload.single('image')(req, res, async (err) => {
     if (err) {
       console.error('Multer/Cloudinary Error:', err);
@@ -46,7 +29,7 @@ router.post('/profile-pic', authenticate, (req, res) => {
 });
 
 // Chat image upload
-router.post('/chat-image', authenticate, (req, res) => {
+router.post('/chat-image', auth, (req, res) => {
   upload.single('image')(req, res, async (err) => {
     if (err) return res.status(500).json({ error: 'Upload failed' });
     if (!req.file) return res.status(400).json({ error: 'No file' });

@@ -8,7 +8,27 @@ const ActivityLogSchema = new mongoose.Schema({
   },
   action: {
     type: String,
-    enum: ['login', 'logout', 'profile_update', 'password_change', 'report_filed', 'suspicious_activity', 'admin_action', 'config_update', 'broadcast_sent'],
+    enum: [
+      'login', 
+      'logout', 
+      'profile_update', 
+      'password_change', 
+      'report_filed', 
+      'suspicious_activity', 
+      'admin_action', 
+      'config_update', 
+      'broadcast_sent',
+      'registration',
+      'export_data',
+      'account_deletion',
+      'role_change',
+      'status_change',
+      'user_block',
+      'user_unblock',
+      'ticket_created',
+      'ticket_replied',
+      'ticket_status_change'
+    ],
     required: true
   },
   ip: String,

@@ -2,7 +2,7 @@ import { Search, Edit, Loader2, MessageSquare, Heart, ChevronLeft, MoreVertical,
 import Skeleton from "../components/ui/Skeleton";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import API_URL from "../utils/api";
+import API_URL, { apiFetch } from "../utils/api";
 import { useSocket } from "../context/SocketContext";
 import ChatPanel from "../components/chat/ChatPanel";
 
@@ -20,7 +20,7 @@ const Messages = () => {
   const fetchCounts = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/notifications/counts`, {
+      const response = await apiFetch(`${API_URL}/api/notifications/counts`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -48,7 +48,7 @@ const Messages = () => {
   const fetchConnections = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/connections`, {
+      const response = await apiFetch(`${API_URL}/api/connections`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();

@@ -7,6 +7,21 @@ const Connection = require('../models/Connection');
 const Message = require('../models/Message');
 const adminAuth = require('../middleware/adminAuth');
 const ActivityLog = require('../models/ActivityLog');
+const validate = require('../middleware/validate');
+const {
+  createStaffSchema,
+  userActionSchema,
+  resolveReportSchema,
+  broadcastSchema,
+  keywordsSchema,
+  matchmakingConfigSchema,
+  updateProfileSchema,
+  configUpdateSchema,
+  idParamSchema,
+  querySchema,
+} = require('../validators/admin.validator');
+const { refreshKeywords } = require('../utils/moderation');
+const { logActivity } = require('../utils/logger');
 
 // Dashboard Overview Stats
 router.get('/stats', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
@@ -100,9 +115,9 @@ router.get('/logs', adminAuth(['admin', 'superadmin', 'moderator']), async (req,
 });
 
 // User Management: List with Search & Pagination
-router.get('/users', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
+router.get('/users', adminAuth(['admin', 'superadmin', 'moderator']), validate({ query: querySchema }), async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', role, status } = req.query;
+    const { page, limit, search, role, status } = req.query;
     const query = {};
 
     if (search) {
@@ -134,18 +149,10 @@ router.get('/users', adminAuth(['admin', 'superadmin', 'moderator']), async (req
 });
 
 // Create Staff Member (SuperAdmin Only)
-router.post('/users/create-staff', adminAuth(['superadmin']), async (req, res) => {
+router.post('/users/create-staff', adminAuth(['superadmin']), validate({ body: createStaffSchema }), async (req, res) => {
   try {
     const { username, password, email, role } = req.body;
     const bcrypt = require('bcrypt');
-
-    // SECURITY: Strong Password Validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
-    if (!passwordRegex.test(String(password))) {
-      return res.status(400).json({ 
-        error: 'Password must be at least 8 characters long and include one uppercase letter, one number, and one special character (@$!%*?&#).' 
-      });
-    }
 
     // Check if user exists
     const existing = await User.findOne({ $or: [{ username }, { email }] });
@@ -163,16 +170,16 @@ router.post('/users/create-staff', adminAuth(['superadmin']), async (req, res) =
 
     await newUser.save();
     
-    // AUDIT LOG
-    try {
-      await ActivityLog.create({
-        userId: req.user._id,
-        action: 'admin_action',
-        details: `${req.user.username} created a new staff member: ${username} (${role})`,
-        ip: req.ip,
-        userAgent: req.headers['user-agent']
-      });
-    } catch (e) {}
+    await logActivity({
+      userId: req.user._id,
+      action: 'admin_action',
+      req,
+      metadata: { 
+        adminAction: 'create_staff',
+        newStaffUsername: username,
+        role: role || 'moderator'
+      }
+    });
 
     res.json({ message: 'Staff member created successfully', user: { username, role } });
   } catch (err) {
@@ -181,7 +188,7 @@ router.post('/users/create-staff', adminAuth(['superadmin']), async (req, res) =
 });
 
 // Update User Status (Ban/Suspend/Verify)
-router.post('/users/:id/action', adminAuth(['admin', 'superadmin']), async (req, res) => {
+router.post('/users/:id/action', adminAuth(['admin', 'superadmin']), validate({ params: idParamSchema, body: userActionSchema }), async (req, res) => {
   try {
     const { action, status, isVerified } = req.body;
     const update = {};
@@ -194,19 +201,17 @@ router.post('/users/:id/action', adminAuth(['admin', 'superadmin']), async (req,
 
     const actionLabel = action || status || (isVerified !== undefined ? 'verification_change' : 'unknown');
 
-    // AUDIT LOG: Record this admin action (wrapped in try-catch to prevent 500s)
-    try {
-      await ActivityLog.create({
-        userId: req.user._id,
-        action: 'admin_action',
-        details: `${req.user.username} performed '${actionLabel}' on user ${user.username}`,
-        ip: req.ip,
-        userAgent: req.headers['user-agent']
-      });
-    } catch (logError) {
-      console.error('Audit Log Error:', logError.message);
-      // We don't throw here so the main action still succeeds
-    }
+    await logActivity({
+      userId: req.user._id,
+      action: 'admin_action',
+      req,
+      metadata: { 
+        adminAction: 'user_status_update',
+        targetUserId: req.params.id,
+        action: actionLabel,
+        update
+      }
+    });
 
     res.json({ message: `Action '${actionLabel}' performed successfully`, user });
   } catch (err) {
@@ -221,14 +226,24 @@ router.get('/reports', adminAuth(['admin', 'superadmin', 'moderator']), async (r
       .populate('reporter', 'username profilePic')
       .populate('reportedUser', 'username profilePic status')
       .sort({ createdAt: -1 });
-    res.json(reports);
+    
+    // Add repeat offender stats
+    const enhancedReports = await Promise.all(reports.map(async (r) => {
+      const stats = await Report.getRepeatOffenderStats(r.reportedUser?._id);
+      return {
+        ...r.toObject(),
+        reportedUserStats: stats
+      };
+    }));
+
+    res.json(enhancedReports);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Moderation: Resolve Report
-router.post('/moderation/reports/:id/resolve', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
+router.post('/moderation/reports/:id/resolve', adminAuth(['admin', 'superadmin', 'moderator']), validate({ params: idParamSchema, body: resolveReportSchema }), async (req, res) => {
   try {
     const { action } = req.body;
     await Report.findByIdAndUpdate(req.params.id, { 
@@ -237,12 +252,15 @@ router.post('/moderation/reports/:id/resolve', adminAuth(['admin', 'superadmin',
     });
 
     // AUDIT LOG
-    await ActivityLog.create({
+    await logActivity({
       userId: req.user._id,
       action: 'admin_action',
-      details: `${req.user.username} resolved report ${req.params.id} with action: ${action}`,
-      ip: req.ip,
-      userAgent: req.headers['user-agent']
+      req,
+      metadata: { 
+        adminAction: 'resolve_report',
+        reportId: req.params.id,
+        action
+      }
     });
 
     res.json({ message: 'Report resolved' });
@@ -275,7 +293,7 @@ router.get('/broadcasts', adminAuth(['admin', 'superadmin']), async (req, res) =
 });
 
 // Broadcast: Send Announcement
-router.post('/broadcast', adminAuth(['admin', 'superadmin']), async (req, res) => {
+router.post('/broadcast', adminAuth(['admin', 'superadmin']), validate({ body: broadcastSchema }), async (req, res) => {
   try {
     const { text, type } = req.body;
     const Announcement = require('../models/Announcement');
@@ -304,15 +322,15 @@ router.post('/broadcast', adminAuth(['admin', 'superadmin']), async (req, res) =
     await Notification.insertMany(notifications);
 
     // AUDIT LOG
-    try {
-      await ActivityLog.create({
-        userId: req.user._id,
-        action: 'admin_action',
-        details: `${req.user.username} sent a global ${type} broadcast to ${usersCount} users`,
-        ip: req.ip,
-        userAgent: req.headers['user-agent']
-      });
-    } catch (e) {}
+    await logActivity({
+      userId: req.user._id,
+      action: 'broadcast_sent',
+      req,
+      metadata: { 
+        type, 
+        deliveredCount: usersCount 
+      }
+    });
 
     // Emit real-time notification update to all connected clients
     if (req.io) {
@@ -326,7 +344,7 @@ router.post('/broadcast', adminAuth(['admin', 'superadmin']), async (req, res) =
 });
 
 // Config: Manage Banned Keywords
-router.post('/config/keywords', adminAuth(['admin', 'superadmin']), async (req, res) => {
+router.post('/config/keywords', adminAuth(['admin', 'superadmin']), validate({ body: keywordsSchema }), async (req, res) => {
   try {
     const { keywords } = req.body; // Array of strings
     
@@ -435,7 +453,7 @@ router.get('/matchmaking/config', adminAuth(['admin', 'superadmin']), async (req
   }
 });
 
-router.post('/matchmaking/config', adminAuth(['admin', 'superadmin']), async (req, res) => {
+router.post('/matchmaking/config', adminAuth(['admin', 'superadmin']), validate({ body: matchmakingConfigSchema }), async (req, res) => {
   try {
     const { settings } = req.body;
     await AppConfig.findOneAndUpdate(
@@ -553,7 +571,7 @@ router.post('/audit', adminAuth(['superadmin']), async (req, res) => {
 });
 
 // Users: Update user profile
-router.post('/users/:id/update', adminAuth(['admin', 'superadmin']), async (req, res) => {
+router.post('/users/:id/update', adminAuth(['admin', 'superadmin']), validate({ params: idParamSchema, body: updateProfileSchema }), async (req, res) => {
   try {
     const { fullName, bio, role } = req.body;
     const user = await User.findByIdAndUpdate(
@@ -583,7 +601,7 @@ router.get('/config', adminAuth(['admin', 'superadmin']), async (req, res) => {
 });
 
 // Config: Update global settings
-router.post('/config/update', adminAuth(['admin', 'superadmin']), async (req, res) => {
+router.post('/config/update', adminAuth(['admin', 'superadmin']), validate({ body: configUpdateSchema }), async (req, res) => {
   try {
     const AppConfig = require('../models/AppConfig');
     const { refreshKeywords } = require('../utils/moderation');
@@ -600,17 +618,25 @@ router.post('/config/update', adminAuth(['admin', 'superadmin']), async (req, re
     }
     
     // AUDIT LOG
-    try {
-      await ActivityLog.create({
-        userId: req.user._id,
-        action: 'admin_action',
-        details: `${req.user.username} updated global application configuration`,
-        ip: req.ip,
-        userAgent: req.headers['user-agent']
-      });
-    } catch (logErr) { console.error("Log error:", logErr); }
+    await logActivity({
+      userId: req.user._id,
+      action: 'config_update',
+      req,
+      metadata: { updatedFields: Object.keys(req.body) }
+    });
 
     res.json(config);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get system metrics
+router.get('/metrics', adminAuth(['superadmin']), async (req, res) => {
+  try {
+    const monitor = require('../utils/monitor');
+    const metrics = monitor.getMetrics();
+    res.json(metrics);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

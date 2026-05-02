@@ -54,10 +54,16 @@ router.get('/counts', auth, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // 1. Unread messages
+    // 1. Get user's connections first to enforce resource ownership
+    const Connection = require('../models/Connection');
+    const userConnections = await Connection.find({ users: userId }).select('_id');
+    const connectionIds = userConnections.map(c => c._id);
+
+    // 2. Unread messages within user's own connections
     const unreadMessages = await Message.find({
       isRead: false,
-      sender: { $ne: userId }
+      sender: { $ne: userId },
+      connectionId: { $in: connectionIds }
     }).select('connectionId');
 
     const distinctChats = new Set(unreadMessages.map(m => m.connectionId.toString()));

@@ -2,7 +2,17 @@ import { X, Smile, Send, Loader2, MessageSquare, MoreHorizontal, Check, CheckChe
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSocket } from "../../context/SocketContext";
 import ProfileModal from "../profile/ProfileModal";
-import API_URL from "../../utils/api";
+import API_URL, { apiFetch } from "../../utils/api";
+
+const ICEBREAKERS = [
+  "What's your favorite way to spend a weekend?",
+  "If you could travel anywhere right now, where would you go?",
+  "What's a movie or show you could watch over and over?",
+  "What's the best piece of advice you've ever received?",
+  "If you could have any superpower, what would it be?",
+  "What's a hobby you've always wanted to try?",
+  "What's your go-to comfort food?"
+];
 
 const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessages, onSendMessage, isStandaloneChat }) => {
   const { socket, activeRoomId: contextRoomId, user } = useSocket();
@@ -19,6 +29,8 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   const messagesEndRef = useRef(null);
   const unreadMessageRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const [icebreaker] = useState(() => ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)]);
+
 
   // Mount guard — prevents any state update after unmount
   const mountedRef = useRef(true);
@@ -48,7 +60,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const response = await fetch(`${API_URL}/api/messages/${connectionId}`, {
+        const response = await apiFetch(`${API_URL}/api/messages/${connectionId}`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         });
@@ -57,13 +69,17 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
         if (response.ok) setInternalMessages(data);
 
         // Mark as read
-        await fetch(`${API_URL}/api/messages/${connectionId}/read`, {
+        await apiFetch(`${API_URL}/api/messages/${connectionId}/read`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         });
         if (!mountedRef.current) return;
-        if (socket) socket.emit("notification-update", { type: "read", connectionId });
+        if (socket) {
+          socket.emit("notification-update", { type: "read", connectionId });
+          socket.emit("messages-read", { connectionId });
+        }
+
       } catch (err) {
         if (err.name === "AbortError") return; // expected on unmount
         console.error("Failed to fetch message history", err);
@@ -95,10 +111,16 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     // Named handlers for typing — so we can remove exactly these listeners
     const handleTyping = () => { if (mountedRef.current) setRemoteTyping(true); };
     const handleStopTyping = () => { if (mountedRef.current) setRemoteTyping(false); };
+    const handleMessagesRead = ({ connectionId: readConnId }) => {
+      if (readConnId === effectiveRoomId && mountedRef.current) {
+        setInternalMessages((prev) => prev.map((m) => (m.type === "self" ? { ...m, isRead: true } : m)));
+      }
+    };
 
     if (handleMessage) socket.on("chat-message", handleMessage);
     socket.on("typing", handleTyping);
     socket.on("stop-typing", handleStopTyping);
+    socket.on("messages-read", handleMessagesRead);
 
     return () => {
       socket.emit("leave-chat", { roomId: effectiveRoomId });
@@ -106,6 +128,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       // Remove exactly these handler instances — not all listeners for the event
       socket.off("typing", handleTyping);
       socket.off("stop-typing", handleStopTyping);
+      socket.off("messages-read", handleMessagesRead);
     };
   }, [socket, effectiveRoomId, persistedMessages]);
 
@@ -127,7 +150,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     if (!window.confirm("Are you sure you want to remove this connection?")) return;
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${API_URL}/api/connections/${connectionId}`, {
+      await apiFetch(`${API_URL}/api/connections/${connectionId}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -144,7 +167,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     if (!window.confirm("Are you sure you want to block this user?")) return;
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${API_URL}/api/users/block`, {
+      await apiFetch(`${API_URL}/api/users/block`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ blockedUserId: targetId })
@@ -195,7 +218,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/upload/chat-image`, {
+      const res = await apiFetch(`${API_URL}/api/upload/chat-image`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
         body: data
@@ -327,9 +350,21 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
             <p className="text-[10px] font-black uppercase tracking-widest text-white">Retrieving History</p>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center opacity-10">
-            <MessageSquare className="w-16 h-16 mb-4" />
-            <p className="text-xs font-bold uppercase tracking-[0.2em]">Start a new conversation</p>
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="opacity-10 flex flex-col items-center">
+              <MessageSquare className="w-16 h-16 mb-4" />
+              <p className="text-xs font-bold uppercase tracking-[0.2em]">Start a new conversation</p>
+            </div>
+            {!isStandaloneChat && (
+              <div 
+                className="mt-8 bg-purple-500/10 border border-purple-500/20 p-4 rounded-2xl max-w-[80%] mx-auto cursor-pointer hover:bg-purple-500/20 transition animate-in fade-in zoom-in duration-500" 
+                onClick={() => setInputValue(icebreaker)}
+              >
+                <p className="text-[10px] text-purple-400 font-black uppercase tracking-widest mb-2">Icebreaker ✨</p>
+                <p className="text-sm text-gray-300 font-medium italic">"{icebreaker}"</p>
+                <p className="text-[9px] text-gray-500 mt-2 uppercase tracking-wider font-bold">Tap to use</p>
+              </div>
+            )}
           </div>
         ) : (
           messages.map((msg, idx) => {
@@ -369,7 +404,11 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                       <span className="text-[8px] font-black uppercase tracking-widest text-white">
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
-                      {msg.type === "self" && <CheckCheck className="w-2.5 h-2.5 text-purple-400" />}
+                      {msg.type === "self" && (
+                        msg.isRead 
+                          ? <CheckCheck className="w-3 h-3 text-blue-400" />
+                          : <Check className="w-3 h-3 text-gray-400" />
+                      )}
                     </div>
                   </div>
                 </div>

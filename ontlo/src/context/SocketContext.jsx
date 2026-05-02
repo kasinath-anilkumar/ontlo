@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import API_URL from '../utils/api';
+import API_URL, { apiFetch } from '../utils/api';
 
 const SocketContext = createContext();
 
@@ -20,6 +20,7 @@ export const SocketProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     
     const newSocket = io(API_URL, {
+      withCredentials: true,
       auth: { token }
     });
     
