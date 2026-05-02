@@ -16,6 +16,7 @@ const monitor = require('./utils/monitor');
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const isProduction = process.env.NODE_ENV === 'production';
 const requiredEnvVars = [
