@@ -22,10 +22,11 @@ const generateTokens = async (user, res) => {
   user.refreshTokens.push(refreshToken);
   await user.save();
 
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax'
   };
   
   res.cookie('token', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15 mins
