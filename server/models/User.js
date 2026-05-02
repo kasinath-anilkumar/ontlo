@@ -22,7 +22,7 @@ const UserSchema = new mongoose.Schema({
   },
   profilePic: {
     type: String,
-    default: 'https://i.pravatar.cc/150'
+    default: ''
   },
   // Profile fields
   fullName: String,
@@ -130,7 +130,11 @@ const UserSchema = new mongoose.Schema({
       max: { type: Number, default: 100 }
     },
     region: { type: String, default: 'Global' }
-  }
+  },
+  favorites: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 }, { timestamps: true });
 
 UserSchema.index({ role: 1 });

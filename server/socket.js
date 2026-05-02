@@ -109,8 +109,18 @@ module.exports = (io) => {
     socket.on('join-chat', async ({ roomId }) => {
       if (!socket.userId) return;
       try {
-        const conn = await Connection.findById(roomId);
-        if (conn && conn.users.includes(socket.userId)) {
+        // 1. Try to see if it's a persistent connection ID (MongoDB ID)
+        if (roomId.length === 24 && /^[0-9a-fA-F]+$/.test(roomId)) {
+          const conn = await Connection.findById(roomId);
+          if (conn && conn.users && conn.users.some(u => u.toString() === socket.userId.toString())) {
+            socket.join(roomId);
+            return;
+          }
+        }
+
+        // 2. Fallback: Check if it's an active match room from the matchmaker
+        const matchRoomId = matchmaker.getUserMatch(socket.id);
+        if (matchRoomId === roomId) {
           socket.join(roomId);
         }
       } catch (err) {
@@ -141,8 +151,22 @@ module.exports = (io) => {
       socket.matchPreferences = newPrefs;
     });
 
+    socket.on('toggle-privacy', ({ roomId, isPrivate }) => {
+      socket.to(roomId).emit('peer-privacy', { isPrivate });
+    });
+
     socket.on('chat-message', async ({ message, imageUrl, roomId }) => {
-      if (!socket.rooms.has(roomId)) return;
+      // In video chat, roomId is a UUID. In persistent chat, it's a Connection ID.
+      // We allow the message if the user is currently in that room.
+      if (!socket.rooms.has(roomId)) {
+        // One last check: maybe they are in the match but the room state is slightly out of sync
+        const matchRoomId = matchmaker.getUserMatch(socket.id);
+        if (matchRoomId === roomId) {
+          socket.join(roomId);
+        } else {
+          return;
+        }
+      }
 
       const timestamp = new Date().toISOString();
       const moderation = moderateText(message);
@@ -170,7 +194,7 @@ module.exports = (io) => {
             const conn = await Connection.findById(roomId);
             
             // SECURITY: Verify user belongs to this connection
-            if (conn && conn.users && conn.users.includes(socket.userId)) {
+            if (conn && conn.users && conn.users.some(u => u.toString() === socket.userId.toString())) {
               const newMessage = new Message({
                 connectionId: roomId,
                 sender: socket.userId,

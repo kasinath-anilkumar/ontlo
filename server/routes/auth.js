@@ -81,11 +81,21 @@ const validateAgeGate = ({ age, dob }) => {
 
 const auth = require('../middleware/auth');
 
-// Check if setup is needed
 router.get('/setup/status', async (req, res) => {
   try {
     const adminCount = await User.countDocuments({ role: 'superadmin' });
     res.json({ isSetupComplete: adminCount > 0 });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get current user profile
+router.get('/me', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password -refreshTokens');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }

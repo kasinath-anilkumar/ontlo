@@ -1,4 +1,4 @@
-import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageSquare, Check, X, Timer, User, ChevronLeft, Settings } from "lucide-react";
+import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageSquare, Check, X, Timer, User, ChevronLeft, Settings, Star } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
@@ -30,6 +30,9 @@ const VideoContainer = () => {
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [isBlurred, setIsBlurred] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false); // Whether I am blurring myself for the other person
+  const [peerIsPrivate, setPeerIsPrivate] = useState(false); // Whether the peer has blurred themselves for me
+  const [showMatchSettings, setShowMatchSettings] = useState(false);
   const [remoteUser, setRemoteUser] = useState(null);
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
@@ -42,6 +45,13 @@ const VideoContainer = () => {
   const [cameraError, setCameraError] = useState(null);
   const [penaltyMessage, setPenaltyMessage] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [commonInterests, setCommonInterests] = useState([]);
+  const [showControls, setShowControls] = useState(true);
+  const [localVideoPos, setLocalVideoPos] = useState({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const localVideoRefContainer = useRef(null);
+  const controlsTimeoutRef = useRef(null);
   const [matchPreferences, setMatchPreferences] = useState(user?.matchPreferences || {
     gender: 'All',
     ageRange: { min: 18, max: 100 },
@@ -93,22 +103,94 @@ const VideoContainer = () => {
       }
       if (socket) socket.emit("leave-queue");
     };
-  }, []); // intentionally empty — camera starts once
+  }, [user?.lowBandwidth, socket]); // Re-initialize camera when quality settings change
 
   // ─────────────────────────────────────────────────────────────────
   // 2. Call timers
   // ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!inCall) return;
-    const interval = setInterval(() => {
-      setConnectTimer(prev => (prev > 0 ? prev - 1 : 0));
-      setSafetyBlurTimer(prev => {
-        if (prev === 1) setIsBlurred(false);
-        return prev > 0 ? prev - 1 : 0;
-      });
-    }, 1000);
     return () => clearInterval(interval);
   }, [inCall]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // 3. Auto-hide Controls Logic
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!inCall || showChat || showConnectRequest) {
+      setShowControls(true);
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      return;
+    }
+
+    const resetTimer = () => {
+      setShowControls(true);
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = setTimeout(() => {
+        if (!showChat && !showConnectRequest) {
+          setShowControls(false);
+        }
+      }, 5000); // Hide after 5 seconds
+    };
+
+    const activities = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+    activities.forEach(event => window.addEventListener(event, resetTimer));
+    
+    resetTimer(); // Start timer initially
+
+    return () => {
+      activities.forEach(event => window.removeEventListener(event, resetTimer));
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [inCall, showChat, showConnectRequest]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // 4. Draggable Local Video Logic
+  // ─────────────────────────────────────────────────────────────────
+  const handleDragStart = (e) => {
+    isDragging.current = true;
+    const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+    const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+    dragStart.current = { x: clientX - localVideoPos.x, y: clientY - localVideoPos.y };
+    if (navigator.vibrate) navigator.vibrate(10);
+  };
+
+  const handleDragMove = useCallback((e) => {
+    if (!isDragging.current) return;
+    const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+    const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+    
+    // Boundary check
+    const newX = clientX - dragStart.current.x;
+    const newY = clientY - dragStart.current.y;
+    
+    setLocalVideoPos({ x: newX, y: newY });
+  }, [localVideoPos]);
+
+  const handleDragEnd = () => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    
+    // Snap to nearest corner (simplified)
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const snapX = localVideoPos.x > 0 ? 0 : -(windowWidth - 120); // Placeholder logic
+    // We'll just keep it where it is for now but add a small bounce animation
+    if (navigator.vibrate) navigator.vibrate(5);
+  };
+
+  useEffect(() => {
+    if (isDragging.current) {
+      window.addEventListener('mousemove', handleDragMove);
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchmove', handleDragMove);
+      window.addEventListener('touchend', handleDragEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleDragMove);
+      window.removeEventListener('touchend', handleDragEnd);
+    };
+  }, [handleDragMove]);
 
   // ─────────────────────────────────────────────────────────────────
   // 3. Cleanup helper — uses refs so it's always fresh, never stale
@@ -141,6 +223,9 @@ const VideoContainer = () => {
     setShowChat(false);
     setRemoteUser(null);
     setIsBlurred(false);
+    setIsPrivate(false);
+    setPeerIsPrivate(false);
+    setCommonInterests([]);
     setShowConnectRequest(false);
     setConnectionStatus(null);
     setConnectTimer(0);
@@ -256,7 +341,16 @@ const VideoContainer = () => {
       try {
         const res = await apiFetch(`${API_URL}/api/users/${remoteId}`);
         const data = await res.json();
-        if (res.ok) setRemoteUser(data);
+        if (res.ok) {
+          setRemoteUser(data);
+          // Calculate common interests
+          if (user?.interests && data?.interests) {
+            const common = user.interests.filter(interest => 
+              data.interests.includes(interest)
+            );
+            setCommonInterests(common);
+          }
+        }
       } catch (_) {}
 
       const pc = createPeerConnection(rId);
@@ -279,6 +373,10 @@ const VideoContainer = () => {
       setChatMessages(prev => [...prev, { ...msg, type: "remote" }]);
       // Use functional update to read current showChat without dep
       setHasNewMessage(true);
+    };
+    
+    const onPrivacyToggle = ({ isPrivate: peerPrivate }) => {
+      setPeerIsPrivate(peerPrivate);
     };
 
     const onPeerWantsConnection = () => {
@@ -341,6 +439,7 @@ const VideoContainer = () => {
 
     socket.on("match-found", onMatchFound);
     socket.on("chat-message", onChatMessage);
+    socket.on("peer-privacy", onPrivacyToggle);
     socket.on("peer-wants-connection", onPeerWantsConnection);
     socket.on("connection-established", onConnectionEstablished);
     socket.on("webrtc-offer", onOffer);
@@ -352,6 +451,7 @@ const VideoContainer = () => {
     return () => {
       socket.off("match-found", onMatchFound);
       socket.off("chat-message", onChatMessage);
+      socket.off("peer-privacy", onPrivacyToggle);
       socket.off("peer-wants-connection", onPeerWantsConnection);
       socket.off("connection-established", onConnectionEstablished);
       socket.off("webrtc-offer", onOffer);
@@ -375,11 +475,14 @@ const VideoContainer = () => {
     if (socket && roomIdRef.current) {
       socket.emit("action-skip");
     }
+    if (navigator.vibrate) navigator.vibrate(50);
     endCallLocally(true);
   }, [socket, endCallLocally]);
 
-  const connectUser = useCallback(() => {
-    if (socket && roomIdRef.current && user && connectTimer === 0) {
+  const connectUser = useCallback(async () => {
+    if (connectTimer > 0 || connectionStatus === "sent" || connectionStatus === "accepted") return;
+    if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+    if (socket && roomIdRef.current && user) {
       socket.emit("action-connect", { roomId: roomIdRef.current, userId: user.id });
       setConnectionStatus("sent");
     }
@@ -433,6 +536,14 @@ const VideoContainer = () => {
       console.error("Failed to log report/block", error);
     }
   }, [remoteUser, skipMatch]);
+
+  const togglePrivacy = useCallback(() => {
+    const newPrivate = !isPrivate;
+    setIsPrivate(newPrivate);
+    if (socket && roomIdRef.current) {
+      socket.emit("toggle-privacy", { roomId: roomIdRef.current, isPrivate: newPrivate });
+    }
+  }, [isPrivate, socket]);
 
   const toggleMic = useCallback(() => {
     const stream = localStreamRef.current;
@@ -488,7 +599,7 @@ const VideoContainer = () => {
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className={`w-full h-full object-cover transition-all duration-500 ${isBlurred ? "blur-[20px] brightness-90 scale-105" : ""} ${inCall ? "block" : "hidden"}`}
+            className={`w-full h-full object-cover transition-all duration-700 ${(isBlurred || peerIsPrivate) ? "blur-[60px] scale-110" : "blur-0 scale-100"} ${inCall ? "block" : "hidden"}`}
           />
 
           {/* Idle / Matching overlay — shown when not in call */}
@@ -562,8 +673,20 @@ const VideoContainer = () => {
               </div>
             )}
 
+            {/* Common Interests Visualizer */}
+            {inCall && !isPiP && commonInterests.length > 0 && (
+              <div className={`absolute top-24 left-1/2 -translate-x-1/2 z-20 w-full flex flex-col items-center gap-2 pointer-events-none transition-all duration-700 delay-500 px-4 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"}`}>
+                <div className="bg-gradient-to-r from-purple-600/90 to-pink-500/90 backdrop-blur-xl px-4 py-2 rounded-full border border-white/20 shadow-2xl flex items-center gap-2 max-w-full overflow-hidden">
+                  <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white fill-current animate-pulse" />
+                  <span className="text-[9px] sm:text-[10px] font-black text-white uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis">
+                    Common: {commonInterests.join(' • ')}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Top bar */}
-            <div className="absolute top-0 left-0 w-full p-4 pt-safe sm:pt-6 flex justify-between items-start z-10 pointer-events-none">
+            <div className={`absolute top-0 left-0 w-full p-4 pt-safe sm:pt-6 flex justify-between items-start z-10 transition-all duration-500 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10 pointer-events-none"}`}>
               <div className="flex items-center gap-3 pointer-events-auto">
                 <button 
                   onClick={() => navigate('/')}
@@ -594,28 +717,42 @@ const VideoContainer = () => {
       {/* Match Success Overlay */}
       {showMatchSuccess && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none animate-in zoom-in-50 duration-500">
-          <div className="bg-gradient-to-br from-purple-600/90 to-pink-600/90 backdrop-blur-xl px-12 py-6 rounded-[30px] border border-white/20 shadow-[0_0_100px_rgba(168,85,247,0.5)] flex flex-col items-center">
-            <div className="text-4xl sm:text-6xl mb-2">✨</div>
-            <h2 className="text-white text-3xl sm:text-5xl font-black uppercase tracking-[0.2em]">Match!</h2>
-            <p className="text-white/70 text-[10px] font-black uppercase tracking-[0.3em] mt-2">You are now connected</p>
+          <div className="bg-gradient-to-br from-purple-600/95 via-pink-600/95 to-orange-500/95 backdrop-blur-2xl px-12 py-8 rounded-[40px] border border-white/30 shadow-[0_0_150px_rgba(168,85,247,0.6)] flex flex-col items-center animate-pulse">
+            <div className="text-5xl sm:text-7xl mb-4 drop-shadow-lg">✨</div>
+            <h2 className="text-white text-4xl sm:text-6xl font-black uppercase tracking-[0.2em] drop-shadow-md">Match!</h2>
+            <p className="text-white/90 text-[11px] font-black uppercase tracking-[0.4em] mt-3 drop-shadow-sm">Direct line open</p>
           </div>
         </div>
       )}
 
             {/* Connect request modal */}
             {showConnectRequest && (
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 animate-in zoom-in duration-300">
-                <div className="bg-[#151923]/90 backdrop-blur-xl border border-purple-500/30 p-8 rounded-[40px] shadow-2xl text-center flex flex-col items-center max-w-xs">
-                  <div className="w-20 h-20 rounded-full bg-pink-500/20 flex items-center justify-center mb-6">
-                    <Heart className="w-10 h-10 text-pink-500 fill-current animate-pulse" />
+              <div className="absolute inset-0 z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={rejectConnection} />
+                <div className="relative bg-[#151923] border border-purple-500/40 p-10 rounded-[50px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-center flex flex-col items-center max-w-sm w-full animate-in zoom-in-95 duration-300">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-pink-500/20 to-purple-500/20 flex items-center justify-center mb-6 relative">
+                    <div className="absolute inset-0 rounded-full border-2 border-pink-500/30 animate-ping" />
+                    <Heart className="w-12 h-12 text-pink-500 fill-current animate-pulse" />
                   </div>
-                  <h3 className="text-white font-black text-xl mb-2">{remoteUser?.fullName || remoteUser?.username}</h3>
-                  <p className="text-gray-400 text-sm mb-8 leading-relaxed">Wants to connect with you. Do you want to match?</p>
+                  <h3 className="text-white font-black text-2xl mb-2 tracking-tight">{remoteUser?.fullName || remoteUser?.username}</h3>
+                  <p className="text-gray-400 text-[13px] mb-8 leading-relaxed font-medium uppercase tracking-wider">Wants to be your connection</p>
                   <div className="flex gap-4 w-full">
-                    <button onClick={acceptConnection} className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl text-white font-bold flex items-center justify-center gap-2 hover:scale-105 transition active:scale-95 shadow-lg shadow-purple-600/20">
-                      <Check className="w-5 h-5" /> Accept
+                    <button 
+                      onClick={() => {
+                        if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+                        acceptConnection();
+                      }} 
+                      className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-pink-500 rounded-3xl text-white font-black uppercase tracking-widest text-[11px] shadow-2xl shadow-purple-600/30 hover:scale-105 transition active:scale-95"
+                    >
+                      Accept Match
                     </button>
-                    <button onClick={rejectConnection} className="w-14 h-14 bg-white/5 rounded-2xl text-gray-400 flex items-center justify-center hover:bg-white/10 transition active:scale-95">
+                    <button 
+                      onClick={() => {
+                        if (navigator.vibrate) navigator.vibrate(30);
+                        rejectConnection();
+                      }}
+                      className="w-16 h-16 bg-white/5 rounded-3xl text-gray-400 flex items-center justify-center hover:bg-white/10 hover:text-white transition active:scale-95 border border-white/10"
+                    >
                       <X className="w-6 h-6" />
                     </button>
                   </div>
@@ -623,10 +760,10 @@ const VideoContainer = () => {
               </div>
             )}
 
-            {/* Side controls - moved to left on mobile to avoid overlap with local camera */}
-            <div className="absolute left-3 sm:left-4 md:left-auto md:right-4 xl:right-12 top-1/2 -translate-y-1/2 flex flex-col gap-3 sm:gap-4 z-10">
-              <button onClick={() => setIsBlurred(b => !b)} className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${isBlurred ? "bg-purple-600 shadow-[0_0_15px_rgba(168,85,247,0.5)]" : "bg-black/40 hover:bg-black/60"}`}>
-                {isBlurred ? <Eye className="w-5 h-5 sm:w-6 sm:h-6" /> : <EyeOff className="w-5 h-5 sm:w-6 sm:h-6" />}
+            {/* Side controls */}
+            <div className={`absolute left-3 sm:left-4 md:left-auto md:right-4 xl:right-12 top-1/2 -translate-y-1/2 flex flex-col gap-3 sm:gap-4 z-10 transition-all duration-500 ${showControls ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-10 md:translate-x-10 pointer-events-none"}`}>
+              <button onClick={togglePrivacy} className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${isPrivate ? "bg-purple-600 shadow-[0_0_15px_rgba(168,85,247,0.5)]" : "bg-black/40 hover:bg-black/60"}`}>
+                {isPrivate ? <EyeOff className="w-5 h-5 sm:w-6 sm:h-6" /> : <Eye className="w-5 h-5 sm:w-6 sm:h-6" />}
               </button>
               <button onClick={toggleChat} className={`relative w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${showChat ? "bg-purple-600" : "bg-black/40 hover:bg-black/60"}`}>
                 <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -639,38 +776,40 @@ const VideoContainer = () => {
               </button>
               <button 
                 onClick={() => {
-                  // This is a local toggle for the session
-                  // Ideally would be saved to DB too, but for now we just toggle the state
                   const newMode = !user?.lowBandwidth;
                   if (typeof setUser === 'function') {
                     setUser({ ...user, lowBandwidth: newMode });
                   }
-                  window.location.reload(); // Reload to re-initialize camera with new constraints
                 }} 
                 title="Low Bandwidth Mode"
                 className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white transition ${user?.lowBandwidth ? "bg-orange-600 shadow-[0_0_15px_rgba(234,179,8,0.5)]" : "bg-black/40 hover:bg-black/60"}`}
               >
                 <div className="text-[10px] font-black uppercase tracking-tighter">HD</div>
               </button>
-              <button 
-                onClick={() => setShowSettings(true)} 
-                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white bg-black/40 hover:bg-black/60 transition"
-                title="Match Settings"
-              >
-                <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
             </div>
 
             {/* Bottom controls */}
-            <div className="absolute bottom-[110px] sm:bottom-8 left-0 w-full flex justify-center items-center gap-6 sm:gap-8 z-20">
+            <div className={`absolute bottom-[110px] sm:bottom-8 left-0 w-full flex justify-center items-center gap-6 sm:gap-10 z-20 px-6 transition-all duration-500 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10 pointer-events-none"}`}>
               <div className="flex flex-col items-center gap-2">
-                <button onClick={skipMatch} className="w-14 h-14 rounded-full bg-[#151923]/80 backdrop-blur-md flex items-center justify-center text-white hover:bg-[#1e293b] transition">
-                  <FastForward className="w-6 h-6 fill-current" />
+                <button 
+                  onClick={() => {
+                    if (navigator.vibrate) navigator.vibrate(40);
+                    skipMatch();
+                  }} 
+                  className="w-14 h-14 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white hover:bg-white/10 hover:border-white/20 transition shadow-2xl group"
+                >
+                  <FastForward className="w-6 h-6 fill-current group-hover:scale-110 transition-transform" />
                 </button>
-                <span className="text-xs text-white font-medium">Skip</span>
+                <span className="text-[10px] text-white/50 font-black uppercase tracking-widest">Skip</span>
               </div>
 
-              <button onClick={skipMatch} className="w-20 h-20 rounded-full bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] flex items-center justify-center text-white hover:scale-105 transition transform active:scale-95">
+              <button 
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                  skipMatch();
+                }}
+                className="w-20 h-20 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 shadow-[0_0_40px_rgba(239,68,68,0.4)] flex items-center justify-center text-white hover:scale-105 transition transform active:scale-95 border-4 border-white/10"
+              >
                 <PhoneOff className="w-8 h-8" />
               </button>
 
@@ -679,25 +818,25 @@ const VideoContainer = () => {
                   <button
                     onClick={connectUser}
                     disabled={connectTimer > 0 || connectionStatus === "sent" || connectionStatus === "accepted"}
-                    className={`w-14 h-14 rounded-full backdrop-blur-md flex items-center justify-center transition active:scale-95 ${
-                      connectTimer > 0 ? "bg-black/20 text-gray-600 cursor-not-allowed" :
-                      connectionStatus === "sent" ? "bg-purple-600 text-white animate-pulse" :
-                      connectionStatus === "accepted" ? "bg-green-500 text-white" :
-                      "bg-[#151923]/80 text-pink-500 hover:bg-[#1e293b]"
+                    className={`w-14 h-14 rounded-full backdrop-blur-xl border flex items-center justify-center transition active:scale-95 shadow-2xl ${
+                      connectTimer > 0 ? "bg-black/20 text-gray-600 border-white/5 cursor-not-allowed" :
+                      connectionStatus === "sent" ? "bg-purple-600 text-white border-transparent animate-pulse shadow-purple-500/30" :
+                      connectionStatus === "accepted" ? "bg-green-500 text-white border-transparent shadow-green-500/30" :
+                      "bg-white/5 text-pink-500 border-white/10 hover:bg-white/10 hover:border-pink-500/30"
                     }`}
                   >
                     {connectTimer > 0
-                      ? <span className="text-xs font-bold font-mono">{connectTimer}</span>
+                      ? <span className="text-sm font-black font-mono">{connectTimer}</span>
                       : <Heart className={`w-6 h-6 ${connectionStatus === "accepted" || connectionStatus === "sent" ? "fill-current" : ""}`} />
                     }
                   </button>
                   {connectTimer > 0 && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center border-2 border-[#0B0E14] animate-bounce">
-                      <Timer className="w-3 h-3 text-white" />
+                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center border-2 border-[#0B0E14] animate-bounce shadow-lg">
+                      <Timer className="w-3.5 h-3.5 text-white" />
                     </div>
                   )}
                 </div>
-                <span className="text-xs text-white font-medium">
+                <span className="text-[10px] text-white/50 font-black uppercase tracking-widest">
                   {connectTimer > 0 ? "Wait" : connectionStatus === "sent" ? "Pending" : connectionStatus === "accepted" ? "Matched" : "Connect"}
                 </span>
               </div>
@@ -706,18 +845,38 @@ const VideoContainer = () => {
         )}
 
         {/* Local video — always in DOM, always visible */}
-        <div className={`absolute rounded-2xl overflow-hidden border-2 border-white/20 shadow-xl z-20 transition-all duration-300 ${
-          isPiP ? "w-12 h-16 bottom-2 right-2" : 
-          inCall ? "w-24 h-36 bottom-[240px] sm:bottom-auto sm:top-6 right-4 sm:right-20" : "w-24 h-36 top-24 sm:top-6 right-4 sm:right-6"
-        }`}>
-          <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+        <div 
+          ref={localVideoRefContainer}
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+          style={{ 
+            transform: `translate(${localVideoPos.x}px, ${localVideoPos.y}px)`,
+            touchAction: 'none'
+          }}
+          className={`absolute rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl z-[60] cursor-grab active:cursor-grabbing transition-shadow ${
+            isPiP ? "w-12 h-16 bottom-2 right-2" : 
+            inCall ? "w-28 h-40 bottom-28 right-4 sm:bottom-auto sm:top-6 sm:right-20" : "w-28 h-40 top-24 sm:top-6 right-4 sm:right-6"
+          } ${isDragging.current ? "scale-105 shadow-purple-500/30" : "scale-100"}`}
+        >
+          <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1] pointer-events-none" />
           {!cameraEnabled && (
-            <div className="absolute inset-0 bg-[#151923] flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#151923] flex items-center justify-center pointer-events-none">
               <User className={`text-gray-500 ${isPiP ? "w-4 h-4" : "w-8 h-8"}`} />
             </div>
           )}
         </div>
       </div>
+
+      {/* Persistent Settings Button — Visible in Video Discovery (not PiP) */}
+      {isVideoRoute && !isPiP && (
+        <button 
+          onClick={() => setShowSettings(true)} 
+          className="fixed top-24 right-4 sm:top-6 sm:right-32 w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white bg-black/40 hover:bg-black/60 transition z-[60] border border-white/10 shadow-xl"
+          title="Match Settings"
+        >
+          <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
+        </button>
+      )}
 
       {/* Chat panel — always mounted, visibility controlled by CSS to prevent unmount race conditions */}
       <div

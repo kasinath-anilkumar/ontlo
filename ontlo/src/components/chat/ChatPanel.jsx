@@ -1,4 +1,4 @@
-import { X, Smile, Send, Loader2, MessageSquare, MoreHorizontal, Check, CheckCheck, Plus, ChevronLeft, UserX, ShieldAlert, Users } from "lucide-react";
+import { X, Smile, Send, Loader2, MessageSquare, MoreHorizontal, Check, CheckCheck, Plus, ChevronLeft, UserX, ShieldAlert, Users, User } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSocket } from "../../context/SocketContext";
 import ProfileModal from "../profile/ProfileModal";
@@ -266,11 +266,17 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
             )}
             {remoteUser && (
               <div className="relative">
-                <img
-                  src={remoteUser.profilePic || "https://i.pravatar.cc/150"}
-                  className="w-10 h-10 rounded-full object-cover border border-[#1e293b]"
-                  alt={remoteUser.username}
-                />
+                {remoteUser.profilePic ? (
+                  <img
+                    src={remoteUser.profilePic}
+                    className="w-10 h-10 rounded-full object-cover border border-[#1e293b]"
+                    alt={remoteUser.username}
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-[#151923] border border-[#1e293b] flex items-center justify-center">
+                    <User className="w-5 h-5 text-gray-600" />
+                  </div>
+                )}
                 {remoteUser.onlineStatus && (
                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#0B0E14] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                 )}

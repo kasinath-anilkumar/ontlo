@@ -1,4 +1,4 @@
-import { Search, Edit, Loader2, MessageSquare, Heart, ChevronLeft, MoreVertical, Plus } from "lucide-react";
+import { Search, Edit, Loader2, MessageSquare, Heart, ChevronLeft, MoreVertical, Plus, User } from "lucide-react";
 import Skeleton from "../components/ui/Skeleton";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -111,7 +111,7 @@ const Messages = () => {
   };
 
   return (
-    <div className="flex h-full bg-transparent overflow-hidden relative">
+    <div className="absolute inset-0 flex bg-transparent overflow-hidden">
       
       {/* Background Glows */}
       <div className="absolute top-0 left-0 w-64 h-64 bg-purple-600/5 blur-[100px] pointer-events-none"></div>
@@ -171,7 +171,13 @@ const Messages = () => {
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     <div className={`w-14 h-14 rounded-full p-0.5 ${conn.user.onlineStatus ? 'bg-gradient-to-b from-green-500 to-transparent' : 'bg-[#1e293b]'}`}>
-                      <img src={conn.user.profilePic || "https://i.pravatar.cc/150"} alt={conn.user.username} loading="lazy" className="w-full h-full rounded-full object-cover border-2 border-[#0B0E14]" />
+                      {conn.user.profilePic ? (
+                        <img src={conn.user.profilePic} alt={conn.user.username} loading="lazy" className="w-full h-full rounded-full object-cover border-2 border-[#0B0E14]" />
+                      ) : (
+                        <div className="w-full h-full rounded-full bg-[#151923] border-2 border-[#0B0E14] flex items-center justify-center">
+                          <User className="w-6 h-6 text-gray-600" />
+                        </div>
+                      )}
                     </div>
                     {conn.user.onlineStatus && <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0B0E14] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>}
                   </div>

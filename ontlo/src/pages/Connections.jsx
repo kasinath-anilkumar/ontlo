@@ -1,4 +1,4 @@
-import { Heart, MessageSquare, Loader2, MoreVertical, ShieldAlert, UserX, X, MapPin, Calendar, Users, Activity } from "lucide-react";
+import { Heart, MessageSquare, Loader2, MoreVertical, ShieldAlert, UserX, X, MapPin, Calendar, Users, Activity, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProfileModal from "../components/profile/ProfileModal";
@@ -105,7 +105,13 @@ const Connections = () => {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <div className={`w-14 h-14 rounded-full p-0.5 ${conn.user.onlineStatus ? 'bg-gradient-to-b from-green-500 to-transparent' : 'bg-[#1e293b]'}`}>
-                  <img src={conn.user.profilePic || "https://i.pravatar.cc/150"} alt={conn.user.username} loading="lazy" className="w-full h-full rounded-full object-cover border-2 border-[#0B0E14]" />
+                  {conn.user.profilePic ? (
+                    <img src={conn.user.profilePic} alt={conn.user.username} loading="lazy" className="w-full h-full rounded-full object-cover border-2 border-[#0B0E14]" />
+                  ) : (
+                    <div className="w-full h-full rounded-full bg-[#151923] border-2 border-[#0B0E14] flex items-center justify-center">
+                      <User className="w-6 h-6 text-gray-600" />
+                    </div>
+                  )}
                 </div>
                 {conn.user.onlineStatus && <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0B0E14] rounded-full"></div>}
               </div>

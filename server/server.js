@@ -83,6 +83,7 @@ const cspDirectives = {
   imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'https://res.cloudinary.com'],
   fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com', 'data:'],
   connectSrc: ["'self'", 'https:', 'wss:', 'https://ontlo-server.onrender.com', 'https://ontlo.onrender.com', 'wss://ontlo-server.onrender.com'],
+  mediaSrc: ["'self'", "https://assets.mixkit.co", "blob:", "https:"],
   formAction: ["'self'"],
   upgradeInsecureRequests: []
 };
@@ -159,6 +160,7 @@ app.get('/health', (req, res) => {
 });
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/connections', require('./routes/connections'));
+app.use('/api/interactions', require('./routes/interactions'));
 app.use('/api/report', require('./routes/report'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/users', require('./routes/users'));

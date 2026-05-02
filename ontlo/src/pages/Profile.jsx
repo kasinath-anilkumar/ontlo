@@ -252,7 +252,13 @@ const Profile = () => {
                   <div className="flex flex-col sm:flex-row items-center gap-6">
                     <div className="relative group">
                       <div className="w-32 h-32 rounded-full border-4 border-purple-500/20 overflow-hidden relative shadow-2xl">
-                        <img src={user?.profilePic || "https://i.pravatar.cc/150"} className="w-full h-full object-cover" />
+                        {user?.profilePic ? (
+                          <img src={user.profilePic} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-[#151923] flex items-center justify-center">
+                            <User className="w-12 h-12 text-gray-600" />
+                          </div>
+                        )}
                         {uploading && (
                           <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
                             <Loader2 className="w-8 h-8 text-white animate-spin" />

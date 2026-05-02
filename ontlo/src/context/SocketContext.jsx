@@ -17,7 +17,47 @@ export const SocketProvider = ({ children }) => {
   });
 
   useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setUser(null);
+        return;
+      }
+
+      try {
+        const response = await apiFetch(`${API_URL}/api/auth/me`);
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data);
+          localStorage.setItem('user', JSON.stringify(data));
+        } else {
+          // If the token is invalid, apiFetch will already handle the logout
+          // but we can be extra sure here
+          setUser(null);
+        }
+      } catch (err) {
+        console.error("Auth check failed", err);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.href = '/auth';
+    };
+
+    window.addEventListener('auth-expired', handleAuthExpired);
+    return () => window.removeEventListener('auth-expired', handleAuthExpired);
+  }, []);
+
+  useEffect(() => {
     const token = localStorage.getItem('token');
+    if (!token) return;
     
     const newSocket = io(API_URL, {
       withCredentials: true,
@@ -37,7 +77,7 @@ export const SocketProvider = ({ children }) => {
     return () => {
       newSocket.disconnect();
     };
-  }, [user]); // Re-connect when user state changes (login/logout)
+  }, [user?.id]); // Re-connect when user id changes
 
   return (
     <SocketContext.Provider value={{ socket, activeRoomId, setActiveRoomId, user, setUser }}>

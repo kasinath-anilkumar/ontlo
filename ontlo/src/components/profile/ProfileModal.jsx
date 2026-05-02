@@ -1,4 +1,4 @@
-import { X, MapPin, Calendar, Activity, ShieldAlert, Loader2, MessageSquare, Heart, Users, Star, Crown } from "lucide-react";
+import { X, MapPin, Calendar, Activity, ShieldAlert, Loader2, MessageSquare, Heart, Users, Star, Crown, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import API_URL, { apiFetch } from "../../utils/api";
 
@@ -49,11 +49,17 @@ const ProfileModal = ({ userId, onClose, onMessage }) => {
             <div className="px-6 -mt-16 relative z-10 flex flex-col items-center">
                <div className="w-32 h-32 rounded-[32px] p-1 bg-[#0B0E14] shadow-2xl">
                   <div className="w-full h-full rounded-[28px] overflow-hidden border-2 border-white/10">
-                     <img 
-                        src={profile.profilePic || "https://i.pravatar.cc/150"} 
-                        alt={profile.username} 
-                        className="w-full h-full object-cover" 
-                     />
+                     {profile.profilePic ? (
+                       <img 
+                          src={profile.profilePic} 
+                          alt={profile.username} 
+                          className="w-full h-full object-cover" 
+                       />
+                     ) : (
+                       <div className="w-full h-full bg-[#151923] flex items-center justify-center">
+                         <User className="w-12 h-12 text-gray-600" />
+                       </div>
+                     )}
                   </div>
                </div>
                

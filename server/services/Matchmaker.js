@@ -23,34 +23,15 @@ class Matchmaker {
     if (this.queue.find(s => s.id === socket.id)) return;
     if (this.getUserMatch(socket.id)) return;
 
-    // SKIP PENALTY CHECK
-    if (socket.userId) {
-      try {
-        const user = await User.findById(socket.userId).select('skipCount lastSkipAt');
-        if (user && user.skipCount >= 10) {
-          const now = Date.now();
-          const lastSkip = new Date(user.lastSkipAt).getTime();
-          const penaltyDuration = 5 * 60 * 1000; // 5 minutes
-
-          if (now - lastSkip < penaltyDuration) {
-            const remaining = Math.ceil((penaltyDuration - (now - lastSkip)) / 1000);
-            return socket.emit('skip-penalty', { 
-              message: `Matchmaking restricted. Please wait ${remaining} seconds due to too many skips.`,
-              timeout: remaining * 1000
-            });
-          } else {
-            // Penalty expired, reset count
-            await User.findByIdAndUpdate(socket.userId, { skipCount: 0 });
-          }
-        }
-      } catch (err) {
-        console.error("Penalty check error:", err);
-      }
-    }
-
     logger.info(`[Matchmaker] User joining queue: ${socket.userId} (Socket: ${socket.id})`);
+    
+    // Add a 3-second delay before they are eligible for matching
+    socket.eligibleAt = Date.now() + 3000;
+
     this.queue.push(socket);
     logger.info(`[Matchmaker] Queue length: ${this.queue.length}`);
+    
+    // Trigger match check immediately, but it will respect eligibleAt
     this.tryMatch();
   }
 
@@ -77,8 +58,19 @@ class Matchmaker {
         const aPriority = (a.isPremium ? 2 : 0) + (aBoosted ? 3 : 0);
         const bPriority = (b.isPremium ? 2 : 0) + (bBoosted ? 3 : 0);
         
-        return bPriority - aPriority;
       });
+    }
+
+    const now = Date.now();
+    // Re-schedule tryMatch if there are users waiting for their delay to expire
+    const nextEligibility = this.queue
+      .filter(s => s.eligibleAt > now)
+      .map(s => s.eligibleAt - now)
+      .sort((a, b) => a - b)[0];
+
+    if (nextEligibility > 0) {
+      if (this.retryTimeout) clearTimeout(this.retryTimeout);
+      this.retryTimeout = setTimeout(() => this.tryMatch(), nextEligibility + 100);
     }
 
     let bestMatch = { user1Index: -1, user2Index: -1, score: -1 };
@@ -88,6 +80,9 @@ class Matchmaker {
         const u1 = this.queue[i];
         const u2 = this.queue[j];
         
+        // Respect the 3-second "hidden" delay
+        if (u1.eligibleAt > now || u2.eligibleAt > now) continue;
+
         if (u1.userId && u2.userId) {
           if (u1.userId.toString() === u2.userId.toString()) continue;
           // 1. Check Blocks
@@ -283,8 +278,14 @@ class Matchmaker {
     const match = this.activeMatches.get(roomId);
     if (!match) return;
 
-    if (match.user1 === socketId) { match.user1Id = userId; match.user1Connected = true; }
-    if (match.user2 === socketId) { match.user2Id = userId; match.user2Connected = true; }
+    // Use userId for comparison as it's more stable than socketId
+    if (match.user1Id && match.user1Id.toString() === userId.toString()) {
+      match.user1 = socketId;
+      match.user1Connected = true;
+    } else if (match.user2Id && match.user2Id.toString() === userId.toString()) {
+      match.user2 = socketId;
+      match.user2Connected = true;
+    }
 
     if (match.user1Connected && match.user2Connected) {
       try {

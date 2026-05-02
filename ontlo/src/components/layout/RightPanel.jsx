@@ -1,4 +1,4 @@
-import { Video, MessageSquare, ChevronRight } from "lucide-react";
+import { Video, MessageSquare, ChevronRight, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API_URL, { apiFetch } from "../../utils/api";
@@ -72,7 +72,13 @@ const RightPanel = ({ onClose }) => {
               <div key={item.id} className="flex items-center justify-between group">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <img src={item.user.profilePic || "https://i.pravatar.cc/150"} loading="lazy" className="w-12 h-12 rounded-full object-cover border-2 border-white/5 group-hover:border-purple-500/50 transition-all shadow-lg" />
+                    {item.user.profilePic ? (
+                      <img src={item.user.profilePic} loading="lazy" className="w-12 h-12 rounded-full object-cover border-2 border-white/5 group-hover:border-purple-500/50 transition-all shadow-lg" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-[#151923] border-2 border-white/5 flex items-center justify-center group-hover:border-purple-500/50 transition-all shadow-lg">
+                        <User className="w-6 h-6 text-gray-600" />
+                      </div>
+                    )}
                     <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-[3px] border-[#151923] shadow-sm" />
                   </div>
                   <div>
@@ -104,7 +110,13 @@ const RightPanel = ({ onClose }) => {
             {recentConnections.length > 0 ? recentConnections.map((conn) => (
               <div key={conn.id} className="flex items-center justify-between group cursor-pointer" onClick={() => navigate("/messages")}>
                 <div className="flex items-center gap-3">
-                  <img src={conn.user.profilePic || "https://i.pravatar.cc/150"} loading="lazy" className="w-12 h-12 rounded-full object-cover border-2 border-white/5 group-hover:border-purple-500/50 transition-all shadow-lg" />
+                  {conn.user.profilePic ? (
+                    <img src={conn.user.profilePic} loading="lazy" className="w-12 h-12 rounded-full object-cover border-2 border-white/5 group-hover:border-purple-500/50 transition-all shadow-lg" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-[#151923] border-2 border-white/5 flex items-center justify-center group-hover:border-purple-500/50 transition-all shadow-lg">
+                      <User className="w-6 h-6 text-gray-600" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-sm font-black text-white truncate">{conn.user.username}</p>
