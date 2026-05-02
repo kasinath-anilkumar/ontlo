@@ -207,6 +207,31 @@ router.patch('/settings', auth, validate({ body: settingsSchema }), async (req, 
   }
 });
 
+// Update matchmaking preferences
+router.patch('/match-preferences', auth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { gender, ageRange, region } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (gender) user.matchPreferences.gender = gender;
+    if (ageRange) {
+      if (ageRange.min !== undefined) user.matchPreferences.ageRange.min = ageRange.min;
+      if (ageRange.max !== undefined) user.matchPreferences.ageRange.max = ageRange.max;
+    }
+    if (region) user.matchPreferences.region = region;
+
+    await user.save();
+
+    res.json({ message: 'Match preferences updated successfully', matchPreferences: user.matchPreferences });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Delete account completely
 router.delete('/account', auth, async (req, res) => {
   try {

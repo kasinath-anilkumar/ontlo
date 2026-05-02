@@ -46,7 +46,7 @@ module.exports = (io) => {
         socket.userId = decoded.id;
         
         // Fetch essential user data for the matchmaker once on connection
-        const user = await User.findById(socket.userId).select('age isPremium lastBoostedAt onlineStatus blockedUsers role interests location region');
+        const user = await User.findById(socket.userId).select('age isPremium lastBoostedAt onlineStatus blockedUsers role interests location region skipCount matchPreferences gender');
         if (user) {
           socket.age = user.age;
           socket.isPremium = user.isPremium;
@@ -55,7 +55,14 @@ module.exports = (io) => {
           socket.location = user.location;
           socket.region = user.region || 'Global';
           socket.role = user.role;
+          socket.gender = user.gender;
           socket.blockedUsers = user.blockedUsers.map(id => id.toString());
+          socket.skipCount = user.skipCount || 0;
+          socket.matchPreferences = user.matchPreferences || {
+            gender: 'All',
+            ageRange: { min: 18, max: 100 },
+            region: 'Global'
+          };
           
           if (user.role === 'user') {
             onlineUsers.add(socket.userId.toString());
@@ -128,6 +135,10 @@ module.exports = (io) => {
     socket.on('messages-read', ({ connectionId }) => {
       if (!socket.rooms.has(connectionId)) return;
       socket.to(connectionId).emit('messages-read', { connectionId });
+    });
+
+    socket.on('update-match-preferences', (newPrefs) => {
+      socket.matchPreferences = newPrefs;
     });
 
     socket.on('chat-message', async ({ message, imageUrl, roomId }) => {

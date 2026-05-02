@@ -122,6 +122,14 @@ const UserSchema = new mongoose.Schema({
   lowBandwidth: {
     type: Boolean,
     default: false
+  },
+  matchPreferences: {
+    gender: { type: String, enum: ['Male', 'Female', 'Other', 'All'], default: 'All' },
+    ageRange: {
+      min: { type: Number, default: 18 },
+      max: { type: Number, default: 100 }
+    },
+    region: { type: String, default: 'Global' }
   }
 }, { timestamps: true });
 

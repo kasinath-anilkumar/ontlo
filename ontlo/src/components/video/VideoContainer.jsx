@@ -1,8 +1,9 @@
-import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageSquare, Check, X, Timer, User, ChevronLeft } from "lucide-react";
+import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageSquare, Check, X, Timer, User, ChevronLeft, Settings } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
 import ChatPanel from "../chat/ChatPanel";
+import MatchSettingsModal from "./MatchSettingsModal";
 import API_URL, { apiFetch } from "../../utils/api";
 
 const VideoContainer = () => {
@@ -40,6 +41,12 @@ const VideoContainer = () => {
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [penaltyMessage, setPenaltyMessage] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [matchPreferences, setMatchPreferences] = useState(user?.matchPreferences || {
+    gender: 'All',
+    ageRange: { min: 18, max: 100 },
+    region: 'Global'
+  });
 
   // ─────────────────────────────────────────────────────────────────
   // 1. Camera initialisation — runs once, cleans up on unmount
@@ -645,6 +652,13 @@ const VideoContainer = () => {
               >
                 <div className="text-[10px] font-black uppercase tracking-tighter">HD</div>
               </button>
+              <button 
+                onClick={() => setShowSettings(true)} 
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white bg-black/40 hover:bg-black/60 transition"
+                title="Match Settings"
+              >
+                <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
             </div>
 
             {/* Bottom controls */}
@@ -725,6 +739,20 @@ const VideoContainer = () => {
           onSendMessage={(msg) => setChatMessages(prev => [...prev, msg])}
         />
       </div>
+
+      {showSettings && (
+        <MatchSettingsModal 
+          onClose={() => setShowSettings(false)}
+          currentPreferences={matchPreferences}
+          onSave={(newPrefs) => {
+            setMatchPreferences(newPrefs);
+            // Optionally update the user object in context as well
+            if (typeof setUser === 'function') {
+              setUser({ ...user, matchPreferences: newPrefs });
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const User = require('../models/User');
 const { checkUserBehavior } = require('../utils/abuseDetector');
 const cacheUtil = require('../utils/cache');
+const { logger } = require('../utils/logger');
 
 class Matchmaker {
   constructor() {
@@ -33,8 +34,9 @@ class Matchmaker {
 
           if (now - lastSkip < penaltyDuration) {
             const remaining = Math.ceil((penaltyDuration - (now - lastSkip)) / 1000);
-            return socket.emit('error', { 
-              message: `Matchmaking restricted. Please wait ${remaining} seconds due to too many skips.` 
+            return socket.emit('skip-penalty', { 
+              message: `Matchmaking restricted. Please wait ${remaining} seconds due to too many skips.`,
+              timeout: remaining * 1000
             });
           } else {
             // Penalty expired, reset count
@@ -46,7 +48,9 @@ class Matchmaker {
       }
     }
 
+    logger.info(`[Matchmaker] User joining queue: ${socket.userId} (Socket: ${socket.id})`);
     this.queue.push(socket);
+    logger.info(`[Matchmaker] Queue length: ${this.queue.length}`);
     this.tryMatch();
   }
 
@@ -55,9 +59,11 @@ class Matchmaker {
   }
 
   async tryMatch() {
+    logger.info(`[Matchmaker] tryMatch starting. Queue length: ${this.queue.length}`);
     if (this.queue.length < 2) return;
 
     const settings = await this.getConfig();
+    logger.info(`[Matchmaker] Settings: ageGap=${settings.ageGap}, boostPremium=${settings.boostPremium}`);
     
     // Sort queue: Premium or Boosted users first
     if (settings.boostPremium) {
@@ -83,6 +89,7 @@ class Matchmaker {
         const u2 = this.queue[j];
         
         if (u1.userId && u2.userId) {
+          if (u1.userId.toString() === u2.userId.toString()) continue;
           // 1. Check Blocks
           const u1Blocked = u1.blockedUsers?.includes(u2.userId.toString());
           const u2Blocked = u2.blockedUsers?.includes(u1.userId.toString());
@@ -91,7 +98,25 @@ class Matchmaker {
           // 2. Check Age Gap (Algorithm Setting)
           if (u1.age && u2.age) {
             const gap = Math.abs(u1.age - u2.age);
-            if (gap > settings.ageGap) continue;
+            if (gap > settings.ageGap) {
+              logger.info(`[Matchmaker] Pair rejected: Age gap too large (${gap} > ${settings.ageGap})`);
+              continue;
+            }
+          }
+
+          // 2b. Check User Preferences (Mutual)
+          if (u1.matchPreferences && u2.matchPreferences) {
+            // Gender Preference
+            if (u1.matchPreferences.gender !== 'All' && u1.matchPreferences.gender !== u2.gender) continue;
+            if (u2.matchPreferences.gender !== 'All' && u2.matchPreferences.gender !== u1.gender) continue;
+
+            // Age Range Preference
+            if (u2.age < u1.matchPreferences.ageRange.min || u2.age > u1.matchPreferences.ageRange.max) continue;
+            if (u1.age < u2.matchPreferences.ageRange.min || u1.age > u2.matchPreferences.ageRange.max) continue;
+
+            // Region Preference
+            if (u1.matchPreferences.region !== 'Global' && u1.matchPreferences.region !== u2.region) continue;
+            if (u2.matchPreferences.region !== 'Global' && u2.matchPreferences.region !== u1.region) continue;
           }
 
           // 3. Dynamic Interest Filtering
@@ -123,13 +148,23 @@ class Matchmaker {
           }
 
           // If we found a very good match (e.g. score > 20), stop searching
-          if (currentScore >= 30) break;
+          if (currentScore >= 30) {
+            logger.info(`[Matchmaker] Excellent match found (score: ${currentScore})`);
+            break;
+          }
+        } else {
+          logger.info(`[Matchmaker] Skipping pair: one or both users missing userId (u1: ${u1.userId}, u2: ${u2.userId})`);
         }
       }
       if (bestMatch.user1Index !== -1 && bestMatch.score >= 30) break;
     }
 
-    if (bestMatch.user1Index === -1) return;
+    if (bestMatch.user1Index === -1) {
+      logger.info(`[Matchmaker] No suitable match found in queue of ${this.queue.length} users.`);
+      return;
+    }
+
+    logger.info(`[Matchmaker] Match decided! Score: ${bestMatch.score}, Users: ${this.queue[bestMatch.user1Index].userId} & ${this.queue[bestMatch.user2Index].userId}`);
 
     const user2 = this.queue.splice(bestMatch.user2Index, 1)[0];
     const user1 = this.queue.splice(bestMatch.user1Index, 1)[0];
