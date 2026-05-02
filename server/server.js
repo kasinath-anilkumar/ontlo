@@ -185,7 +185,7 @@ const startServer = async (port) => {
     await mongoose.connect(MONGO_URI);
     logger.info('✅ MongoDB Connected');
 
-    server.listen(port)
+    server.listen(port, '0.0.0.0')
       .on('listening', () => {
         console.log(`🚀 Server is live on: http://localhost:${port}`);
         console.log(`📡 WebSocket Signaling active on port ${port}`);

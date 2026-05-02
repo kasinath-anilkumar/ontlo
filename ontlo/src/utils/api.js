@@ -1,5 +1,7 @@
 const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+console.log('[API] Raw API URL from env:', rawApiUrl);
 export const API_URL = /^https?:\/\//i.test(rawApiUrl) ? rawApiUrl : `https://${rawApiUrl}`;
+console.log('[API] Final Backend Target:', API_URL);
 
 export const apiFetch = async (url, options = {}) => {
   const controller = new AbortController();

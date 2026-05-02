@@ -60,8 +60,11 @@ const Auth = () => {
     setIsLoading(true);
 
     const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
+    const fullUrl = `${API_URL}${endpoint}`;
+    console.log(`[AUTH] Attempting ${isLogin ? 'Login' : 'Register'} at: ${fullUrl}`);
+
     try {
-      const response = await apiFetch(`${API_URL}${endpoint}`, {
+      const response = await apiFetch(fullUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
