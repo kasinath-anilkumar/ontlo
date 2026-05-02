@@ -21,6 +21,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const requiredEnvVars = [
   'MONGO_URI',
   'JWT_SECRET',
+  'JWT_REFRESH_SECRET',
   'CORS_ORIGIN',
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
@@ -159,13 +160,13 @@ app.use('/api/admin', require('./routes/admin'));
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-  logger.error('Unhandled Exception:', { 
-    error: err.message, 
+  logger.error('Unhandled Exception:', {
+    error: err.message,
     stack: err.stack,
     path: req.path,
     method: req.method
   });
-  
+
   res.status(err.status || 500).json({
     error: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message
   });
