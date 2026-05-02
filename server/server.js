@@ -181,14 +181,23 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ontlo';
 // Robust Startup Function
 const startServer = async (port) => {
   try {
-    // Attempt MongoDB Connection first
-    await mongoose.connect(MONGO_URI);
+    console.log('[DB] Connecting to MongoDB...');
+    await mongoose.connect(MONGO_URI, {
+      connectTimeoutMS: 10000, // 10 second timeout
+      serverSelectionTimeoutMS: 10000
+    });
     logger.info('✅ MongoDB Connected');
+
+    // Simple Request Logger for Debugging
+    app.use((req, res, next) => {
+      console.log(`[REQ] ${req.method} ${req.path}`);
+      next();
+    });
 
     server.listen(port, '0.0.0.0')
       .on('listening', () => {
-        console.log(`🚀 Server is live on: http://localhost:${port}`);
-        console.log(`📡 WebSocket Signaling active on port ${port}`);
+        console.log(`🚀 Server is live on port ${port}`);
+        console.log(`📡 WebSocket Signaling active`);
       })
       .on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
