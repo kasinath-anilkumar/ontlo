@@ -23,9 +23,11 @@ const validate = (schemas) => (req, res, next) => {
         path: issue.path.join('.'),
         message: issue.message,
       }));
+      console.error('Validation Error:', errorMessages);
       return res.status(400).json({
         success: false,
         message: 'Invalid request data',
+        error: errorMessages[0].message, // For frontend display
         errors: errorMessages,
       });
     }
