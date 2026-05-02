@@ -74,6 +74,7 @@ const Auth = () => {
       if (!response.ok) throw new Error(data.error || "Something went wrong");
 
       localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.token) localStorage.setItem("token", data.token);
       console.log('[AUTH] Login Success! User data saved. Navigating...');
       setUser(data.user);
       

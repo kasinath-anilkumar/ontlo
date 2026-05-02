@@ -81,10 +81,10 @@ const cspDirectives = {
   scriptSrcAttr: ["'none'"],
   styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
   imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'https://res.cloudinary.com'],
-  fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
-  connectSrc: ["'self'", 'https:', 'wss:', 'https://ontlo.onrender.com'],
+  fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com', 'data:'],
+  connectSrc: ["'self'", 'https:', 'wss:', 'https://ontlo-server.onrender.com', 'https://ontlo.onrender.com', 'wss://ontlo-server.onrender.com'],
   formAction: ["'self'"],
-  upgradeInsecureRequests: isProduction ? [] : null
+  upgradeInsecureRequests: []
 };
 
 Object.keys(cspDirectives).forEach((key) => {
@@ -94,7 +94,7 @@ Object.keys(cspDirectives).forEach((key) => {
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: {
-    useDefaults: true,
+    useDefaults: false,
     directives: cspDirectives
   }
 }));
@@ -102,6 +102,16 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
+
+// Debug Middleware for Cookies (Development/Production Debug)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    const hasToken = !!req.cookies?.token;
+    const hasRefresh = !!req.cookies?.refreshToken;
+    console.log(`[Request] ${req.method} ${req.path} | Cookies: token=${hasToken}, refresh=${hasRefresh} | Origin: ${req.headers.origin}`);
+  }
+  next();
+});
 
 // SHIM: Express 5 makes req.query a getter. 
 // express-mongo-sanitize needs to mutate it, so we redefine it.

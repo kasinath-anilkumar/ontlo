@@ -28,6 +28,8 @@ const generateTokens = async (user, res) => {
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax'
   };
+
+  console.log(`[Auth] Cookie Options (isProduction=${isProduction}):`, JSON.stringify(cookieOptions));
   
   res.cookie('token', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15 mins
   res.cookie('refreshToken', refreshToken, { ...cookieOptions, path: '/api/auth', maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7 days

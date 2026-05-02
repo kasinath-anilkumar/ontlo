@@ -7,12 +7,14 @@ export const apiFetch = async (url, options = {}) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
+  const token = localStorage.getItem("token");
   const config = {
     ...options,
     signal: controller.signal,
     credentials: 'include', // Important for HTTP-only cookies
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : '',
       ...options.headers,
     }
   };
@@ -34,12 +36,18 @@ export const apiFetch = async (url, options = {}) => {
 
       if (refreshRes.ok) {
         console.log('[Auth] Refresh successful, retrying original request');
+        const data = await refreshRes.json();
+        if (data.token) {
+          localStorage.setItem("token", data.token);
+          config.headers['Authorization'] = `Bearer ${data.token}`;
+        }
         // Retry original request
         response = await fetch(url, config);
       } else {
         console.error('[Auth] Refresh failed, logging out');
         // Refresh failed, clear user state
         localStorage.removeItem('user');
+        localStorage.removeItem('token');
         window.dispatchEvent(new Event('auth-expired'));
       }
     } catch (err) {
