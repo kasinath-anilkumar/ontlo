@@ -2,15 +2,22 @@ const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 export const API_URL = /^https?:\/\//i.test(rawApiUrl) ? rawApiUrl : `https://${rawApiUrl}`;
 
 export const apiFetch = async (url, options = {}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
   const config = {
     ...options,
+    signal: controller.signal,
     credentials: 'include', // Important for HTTP-only cookies
     headers: {
+      'Content-Type': 'application/json',
       ...options.headers,
     }
   };
 
-  let response = await fetch(url, config);
+  try {
+    let response = await fetch(url, config);
+    clearTimeout(timeoutId);
 
   // If unauthorized, try to refresh token
   if (response.status === 401 && !url.includes('/login') && !url.includes('/register') && !url.includes('/setup')) {
@@ -33,7 +40,14 @@ export const apiFetch = async (url, options = {}) => {
     }
   }
 
-  return response;
+    return response;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Request Timeout: The server is taking too long to respond.');
+    }
+    throw err;
+  }
 };
 
 export default API_URL;

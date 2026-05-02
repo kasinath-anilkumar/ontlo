@@ -39,28 +39,11 @@ const allowedOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '')
   .filter(Boolean);
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    
-    const isAllowed = allowedOrigins.some((allowed) => {
-      if (allowed === '*') return true;
-      if (allowed.includes('*')) {
-        const regex = new RegExp('^' + allowed.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
-        return regex.test(origin);
-      }
-      return allowed === origin;
-    });
-
-    if (isAllowed || !isProduction) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: allowedOrigins.length > 0 ? allowedOrigins : true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
-  optionsSuccessStatus: 200
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 // Socket.io
