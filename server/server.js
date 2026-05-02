@@ -39,9 +39,28 @@ const allowedOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '')
   .filter(Boolean);
 
 const corsOptions = {
-  origin: allowedOrigins.length > 0 ? allowedOrigins : !isProduction,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = allowedOrigins.some((allowed) => {
+      if (allowed === '*') return true;
+      if (allowed.includes('*')) {
+        const regex = new RegExp('^' + allowed.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+        return regex.test(origin);
+      }
+      return allowed === origin;
+    });
+
+    if (isAllowed || !isProduction) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 200
 };
 
 // Socket.io
@@ -75,10 +94,10 @@ const cspDirectives = {
   frameAncestors: ["'none'"],
   scriptSrc: ["'self'"],
   scriptSrcAttr: ["'none'"],
-  styleSrc: ["'self'", "'unsafe-inline'"],
-  imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-  fontSrc: ["'self'", 'data:'],
-  connectSrc: ["'self'", 'https:', 'wss:'],
+  styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+  imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'https://res.cloudinary.com'],
+  fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+  connectSrc: ["'self'", 'https:', 'wss:', 'https://ontlo.onrender.com'],
   formAction: ["'self'"],
   upgradeInsecureRequests: isProduction ? [] : null
 };
