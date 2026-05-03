@@ -662,8 +662,8 @@ const VideoContainer = () => {
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Live Discovery Active</span>
                   </div>
-                  <h1 className="text-4xl md:text-6xl font-black text-white mb-4 tracking-tighter italic uppercase leading-none">
-                    World<br/>Connect.
+                  <h1 className="text-md md:text-lg font-black text-white mb-4 tracking-tighter italic uppercase leading-none">
+                    Meet<br/>Real people.
                   </h1>
                   <p className="text-gray-500 text-xs md:text-sm font-medium max-w-sm mx-auto leading-relaxed uppercase tracking-widest">
                     Meet interesting people from around the globe in a safe, moderated space.
@@ -749,13 +749,13 @@ const VideoContainer = () => {
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
                     <span className="relative z-10 text-[13px] uppercase tracking-[0.3em]">
-                      {cameraReady ? "Initiate Matching" : (cameraRequested && !cameraError ? "Calibrating..." : "Power On Camera")}
+                      {cameraReady ? "Find a Matching" : (cameraRequested && !cameraError ? "Connecting..." : "Enable Camera")}
                     </span>
-                    <FastForward className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    
                   </button>
                   
                   <p className="mt-8 text-[9px] text-gray-600 font-black uppercase tracking-[0.4em] opacity-40">
-                    Ontlo Engine v4.2 // Secure Video Layer
+                    Ontlo // Secure Video Layer
                   </p>
                 </div>
               )}
