@@ -54,7 +54,8 @@ router.get('/discover', auth, async (req, res) => {
     const matches = await User.find(query)
       .sort(settings.boostPremium ? { isPremium: -1, createdAt: -1 } : { createdAt: -1 })
       .limit(20)
-      .select('username profilePic age gender bio isPremium');
+      .select('username profilePic age gender bio isPremium')
+      .lean();
 
     res.json(matches);
   } catch (error) {
@@ -71,7 +72,7 @@ router.get('/online', auth.optional, async (req, res) => {
     const currentUser = await User.findById(currentUserId);
 
     // 1. Find all connection documents for this user
-    const connections = await Connection.find({ users: currentUserId });
+    const connections = await Connection.find({ users: currentUserId }).lean();
     
     // 2. Extract the "other" user IDs
     const connectedUserIds = connections.map(conn => 
@@ -85,7 +86,8 @@ router.get('/online', auth.optional, async (req, res) => {
       role: 'user'
     })
     .limit(10)
-    .select('username profilePic fullName');
+    .select('username profilePic fullName')
+    .lean();
 
     // 4. FOMO Loop: Calculate count of online users matching interests
     const matchingInterestCount = await User.countDocuments({
@@ -110,7 +112,7 @@ router.get('/blocked/list', auth, async (req, res) => {
   try {
     const currentUserId = req.userId;
 
-    const user = await User.findById(currentUserId).populate('blockedUsers', 'username profilePic fullName');
+    const user = await User.findById(currentUserId).populate('blockedUsers', 'username profilePic fullName').lean();
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     res.json(user.blockedUsers);
@@ -123,13 +125,14 @@ router.get('/blocked/list', auth, async (req, res) => {
 // Get single user by ID
 router.get('/:id', validate({ params: userIdParamSchema }), async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('username profilePic fullName age gender location interests bio isPremium onlineStatus');
+    const user = await User.findById(req.params.id)
+      .select('username profilePic fullName age gender location interests bio isPremium onlineStatus')
+      .lean();
     if (!user) return res.status(404).json({ error: 'User not found' });
     
     const connectionsCount = await Connection.countDocuments({ users: user._id });
     
-    const userObj = user.toObject();
-    userObj.connectionsCount = connectionsCount;
+    const userObj = { ...user, connectionsCount };
     
     res.json(userObj);
   } catch (error) {

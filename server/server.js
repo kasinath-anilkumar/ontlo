@@ -8,6 +8,7 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
+const compression = require('compression');
 const maintenanceMiddleware = require('./middleware/maintenance');
 const { logger } = require('./utils/logger');
 const monitor = require('./utils/monitor');
@@ -117,6 +118,11 @@ app.use(helmet({
     directives: cspDirectives
   }
 }));
+
+// Optimization: Gzip compression
+app.use(compression());
+
+// Middlewares
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
