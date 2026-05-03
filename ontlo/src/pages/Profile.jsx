@@ -389,6 +389,66 @@ const Profile = () => {
                     />
                     <SettingItem label="Language" desc={settings.language === 'en' ? 'English (US)' : 'Other'} />
                     <SettingItem label="Account Security" desc="Two-factor authentication" />
+                    
+                    <div className="mt-8 pt-8 border-t border-[#1e293b]/50">
+                      <button 
+                        onClick={async () => {
+                          if (window.confirm("ARE YOU SURE? This will permanently delete your account and all associated data in compliance with the DPDP Act 2023. This action cannot be undone.")) {
+                            try {
+                              const token = localStorage.getItem("token");
+                              const res = await apiFetch(`${API_URL}/api/users/account`, {
+                                method: "DELETE",
+                                headers: { "Authorization": `Bearer ${token}` }
+                              });
+                              if (res.ok) {
+                                handleLogout();
+                              }
+                            } catch (err) {
+                              console.error("Delete account error:", err);
+                              alert("Failed to delete account. Please contact support.");
+                            }
+                          }
+                        }}
+                        className="w-full p-6 rounded-[32px] bg-red-500/5 border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-all flex items-center justify-between group"
+                      >
+                        <div>
+                          <h4 className="font-black uppercase tracking-tight text-sm mb-1">Delete Account</h4>
+                          <p className="text-[10px] font-bold uppercase tracking-wider opacity-60">Permanently remove your data</p>
+                        </div>
+                        <X className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:rotate-90 transition-all" />
+                      </button>
+
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem("token");
+                            const res = await apiFetch(`${API_URL}/api/users/export`, {
+                              headers: { "Authorization": `Bearer ${token}` }
+                            });
+                            if (res.ok) {
+                              const blob = await res.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `ontlo_my_data.json`;
+                              document.body.appendChild(a);
+                              a.click();
+                              a.remove();
+                            }
+                          } catch (err) {
+                            console.error("Export error:", err);
+                            alert("Failed to export data.");
+                          }
+                        }}
+                        className="w-full p-6 rounded-[32px] bg-purple-500/5 border border-purple-500/20 text-purple-400 hover:bg-purple-500/10 transition-all flex items-center justify-between group mt-4"
+                      >
+                        <div>
+                          <h4 className="font-black uppercase tracking-tight text-sm mb-1">Export My Data</h4>
+                          <p className="text-[10px] font-bold uppercase tracking-wider opacity-60">Download a copy of your personal data</p>
+                        </div>
+                        <Globe className="w-5 h-5 opacity-40 group-hover:opacity-100 transition-all" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

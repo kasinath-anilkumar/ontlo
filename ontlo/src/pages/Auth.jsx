@@ -26,6 +26,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const navigate = useNavigate();
   const { setUser } = useSocket();
 
@@ -50,6 +51,10 @@ const Auth = () => {
     setError("");
     
     if (!isLogin) {
+      if (!agreed) {
+        setError("You must be 18+ and agree to the Terms & Privacy Policy.");
+        return;
+      }
       const allPassed = Object.values(reqs).every(val => val === true);
       if (!allPassed) {
         setError("Please strengthen your password.");
@@ -228,12 +233,20 @@ const Auth = () => {
               )}
 
               {!isLogin && (
-                <p className="text-[8px] text-gray-700 font-bold uppercase tracking-[0.1em] text-center px-4 mb-2">
-                  By clicking Sign Up, you agree to our{' '}
-                  <button type="button" onClick={() => navigate('/terms')} className="text-purple-500 hover:underline">Terms of Service</button>
-                  {' '}and acknowledge our{' '}
-                  <button type="button" onClick={() => navigate('/privacy')} className="text-purple-500 hover:underline">Privacy Policy</button>.
-                </p>
+                <div className="flex items-start gap-3 px-4 py-2 bg-purple-500/5 rounded-2xl border border-white/5">
+                  <div 
+                    onClick={() => setAgreed(!agreed)}
+                    className={`mt-1 flex-shrink-0 w-5 h-5 rounded-md border-2 cursor-pointer flex items-center justify-center transition-all ${agreed ? 'bg-purple-600 border-purple-600 shadow-[0_0_10px_rgba(168,85,247,0.4)]' : 'border-white/10'}`}
+                  >
+                    {agreed && <Check size={12} strokeWidth={4} />}
+                  </div>
+                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tight leading-relaxed">
+                    I am <span className="text-white">18 years or older</span> and I agree to the{' '}
+                    <button type="button" onClick={() => navigate('/terms')} className="text-purple-500 hover:underline">Terms of Service</button>
+                    {' '}and{' '}
+                    <button type="button" onClick={() => navigate('/privacy')} className="text-purple-500 hover:underline">Privacy Policy</button>.
+                  </p>
+                </div>
               )}
 
               {/* BUTTON */}

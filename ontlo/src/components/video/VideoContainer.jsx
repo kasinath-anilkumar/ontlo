@@ -660,7 +660,8 @@ const VideoContainer = () => {
               ) : isMatching ? (
                 <div className="flex flex-col items-center">
                   <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4" />
-                  <p className="text-xl text-white font-bold mb-6">Looking for a match...</p>
+                  <p className="text-xl text-white font-bold mb-2">Looking for a match...</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-6 animate-pulse">Community Safety Guard Active</p>
                   <button
                     onClick={() => {
                       socket?.emit("leave-queue");
@@ -672,12 +673,17 @@ const VideoContainer = () => {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
-                  className={`bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:scale-105 transition transform ${cameraError ? "opacity-40 cursor-not-allowed" : "opacity-100"}`}
-                >
-                  {cameraReady ? "Start Matching" : (cameraRequested && !cameraError ? "Starting Camera..." : "Enable Camera")}
-                </button>
+                <div className="flex flex-col items-center">
+                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-[0.2em] mb-4 text-center max-w-[280px] leading-relaxed">
+                    By matching, you agree to follow our guidelines. <span className="text-pink-500">Nudity or harassment</span> will lead to a permanent device ban.
+                  </p>
+                  <button
+                    onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
+                    className={`bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:scale-105 transition transform ${cameraError ? "opacity-40 cursor-not-allowed" : "opacity-100"}`}
+                  >
+                    {cameraReady ? "Start Matching" : (cameraRequested && !cameraError ? "Starting Camera..." : "Enable Camera")}
+                  </button>
+                </div>
               )}
             </div>
           )}
