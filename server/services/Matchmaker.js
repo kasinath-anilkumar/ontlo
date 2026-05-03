@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { checkUserBehavior } = require('../utils/abuseDetector');
 const cacheUtil = require('../utils/cache');
 const { logger } = require('../utils/logger');
+const Connection = require('../models/Connection');
 
 const ICEBREAKER_PROMPTS = {
   "Tech": ["What app could you not live without?", "What's your take on AI taking over the world?"],
@@ -36,6 +37,17 @@ class Matchmaker {
 
   async joinQueue(socket) {
     if (this.queue.find(s => s.id === socket.id)) return;
+    
+    // Prevent duplicate entries for the same user with different socket IDs
+    if (socket.userId) {
+      const existingIdx = this.queue.findIndex(s => s.userId?.toString() === socket.userId.toString());
+      if (existingIdx !== -1) {
+        // Update the existing entry's socket instead of adding a new one
+        this.queue[existingIdx] = socket;
+        return;
+      }
+    }
+
     if (this.getUserMatch(socket.id)) return;
 
     logger.info(`[Matchmaker] User joining queue: ${socket.userId} (Socket: ${socket.id})`);
@@ -319,14 +331,16 @@ class Matchmaker {
 
     if (match.user1Connected && match.user2Connected) {
       try {
-        const Connection = require('../models/Connection');
-        let existing = await Connection.findOne({ users: { $all: [match.user1Id, match.user2Id] } });
+        // Sort IDs to ensure consistent [A, B] order regardless of who connected first
+        const sortedUsers = [match.user1Id.toString(), match.user2Id.toString()].sort();
+        
+        let existing = await Connection.findOne({ users: { $all: sortedUsers } });
         if (!existing) {
-          const newConnection = new Connection({ users: [match.user1Id, match.user2Id] });
+          const newConnection = new Connection({ users: sortedUsers });
           await newConnection.save();
         }
         io.to(roomId).emit('connection-established');
-        return [match.user1Id, match.user2Id];
+        return sortedUsers;
       } catch (err) { console.error(err); }
     }
     return null;

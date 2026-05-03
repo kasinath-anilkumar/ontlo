@@ -11,7 +11,7 @@ const requireConnectionMember = async (req, res, next) => {
   try {
     const connection = await Connection.findOne({
       _id: req.params.connectionId,
-      users: req.user.id
+      users: req.userId
     });
 
     if (!connection) {
@@ -36,9 +36,9 @@ router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema })
     const formatted = messages.map(m => ({
       id: m._id.toString(),
       text: m.text,
-      sender: m.sender.toString() === req.user.id ? 'You' : 'Remote',
+      sender: m.sender.toString() === req.userId ? 'You' : 'Remote',
       timestamp: m.timestamp,
-      type: m.sender.toString() === req.user.id ? 'self' : 'remote',
+      type: m.sender.toString() === req.userId ? 'self' : 'remote',
       isRead: m.isRead
     }));
 
@@ -52,7 +52,7 @@ router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema })
 router.post('/:connectionId/read', auth, validate({ params: connectionIdParamSchema }), requireConnectionMember, async (req, res) => {
   try {
     await Message.updateMany(
-      { connectionId: req.params.connectionId, sender: { $ne: req.user.id } },
+      { connectionId: req.params.connectionId, sender: { $ne: req.userId } },
       { isRead: true }
     );
     res.json({ success: true });

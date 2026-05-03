@@ -106,6 +106,15 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       : (msg) => {
           if (!mountedRef.current) return;
           setInternalMessages((prev) => [...prev, { ...msg, type: "remote" }]);
+          
+          // Optimization: Mark as read immediately if chat is open
+          if (connectionId) {
+            const token = localStorage.getItem("token");
+            apiFetch(`${API_URL}/api/messages/${connectionId}/read`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+            }).catch(() => {});
+          }
         };
 
     // Named handlers for typing — so we can remove exactly these listeners

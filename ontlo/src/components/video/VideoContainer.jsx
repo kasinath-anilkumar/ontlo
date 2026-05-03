@@ -248,6 +248,7 @@ const VideoContainer = () => {
     setShowConnectRequest(false);
     setConnectionStatus(null);
     setConnectTimer(0);
+    setCallDuration(0);
     setSafetyBlurTimer(0);
     setChatMessages([]);
     setHasNewMessage(false);
@@ -461,6 +462,12 @@ const VideoContainer = () => {
       }, timeout);
     };
 
+    const onMessagesRead = ({ connectionId: readConnId }) => {
+      if (readConnId === roomIdRef.current) {
+        setChatMessages(prev => prev.map(m => m.type === "self" ? { ...m, isRead: true } : m));
+      }
+    };
+
     socket.on("match-found", onMatchFound);
     socket.on("chat-message", onChatMessage);
     socket.on("peer-privacy", onPrivacyToggle);
@@ -471,6 +478,7 @@ const VideoContainer = () => {
     socket.on("webrtc-ice-candidate", onIceCandidate);
     socket.on("match-ended", onMatchEnded);
     socket.on("skip-penalty", onSkipPenalty);
+    socket.on("messages-read", onMessagesRead);
 
     return () => {
       socket.off("match-found", onMatchFound);
@@ -483,6 +491,7 @@ const VideoContainer = () => {
       socket.off("webrtc-ice-candidate", onIceCandidate);
       socket.off("match-ended", onMatchEnded);
       socket.off("skip-penalty", onSkipPenalty);
+      socket.off("messages-read", onMessagesRead);
     };
   }, [socket, createPeerConnection, endCallLocally]);
 

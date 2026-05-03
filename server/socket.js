@@ -264,9 +264,10 @@ module.exports = (io) => {
       socket.to(roomId).emit('webrtc-ice-candidate', { candidate });
     });
 
-    socket.on('action-connect', async ({ roomId, userId }) => {
+    socket.on('action-connect', async ({ roomId }) => {
+      if (!socket.userId) return;
       socket.to(roomId).emit('peer-wants-connection');
-      const users = await matchmaker.registerConnection(roomId, socket.id, userId, io);
+      const users = await matchmaker.registerConnection(roomId, socket.id, socket.userId, io);
       if (users) {
         users.forEach(async (uId) => {
           // Create persistent notification for new connection/match
@@ -286,6 +287,11 @@ module.exports = (io) => {
       }
     });
 
+    function broadcastOnlineCount() {
+      const count = Math.max(onlineUsers.size - 1, 0);
+      io.emit('online-count', { count });
+    }
+
     socket.on('disconnect', async () => {
       matchmaker.handleDisconnect(socket, io);
       if (socket.userId) {
@@ -294,24 +300,20 @@ module.exports = (io) => {
         if (userSockets.length === 0) {
           onlineUsers.delete(userIdStr);
           await User.findByIdAndUpdate(socket.userId, { onlineStatus: false });
-          broadcastOnlineCountThrottled();
+          broadcastOnlineCountThrottled(io, onlineUsers);
         }
       }
     });
+  });
 
-    function broadcastOnlineCount() {
+  // Optimized broadcast: only once per 5 seconds max (Global)
+  let lastBroadcast = 0;
+  function broadcastOnlineCountThrottled(io, onlineUsers) {
+    const now = Date.now();
+    if (now - lastBroadcast > 5000) {
       const count = Math.max(onlineUsers.size - 1, 0);
       io.emit('online-count', { count });
+      lastBroadcast = now;
     }
-
-    // Optimized broadcast: only once per 5 seconds max
-    let lastBroadcast = 0;
-    function broadcastOnlineCountThrottled() {
-      const now = Date.now();
-      if (now - lastBroadcast > 5000) {
-        broadcastOnlineCount();
-        lastBroadcast = now;
-      }
-    }
-  });
+  }
 };

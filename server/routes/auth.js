@@ -425,15 +425,6 @@ router.post('/complete-profile', auth, validate({ body: completeProfileSchema })
     );
     user.isProfileComplete = hasRequiredProfile;
 
-    await user.save();
-
-    await logActivity({
-      userId: user._id,
-      action: 'profile_update',
-      req,
-      metadata: { fields: Object.keys(req.body) }
-    });
-
     // Fast Feedback Loop: Boost user in queue after profile update
     user.lastBoostedAt = new Date();
     await user.save();

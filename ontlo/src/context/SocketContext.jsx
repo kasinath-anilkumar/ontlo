@@ -77,7 +77,7 @@ export const SocketProvider = ({ children }) => {
     return () => {
       newSocket.disconnect();
     };
-  }, [user?.id]); // Re-connect when user id changes
+  }, [user?._id, user?.id]); // Watch both common ID formats to be safe
 
   return (
     <SocketContext.Provider value={{ socket, activeRoomId, setActiveRoomId, user, setUser }}>
