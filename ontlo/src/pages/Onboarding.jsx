@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera, User, Sparkles, Upload, Loader2, ChevronRight, ChevronLeft, Globe, Calendar } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
@@ -20,7 +20,19 @@ const Onboarding = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { user, setUser } = useSocket();
+  const { setUser } = useSocket();
+
+  // Redirect if no registration data found
+  useEffect(() => {
+    const tempReg = localStorage.getItem("temp_reg");
+    const token = localStorage.getItem("token");
+    
+    // If we have a token but no user, we might be in the middle of onboarding for an old account
+    // But since we want to create at last, we should have temp_reg
+    if (!tempReg && !token) {
+      navigate("/auth");
+    }
+  }, [navigate]);
 
   const calculateAge = (birthDate) => {
     const today = new Date();
@@ -47,54 +59,57 @@ const Onboarding = () => {
     }));
   };
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setUploading(true);
-    const data = new FormData();
-    data.append("image", file);
 
-    try {
-      const token = localStorage.getItem("token");
-      const response = await apiFetch(`${API_URL}/api/upload/profile-pic`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: data
-      });
-
-      const result = await response.json();
-      if (response.ok) {
-        setFormData({ ...formData, profilePic: result.url });
-      } else {
-        alert(result.error || "Upload failed");
-      }
-    } catch (err) {
-      console.error("Upload error:", err);
-    } finally {
-      setUploading(false);
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File is too large (max 5MB)");
+      return;
     }
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData({ ...formData, profilePic: reader.result });
+      setUploading(false);
+    };
+    reader.onerror = () => {
+      alert("Failed to read file");
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async () => {
     setError("");
     setLoading(true);
     try {
+      const tempReg = JSON.parse(localStorage.getItem("temp_reg") || "{}");
+      
+      // If we are updating an existing account (backwards compatibility)
       const token = localStorage.getItem("token");
-      const response = await apiFetch(`${API_URL}/api/auth/complete-profile`, {
+      const endpoint = token ? "/api/auth/complete-profile" : "/api/auth/register";
+
+      const payload = token ? formData : { ...tempReg, ...formData };
+
+      const response = await apiFetch(`${API_URL}${endpoint}`, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(formData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to save profile");
+      if (!response.ok) throw new Error(data.error || "Failed to create account");
 
-      const updatedUser = { ...user, ...data.user };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      // Save user and token
+      localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.token) localStorage.setItem("token", data.token);
+      
+      // Clear temp reg
+      localStorage.removeItem("temp_reg");
+      
+      setUser(data.user);
       navigate("/");
     } catch (err) {
       setError(err.message);
@@ -106,19 +121,18 @@ const Onboarding = () => {
   const commonInterests = ["Travel", "Music", "Gaming", "Art", "Movies", "Tech", "Cooking", "Fitness", "Photography", "Reading"];
 
   return (
-    <div className="min-h-screen bg-[#05070A] flex items-center justify-center p-4 relative overflow-hidden font-sans overflow-y-hidden">
+    <div className="min-h-screen bg-[#05070A] flex items-center justify-center p-4 relative overflow-hidden font-sans">
       {/* Immersive 3D Background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[150px] animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-pink-600/10 rounded-full blur-[150px] animate-pulse delay-700"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.05),transparent_50%)]"></div>
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.02]"></div>
       </div>
 
       <div className="w-full max-w-[480px] relative z-10 animate-in fade-in zoom-in-95 duration-700">
         <div className="bg-[#0D1117]/60 backdrop-blur-3xl border border-white/5 rounded-[40px] p-6 sm:p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] relative overflow-hidden group">
           
-          {/* Enhanced Progress Header - 5 Steps global */}
+          {/* Enhanced Progress Header */}
           <div className="flex items-center gap-3 mb-10">
             {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-700 ${step + 1 >= i ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'bg-white/5'}`}></div>
@@ -171,7 +185,7 @@ const Onboarding = () => {
                 onClick={() => setStep(2)}
                 className="w-full mt-8 py-4 sm:py-5 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/5"
               >
-                {formData.profilePic ? "Upload" : "Skip"}
+                {formData.profilePic ? "Continue" : "Skip"}
               </button>
             </div>
           )}
@@ -209,9 +223,9 @@ const Onboarding = () => {
                     <span className="text-sm font-black text-purple-400">{formData.age} Years</span>
                  </div>
                )}
-                              <div className="flex gap-4 mt-8 sm:mt-10">
+               <div className="flex gap-4 mt-8 sm:mt-10">
                   <button onClick={() => setStep(1)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
-                  <button onClick={() => setStep(3)} disabled={!formData.fullName || !formData.dob || formData.age < 13} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Continue <ChevronRight className="w-4 h-4" /></button>
+                  <button onClick={() => setStep(3)} disabled={!formData.fullName || !formData.dob || formData.age < 18} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Continue <ChevronRight className="w-4 h-4" /></button>
                </div>
             </div>
           )}
@@ -230,7 +244,7 @@ const Onboarding = () => {
                   />
                </div>
                
-                              <div className="flex gap-4 mt-8 sm:mt-10">
+               <div className="flex gap-4 mt-8 sm:mt-10">
                   <button onClick={() => setStep(2)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
                   <button onClick={() => setStep(4)} disabled={!formData.location} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Next<ChevronRight className="w-4 h-4" /></button>
                </div>
@@ -255,14 +269,14 @@ const Onboarding = () => {
                  ))}
                </div>
                
-                              <div className="flex gap-4 mt-8">
+               <div className="flex gap-4 mt-8">
                   <button onClick={() => setStep(3)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
                   <button 
                     onClick={handleSubmit} 
                     disabled={formData.interests.length < 3 || loading}
                     className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-purple-600/20"
                   >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Create Account<Sparkles className="w-5 h-5 fill-current" /></>}
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Complete Setup<Sparkles className="w-5 h-5 fill-current" /></>}
                   </button>
                </div>
             </div>

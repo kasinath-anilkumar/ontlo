@@ -101,6 +101,19 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// Check username availability
+router.post('/check-username', async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: 'Username is required' });
+    
+    const existingUser = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+    res.json({ available: !existingUser });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Secure Initial Setup Flow
 router.post('/setup', validate({ body: setupSchema }), async (req, res) => {
   try {
@@ -159,6 +172,22 @@ router.post('/register', validate({ body: registerSchema }), async (req, res) =>
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    
+    // Handle Profile Picture (if sent as base64 or raw)
+    let profilePicUrl = req.body.profilePic || "";
+    if (profilePicUrl && profilePicUrl.startsWith('data:image')) {
+      try {
+        const { uploadImage } = require('../config/cloudinary');
+        // Create a mock file object for the existing uploadImage utility
+        const result = await require('cloudinary').v2.uploader.upload(profilePicUrl, {
+          folder: 'ontlo_profiles',
+          transformation: [{ width: 500, height: 500, crop: 'limit' }]
+        });
+        profilePicUrl = result.secure_url;
+      } catch (err) {
+        console.error('Cloudinary upload failed during registration:', err);
+      }
+    }
 
     const allowedGenders = ['Male', 'Female', 'Other', 'Prefer not to say'];
     const age = req.body.age !== undefined && req.body.age !== null && req.body.age !== ''
@@ -176,7 +205,7 @@ router.post('/register', validate({ body: registerSchema }), async (req, res) =>
       location: req.body.location,
       interests: req.body.interests || [],
       bio: req.body.bio,
-      profilePic: req.body.profilePic
+      profilePic: profilePicUrl
     };
     const hasRequiredProfile = Boolean(
       profileFields.fullName &&

@@ -46,50 +46,74 @@ const Auth = () => {
     });
   }, [password]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setError("");
-    
-    if (!isLogin) {
-      if (!agreed) {
-        setError("You must be 18+ and agree to the Terms & Privacy Policy.");
-        return;
-      }
-      const allPassed = Object.values(reqs).every(val => val === true);
-      if (!allPassed) {
-        setError("Please strengthen your password.");
-        return;
-      }
-    }
-
     setIsLoading(true);
-
-    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
-    const fullUrl = `${API_URL}${endpoint}`;
-    console.log(`[AUTH] Attempting ${isLogin ? 'Login' : 'Register'} at: ${fullUrl}`);
-
     try {
-      const response = await apiFetch(fullUrl, {
+      const response = await apiFetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Something went wrong");
+      if (!response.ok) throw new Error(data.error || "Login failed");
 
       localStorage.setItem("user", JSON.stringify(data.user));
       if (data.token) localStorage.setItem("token", data.token);
-      console.log('[AUTH] Login Success! User data saved. Navigating...');
       setUser(data.user);
       
-      const target = data.user.isProfileComplete ? "/" : "/setup-profile";
-      console.log(`[AUTH] Target path: ${target}`);
+      const target = data.user.isProfileComplete ? "/" : "/onboarding";
       navigate(target);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = async () => {
+    setError("");
+    
+    if (!agreed) {
+      setError("You must be 18+ and agree to the Terms & Privacy Policy.");
+      return;
+    }
+    const allPassed = Object.values(reqs).every(val => val === true);
+    if (!allPassed) {
+      setError("Please strengthen your password.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Check username availability
+      const checkRes = await apiFetch(`${API_URL}/api/auth/check-username`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      const checkData = await checkRes.json();
+      if (!checkRes.ok || !checkData.available) {
+        throw new Error("Username is already taken.");
+      }
+
+      // Store temp registration data and move to onboarding
+      localStorage.setItem("temp_reg", JSON.stringify({ username, password }));
+      navigate("/onboarding");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (isLogin) {
+      handleLogin();
+    } else {
+      handleSignUp();
     }
   };
 
@@ -153,7 +177,7 @@ const Auth = () => {
               {!isLogin && (
                 <div className="flex items-center gap-1.5 mb-6">
                   {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-700 ${i === 1 ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]' : 'bg-white/5'}`}></div>
+                    <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-700 ${i === 1 ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]' : 'bg-white/5'}`}></div>
                   ))}
                 </div>
               )}
@@ -259,7 +283,7 @@ const Auth = () => {
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
-                    {isLogin ? "Log In" : "Sign Up"} 
+                    {isLogin ? "Log In" : "Continue"} 
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
