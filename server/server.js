@@ -41,7 +41,24 @@ const allowedOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '')
   .filter(Boolean);
 
 const corsOptions = {
-  origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+
+    const isAllowed = allowedOrigins.length === 0 || 
+                     allowedOrigins.includes(origin) ||
+                     origin.endsWith('.vercel.app') || 
+                     origin.endsWith('.onrender.com') ||
+                     origin.includes('localhost') ||
+                     origin.includes('127.0.0.1');
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      // Instead of an error, just return false so cors middleware handles it
+      callback(null, false);
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
   preflightContinue: false,
@@ -93,13 +110,13 @@ Object.keys(cspDirectives).forEach((key) => {
 });
 
 // Middleware
+app.use(cors(corsOptions));
 app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: false,
     directives: cspDirectives
   }
 }));
-app.use(cors(corsOptions));
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
