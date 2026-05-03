@@ -17,10 +17,15 @@ const generateTokens = async (user, res) => {
   const accessToken = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '15m' });
   const refreshToken = jwt.sign({ id: user._id }, JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
-  // Save refresh token to user
-  user.refreshTokens = user.refreshTokens || [];
-  user.refreshTokens.push(refreshToken);
-  await user.save();
+  // Save refresh token to user (Atomic update with pruning to prevent document bloat)
+  await User.findByIdAndUpdate(user._id, {
+    $push: {
+      refreshTokens: {
+        $each: [refreshToken],
+        $slice: -10 // Keep only the last 10 sessions to prevent performance degradation
+      }
+    }
+  });
 
   const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const cookieOptions = {
@@ -284,7 +289,7 @@ router.post('/login', validate({ body: loginSchema }), async (req, res) => {
 
     // Reset login attempts on success
     if (user.loginAttempts !== 0 || user.lockUntil) {
-      await user.updateOne({ $set: { loginAttempts: 0 }, $unset: { lockUntil: 1 } });
+      await User.findByIdAndUpdate(user._id, { $set: { loginAttempts: 0 }, $unset: { lockUntil: 1 } });
     }
 
     console.log(`Login attempt for ${username}. Role: ${user.role}. Admin Panel Flag: ${req.body.isAdminPanel}`);

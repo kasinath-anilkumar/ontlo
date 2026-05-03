@@ -613,9 +613,9 @@ const VideoContainer = () => {
       className={`bg-[#0B0E14] overflow-hidden transition-all duration-500 z-40 ${
         isHidden ? "hidden" : "flex"
       } ${
-        isVideoRoute ? "fixed inset-0 lg:absolute lg:inset-0 rounded-none md:rounded-3xl" : ""
+        isVideoRoute ? "absolute inset-0 rounded-none" : ""
       } ${
-        isPiP ? "fixed bottom-24 right-4 w-48 h-72 sm:bottom-28 sm:right-6 sm:w-64 sm:h-96 shadow-2xl rounded-2xl z-[100] cursor-pointer ring-4 ring-purple-500/50 hover:scale-105 active:scale-95" : ""
+        isPiP ? "fixed bottom-24 right-4 w-48 h-72 sm:bottom-28 sm:right-6 sm:w-64 sm:h-96 shadow-2xl rounded-2xl z-[100] cursor-pointer ring-4 ring-purple-500/50 hover:scale-105 active:scale-95 bg-[#151923]" : ""
       }`}
       onClick={isPiP ? () => navigate('/video') : undefined}
     >
@@ -624,7 +624,19 @@ const VideoContainer = () => {
       <div className={`relative transition-all duration-500 h-full ${showChat && inCall && !isPiP ? "w-full lg:w-2/3" : "w-full"}`}>
 
         {/* Remote video — always mounted, hidden when not in call */}
-        <div className="absolute inset-0 bg-[#151923] flex items-center justify-center">
+        <div className="absolute inset-0 bg-[#05070A] flex items-center justify-center overflow-hidden">
+          {/* Enhanced Background for discovery */}
+          {!inCall && (
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 blur-[120px] animate-pulse"></div>
+              <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-600/10 blur-[120px] animate-pulse delay-700"></div>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.05),transparent_70%)]"></div>
+              
+              {/* Animated World Grid */}
+              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+            </div>
+          )}
+
           <video
             ref={remoteVideoRef}
             autoPlay
@@ -641,64 +653,110 @@ const VideoContainer = () => {
 
           {/* Idle / Matching overlay — shown when not in call */}
           {!inCall && (
-            <div className="text-center z-10 w-full h-full flex flex-col items-center justify-center relative">
-              {/* Top back button for idle state */}
-              <div className="absolute top-0 left-0 w-full p-4 pt-[calc(1rem+env(safe-area-inset-top))] md:pt-8 flex justify-between items-start z-10">
-                <button 
-                  onClick={() => navigate('/')}
-                  className="md:hidden w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 transition border border-white/10"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-              </div>
+            <div className="text-center z-10 w-full h-full flex flex-col items-center justify-center relative px-6">
+              
+              {/* Discovery Center Header for Large Screens */}
+              {!isMatching && !cameraError && !penaltyMessage && (
+                <div className="mb-12 animate-in fade-in slide-in-from-top-8 duration-1000">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-6">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Live Discovery Active</span>
+                  </div>
+                  <h1 className="text-4xl md:text-6xl font-black text-white mb-4 tracking-tighter italic uppercase leading-none">
+                    World<br/>Connect.
+                  </h1>
+                  <p className="text-gray-500 text-xs md:text-sm font-medium max-w-sm mx-auto leading-relaxed uppercase tracking-widest">
+                    Meet interesting people from around the globe in a safe, moderated space.
+                  </p>
+                </div>
+              )}
 
               {cameraError ? (
-                <div className="flex flex-col items-center p-8 bg-red-500/10 border border-red-500/20 rounded-3xl animate-in zoom-in duration-300 mx-4 text-center">
-                  <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
-                  <p className="text-white font-bold mb-2">
-                    {cameraError === 'Blocked by System' ? 'Screen Overlay Detected' : 'Camera Blocked'}
+                <div className="flex flex-col items-center p-10 bg-[#151923]/60 backdrop-blur-2xl border border-red-500/20 rounded-[40px] animate-in zoom-in duration-500 mx-4 text-center max-w-sm shadow-2xl">
+                  <div className="w-16 h-16 rounded-3xl bg-red-500/10 flex items-center justify-center mb-6">
+                    <AlertTriangle className="w-8 h-8 text-red-500" />
+                  </div>
+                  <p className="text-white text-xl font-black mb-3 uppercase tracking-tight">
+                    {cameraError === 'Blocked by System' ? 'Overlay Detected' : 'Camera Blocked'}
                   </p>
-                  <p className="text-gray-400 text-xs mb-6 max-w-xs leading-relaxed">
+                  <p className="text-gray-400 text-xs mb-8 leading-relaxed font-medium">
                     {cameraError === 'Blocked by System' 
-                      ? 'Another app is drawing over Ontlo. Please close any chat bubbles, screen dimmers, or filters and try again.' 
+                      ? 'Another app is drawing over Ontlo. Please close any chat bubbles or screen dimmers.' 
                       : 'Please enable camera access in your browser settings to start matching.'}
                   </p>
-                  <button onClick={() => window.location.reload()} className="px-6 py-2 bg-white/5 border border-white/10 text-white rounded-full hover:bg-white/10 transition text-xs font-bold uppercase tracking-widest">
+                  <button onClick={() => window.location.reload()} className="w-full py-4 bg-white text-black rounded-2xl hover:bg-gray-200 transition font-black text-[11px] uppercase tracking-[0.2em] shadow-xl">
                     Retry Connection
                   </button>
                 </div>
               ) : penaltyMessage ? (
-                <div className="flex flex-col items-center p-8 bg-orange-500/10 border border-orange-500/20 rounded-3xl animate-in zoom-in duration-300 mx-4">
-                  <Timer className="w-12 h-12 text-orange-500 mb-4 animate-pulse" />
-                  <p className="text-white font-bold mb-2">Slow Down!</p>
-                  <p className="text-gray-400 text-sm mb-6 text-center">{penaltyMessage}</p>
+                <div className="flex flex-col items-center p-10 bg-[#151923]/60 backdrop-blur-2xl border border-orange-500/20 rounded-[40px] animate-in zoom-in duration-500 mx-4 max-w-sm">
+                  <div className="w-16 h-16 rounded-3xl bg-orange-500/10 flex items-center justify-center mb-6">
+                    <Timer className="w-8 h-8 text-orange-500 animate-pulse" />
+                  </div>
+                  <p className="text-white text-xl font-black mb-3 uppercase tracking-tight">Slow Down</p>
+                  <p className="text-gray-400 text-xs mb-4 text-center font-medium leading-relaxed">{penaltyMessage}</p>
                 </div>
               ) : isMatching ? (
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4" />
-                  <p className="text-xl text-white font-bold mb-2">Looking for a match...</p>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-6 animate-pulse">Community Safety Guard Active</p>
+                <div className="flex flex-col items-center animate-in fade-in zoom-in duration-700">
+                  <div className="relative mb-10">
+                    <div className="w-24 h-24 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center animate-pulse">
+                        <Video className="w-6 h-6 text-purple-400" />
+                      </div>
+                    </div>
+                  </div>
+                  <h2 className="text-2xl md:text-3xl text-white font-black mb-2 uppercase tracking-tighter italic">Finding a match</h2>
+                  <div className="flex items-center gap-2 mb-8">
+                    <span className="text-[10px] text-purple-400 font-black uppercase tracking-[0.3em]">AI Moderator Screening</span>
+                    <div className="flex gap-1">
+                       <div className="w-1 h-1 bg-purple-500 rounded-full animate-bounce delay-100"></div>
+                       <div className="w-1 h-1 bg-purple-500 rounded-full animate-bounce delay-200"></div>
+                       <div className="w-1 h-1 bg-purple-500 rounded-full animate-bounce delay-300"></div>
+                    </div>
+                  </div>
                   <button
                     onClick={() => {
                       socket?.emit("leave-queue");
                       setIsMatching(false);
                     }}
-                    className="px-6 py-2 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition"
+                    className="px-10 py-4 rounded-2xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition font-black text-[10px] uppercase tracking-[0.2em]"
                   >
-                    Cancel
+                    Stop Matching
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-col items-center">
-                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-[0.2em] mb-4 text-center max-w-[280px] leading-relaxed">
-                    By matching, you agree to follow our guidelines. <span className="text-pink-500">Nudity or harassment</span> will lead to a permanent device ban.
-                  </p>
+                <div className="flex flex-col items-center max-w-lg w-full animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-200">
+                  {/* Safety Guidelines Card */}
+                  <div className="w-full bg-[#151923]/40 backdrop-blur-3xl border border-white/5 p-8 rounded-[40px] mb-8 relative overflow-hidden group hover:border-purple-500/20 transition-colors">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                      <Shield className="w-20 h-20 text-purple-500" />
+                    </div>
+                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em] mb-4 text-left">Community Protocol</p>
+                    <p className="text-white text-sm md:text-base font-bold text-left leading-relaxed mb-6">
+                      By matching, you join a vetted community. <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 italic">Respect others, stay safe, and enjoy the conversation.</span>
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">No Nudity</div>
+                      <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">No Harassment</div>
+                      <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">18+ Only</div>
+                    </div>
+                  </div>
+
                   <button
                     onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
-                    className={`bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:scale-105 transition transform ${cameraError ? "opacity-40 cursor-not-allowed" : "opacity-100"}`}
+                    className={`group relative w-full overflow-hidden bg-white text-black font-black py-6 px-10 rounded-3xl shadow-[0_20px_50px_rgba(168,85,247,0.2)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 ${cameraError ? "opacity-40 cursor-not-allowed" : "opacity-100"}`}
                   >
-                    {cameraReady ? "Start Matching" : (cameraRequested && !cameraError ? "Starting Camera..." : "Enable Camera")}
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                    <span className="relative z-10 text-[13px] uppercase tracking-[0.3em]">
+                      {cameraReady ? "Initiate Matching" : (cameraRequested && !cameraError ? "Calibrating..." : "Power On Camera")}
+                    </span>
+                    <FastForward className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
+                  
+                  <p className="mt-8 text-[9px] text-gray-600 font-black uppercase tracking-[0.4em] opacity-40">
+                    Ontlo Engine v4.2 // Secure Video Layer
+                  </p>
                 </div>
               )}
             </div>
@@ -936,10 +994,20 @@ const VideoContainer = () => {
       {isVideoRoute && !isPiP && (
         <button 
           onClick={() => setShowSettings(true)} 
-          className="fixed top-24 right-4 sm:top-6 sm:right-32 w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white bg-black/40 hover:bg-black/60 transition z-[60] border border-white/10 shadow-xl"
+          className="absolute top-6 right-6 w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md flex items-center justify-center text-white bg-white/5 hover:bg-white/10 transition z-[60] border border-white/10 shadow-xl"
           title="Match Settings"
         >
           <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
+        </button>
+      )}
+
+      {/* Mobile Back Button (Integrated into new design) */}
+      {isVideoRoute && !inCall && !isMatching && (
+        <button 
+          onClick={() => navigate('/')}
+          className="md:hidden absolute top-6 left-6 w-10 h-10 rounded-full bg-white/5 backdrop-blur-md flex items-center justify-center text-white border border-white/10 z-[60]"
+        >
+          <ChevronLeft className="w-6 h-6" />
         </button>
       )}
 

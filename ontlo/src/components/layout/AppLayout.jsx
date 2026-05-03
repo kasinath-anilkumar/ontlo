@@ -37,6 +37,8 @@ const AppLayout = ({ children }) => {
           <main className="min-h-full pb-24 md:pb-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {children}
           </main>
+          
+          <VideoContainer />
         </div>
         
         {isRightPanelOpen && (
@@ -60,7 +62,6 @@ const AppLayout = ({ children }) => {
         </button>
       )}
 
-      <VideoContainer />
       <BottomNav />
     </div>
   );

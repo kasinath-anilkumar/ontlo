@@ -70,6 +70,7 @@ class Matchmaker {
         const aPriority = (a.isPremium ? 2 : 0) + (aBoosted ? 3 : 0);
         const bPriority = (b.isPremium ? 2 : 0) + (bBoosted ? 3 : 0);
         
+        return bPriority - aPriority;
       });
     }
 
@@ -85,9 +86,14 @@ class Matchmaker {
       this.retryTimeout = setTimeout(() => this.tryMatch(), nextEligibility + 100);
     }
 
-    let bestMatch = { user1Index: -1, user2Index: -1, score: -1 };
+    let bestMatch = { user1Index: -1, user2Index: -1, score: -Infinity };
 
     for (let i = 0; i < this.queue.length; i++) {
+      // Yield to event loop every 100 iterations if queue is large to prevent blocking
+      if (i > 0 && i % 100 === 0) {
+        await new Promise(resolve => setImmediate(resolve));
+      }
+
       for (let j = i + 1; j < this.queue.length; j++) {
         const u1 = this.queue[i];
         const u2 = this.queue[j];
@@ -106,7 +112,6 @@ class Matchmaker {
           if (u1.age && u2.age) {
             const gap = Math.abs(u1.age - u2.age);
             if (gap > settings.ageGap) {
-              logger.info(`[Matchmaker] Pair rejected: Age gap too large (${gap} > ${settings.ageGap})`);
               continue;
             }
           }
@@ -165,18 +170,14 @@ class Matchmaker {
 
           // If we found a very good match (e.g. score > 20), stop searching
           if (currentScore >= 30) {
-            logger.info(`[Matchmaker] Excellent match found (score: ${currentScore})`);
             break;
           }
-        } else {
-          logger.info(`[Matchmaker] Skipping pair: one or both users missing userId (u1: ${u1.userId}, u2: ${u2.userId})`);
         }
       }
       if (bestMatch.user1Index !== -1 && bestMatch.score >= 30) break;
     }
 
     if (bestMatch.user1Index === -1) {
-      logger.info(`[Matchmaker] No suitable match found in queue of ${this.queue.length} users.`);
       return;
     }
 

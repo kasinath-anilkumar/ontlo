@@ -7,11 +7,11 @@ const maintenanceMiddleware = async (req, res, next) => {
   }
 
   try {
-    const config = await AppConfig.findOne({ key: 'maintenance_mode' });
-    if (config && config.value === true) {
+    const config = await AppConfig.findOne();
+    if (config && config.maintenanceMode === true) {
       return res.status(503).json({ 
         error: 'System Maintenance', 
-        message: 'Ontlo is currently undergoing a scheduled upgrade. We will be back shortly!' 
+        message: config.maintenanceMessage || 'Ontlo is currently undergoing a scheduled upgrade. We will be back shortly!' 
       });
     }
     next();
