@@ -108,6 +108,17 @@ const VideoContainer = () => {
   // ─────────────────────────────────────────────────────────────────
   // 2. Call timers
   // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    let interval;
+    if (inCall) {
+      interval = setInterval(() => {
+        setConnectTimer(prev => (prev > 0 ? prev - 1 : 0));
+        setSafetyBlurTimer(prev => {
+          if (prev === 1) setIsBlurred(false);
+          return prev > 0 ? prev - 1 : 0;
+        });
+      }, 1000);
+    }
     return () => clearInterval(interval);
   }, [inCall]);
 
