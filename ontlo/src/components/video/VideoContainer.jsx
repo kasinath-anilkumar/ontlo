@@ -617,10 +617,10 @@ const VideoContainer = () => {
           {!inCall && (
             <div className="text-center z-10 w-full h-full flex flex-col items-center justify-center relative">
               {/* Top back button for idle state */}
-              <div className="absolute top-0 left-0 w-full p-4 pt-safe sm:pt-6 flex justify-between items-start z-10">
+              <div className="absolute top-0 left-0 w-full p-4 pt-[calc(1rem+env(safe-area-inset-top))] md:pt-8 flex justify-between items-start z-10">
                 <button 
                   onClick={() => navigate('/')}
-                  className="lg:hidden w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 transition border border-white/10"
+                  className="md:hidden w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 transition border border-white/10"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
@@ -697,11 +697,11 @@ const VideoContainer = () => {
             )}
 
             {/* Top bar */}
-            <div className={`absolute top-0 left-0 w-full p-4 pt-safe sm:pt-6 flex justify-between items-start z-10 transition-all duration-500 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10 pointer-events-none"}`}>
+            <div className={`absolute top-0 left-0 w-full p-4 pt-[calc(1rem+env(safe-area-inset-top))] md:pt-8 flex justify-between items-start z-10 transition-all duration-500 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10 pointer-events-none"}`}>
               <div className="flex items-center gap-3 pointer-events-auto">
                 <button 
                   onClick={() => navigate('/')}
-                  className="lg:hidden w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/40 transition mr-1"
+                  className="md:hidden w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/40 transition mr-1"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
