@@ -44,4 +44,8 @@ const ActivityLogSchema = new mongoose.Schema({
 ActivityLogSchema.index({ userId: 1 });
 ActivityLogSchema.index({ createdAt: -1 });
 
+// Note: Keeping logs permanently as requested. 
+// WARNING: On a free-tier database (512MB), this may eventually fill up storage.
+// Monitor your MongoDB Atlas usage regularly.
+
 module.exports = mongoose.model('ActivityLog', ActivityLogSchema);
