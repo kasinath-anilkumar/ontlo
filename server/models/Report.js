@@ -47,6 +47,7 @@ ReportSchema.statics.getRepeatOffenderStats = async function(userId) {
   return { resolvedReports: count, pendingReports: pendingCount };
 };
 
+ReportSchema.index({ reportedUser: 1, status: 1 });
 ReportSchema.index({ reportedUser: 1 });
 ReportSchema.index({ status: 1 });
 ReportSchema.index({ severity: 1 });

@@ -19,8 +19,11 @@ const ICEBREAKER_PROMPTS = {
 class Matchmaker {
   constructor() {
     this.queue = [];
-    this.activeMatches = new Map(); // roomId -> { user1, user2 }
+    this.activeMatches = new Map(); // roomId -> { user1, user2, ... }
+    this.userToMatch = new Map();   // socketId -> roomId (O(1) reverse lookup)
     this.pendingDisconnects = new Map(); // userId -> timeoutId
+    this.isMatching = false;       // Mutex lock
+    this.lastMatchTime = 0;        // Throttle tracking
   }
 
   async getConfig() {
@@ -52,166 +55,143 @@ class Matchmaker {
   }
 
   async tryMatch() {
-    logger.info(`[Matchmaker] tryMatch starting. Queue length: ${this.queue.length}`);
+    const now = Date.now();
+    
+    // Lock and Throttle: Ensure only one match loop runs at a time and not more than once every 500ms
+    if (this.isMatching || now - this.lastMatchTime < 500) return;
     if (this.queue.length < 2) return;
 
-    const settings = await this.getConfig();
-    logger.info(`[Matchmaker] Settings: ageGap=${settings.ageGap}, boostPremium=${settings.boostPremium}`);
-    
-    // Sort queue: Premium or Boosted users first
-    if (settings.boostPremium) {
-      this.queue.sort((a, b) => {
-        const now = Date.now();
-        const hour = 60 * 60 * 1000;
-        
-        const aBoosted = a.lastBoostedAt && (now - new Date(a.lastBoostedAt).getTime() < hour);
-        const bBoosted = b.lastBoostedAt && (now - new Date(b.lastBoostedAt).getTime() < hour);
-        
-        const aPriority = (a.isPremium ? 2 : 0) + (aBoosted ? 3 : 0);
-        const bPriority = (b.isPremium ? 2 : 0) + (bBoosted ? 3 : 0);
-        
-        return bPriority - aPriority;
-      });
-    }
+    this.isMatching = true;
+    this.lastMatchTime = now;
 
-    const now = Date.now();
-    // Re-schedule tryMatch if there are users waiting for their delay to expire
-    const nextEligibility = this.queue
-      .filter(s => s.eligibleAt > now)
-      .map(s => s.eligibleAt - now)
-      .sort((a, b) => a - b)[0];
-
-    if (nextEligibility > 0) {
-      if (this.retryTimeout) clearTimeout(this.retryTimeout);
-      this.retryTimeout = setTimeout(() => this.tryMatch(), nextEligibility + 100);
-    }
-
-    let bestMatch = { user1Index: -1, user2Index: -1, score: -Infinity };
-
-    for (let i = 0; i < this.queue.length; i++) {
-      // Yield to event loop every 100 iterations if queue is large to prevent blocking
-      if (i > 0 && i % 100 === 0) {
-        await new Promise(resolve => setImmediate(resolve));
+    try {
+      logger.info(`[Matchmaker] tryMatch starting. Queue length: ${this.queue.length}`);
+      
+      const settings = await this.getConfig();
+      
+      // Sort queue only if premium/boosted features are enabled to save CPU
+      if (settings.boostPremium) {
+        this.queue.sort((a, b) => {
+          const hour = 60 * 60 * 1000;
+          const aBoosted = a.lastBoostedAt && (now - new Date(a.lastBoostedAt).getTime() < hour);
+          const bBoosted = b.lastBoostedAt && (now - new Date(b.lastBoostedAt).getTime() < hour);
+          const aPriority = (a.isPremium ? 2 : 0) + (aBoosted ? 3 : 0);
+          const bPriority = (b.isPremium ? 2 : 0) + (bBoosted ? 3 : 0);
+          return bPriority - aPriority;
+        });
       }
 
-      for (let j = i + 1; j < this.queue.length; j++) {
-        const u1 = this.queue[i];
-        const u2 = this.queue[j];
-        
-        // Respect the 3-second "hidden" delay
-        if (u1.eligibleAt > now || u2.eligibleAt > now) continue;
+      let bestMatch = { user1Index: -1, user2Index: -1, score: -Infinity };
 
-        if (u1.userId && u2.userId) {
-          if (u1.userId.toString() === u2.userId.toString()) continue;
-          // 1. Check Blocks
-          const u1Blocked = u1.blockedUsers?.includes(u2.userId.toString());
-          const u2Blocked = u2.blockedUsers?.includes(u1.userId.toString());
-          if (u1Blocked || u2Blocked) continue;
+      for (let i = 0; i < this.queue.length; i++) {
+        // Yield to event loop even more frequently for smoother server performance
+        if (i > 0 && i % 50 === 0) {
+          await new Promise(resolve => setImmediate(resolve));
+        }
 
-          // 2. Check Age Gap (Algorithm Setting)
-          if (u1.age && u2.age) {
-            const gap = Math.abs(u1.age - u2.age);
-            if (gap > settings.ageGap) {
-              continue;
+        for (let j = i + 1; j < this.queue.length; j++) {
+          const u1 = this.queue[i];
+          const u2 = this.queue[j];
+          
+          if (u1.eligibleAt > now || u2.eligibleAt > now) continue;
+
+          if (u1.userId && u2.userId) {
+            if (u1.userId.toString() === u2.userId.toString()) continue;
+            
+            const u1Blocked = u1.blockedUsers?.includes(u2.userId.toString());
+            const u2Blocked = u2.blockedUsers?.includes(u1.userId.toString());
+            if (u1Blocked || u2Blocked) continue;
+
+            if (u1.age && u2.age) {
+              const gap = Math.abs(u1.age - u2.age);
+              if (gap > settings.ageGap) continue;
             }
-          }
 
-          // Variable Reward Loop: 10% chance for a "Wildcard" serendipity match
-          const isWildcard = Math.random() < 0.10;
+            const isWildcard = Math.random() < 0.10;
 
-          // 2b. Check User Preferences (Mutual)
-          if (!isWildcard && u1.matchPreferences && u2.matchPreferences) {
-            // Gender Preference
-            if (u1.matchPreferences.gender !== 'All' && u1.matchPreferences.gender !== u2.gender) continue;
-            if (u2.matchPreferences.gender !== 'All' && u2.matchPreferences.gender !== u1.gender) continue;
+            if (!isWildcard && u1.matchPreferences && u2.matchPreferences) {
+              if (u1.matchPreferences.gender !== 'All' && u1.matchPreferences.gender !== u2.gender) continue;
+              if (u2.matchPreferences.gender !== 'All' && u2.matchPreferences.gender !== u1.gender) continue;
+              if (u1.matchPreferences.region !== 'Global' && u1.matchPreferences.region !== u2.region) continue;
+              if (u2.matchPreferences.region !== 'Global' && u2.matchPreferences.region !== u1.region) continue;
+            }
 
-            // Region Preference
-            if (u1.matchPreferences.region !== 'Global' && u1.matchPreferences.region !== u2.region) continue;
-            if (u2.matchPreferences.region !== 'Global' && u2.matchPreferences.region !== u1.region) continue;
-          }
+            if (u1.matchPreferences && u2.matchPreferences) {
+              if (u2.age < u1.matchPreferences.ageRange.min || u2.age > u1.matchPreferences.ageRange.max) continue;
+              if (u1.age < u2.matchPreferences.ageRange.min || u1.age > u2.matchPreferences.ageRange.max) continue;
+            }
 
-          // Age Range MUST always be respected regardless of wildcard status
-          if (u1.matchPreferences && u2.matchPreferences) {
-            if (u2.age < u1.matchPreferences.ageRange.min || u2.age > u1.matchPreferences.ageRange.max) continue;
-            if (u1.age < u2.matchPreferences.ageRange.min || u1.age > u2.matchPreferences.ageRange.max) continue;
-          }
+            let currentScore = 0;
+            if (u1.interests && u2.interests) {
+              const commonInterests = u1.interests.filter(it => u2.interests.includes(it));
+              currentScore += commonInterests.length * 10;
+            }
 
-          // 3. Dynamic Interest Filtering
-          let currentScore = 0;
-          if (u1.interests && u2.interests) {
-            const commonInterests = u1.interests.filter(it => u2.interests.includes(it));
-            currentScore += commonInterests.length * 10; // 10 points per common interest
-          }
+            if (u1.location && u2.location && u1.location === u2.location) currentScore += 15;
+            if (u1.region && u2.region && u1.region !== 'Global' && u1.region === u2.region) currentScore += 25;
 
-          // 4. Location Matching (Bonus points)
-          if (u1.location && u2.location && u1.location === u2.location) {
-            currentScore += 15;
-          }
+            const u1SkipPenalty = Math.min((u1.skipCount || 0) * 2, 50);
+            const u2SkipPenalty = Math.min((u2.skipCount || 0) * 2, 50);
+            currentScore -= (u1SkipPenalty + u2SkipPenalty);
 
-          // 5. Region Matching (Bonus points for low latency)
-          if (u1.region && u2.region && u1.region !== 'Global' && u1.region === u2.region) {
-            currentScore += 25;
-          }
+            if (isWildcard) currentScore += 5;
 
-          // 6. Behavior Penalty (Skip Count) - Task 47
-          // Penalize users who skip a lot. Subtract 2 points per skip, capped at -50.
-          const u1SkipPenalty = Math.min((u1.skipCount || 0) * 2, 50);
-          const u2SkipPenalty = Math.min((u2.skipCount || 0) * 2, 50);
-          currentScore -= (u1SkipPenalty + u2SkipPenalty);
+            if (currentScore > bestMatch.score) {
+              bestMatch = { user1Index: i, user2Index: j, score: currentScore, isWildcard };
+            }
 
-          if (isWildcard) {
-            currentScore += 5; // Slight boost to ensure wildcard happens if other criteria are weak
-          }
-
-          // If this is the best match found so far, keep it
-          if (currentScore > bestMatch.score) {
-            bestMatch = { user1Index: i, user2Index: j, score: currentScore, isWildcard };
-          }
-
-          // If we found a very good match (e.g. score > 20), stop searching
-          if (currentScore >= 30) {
-            break;
+            // High-quality match found, break early to save cycles
+            if (currentScore >= 30) break;
           }
         }
+        if (bestMatch.user1Index !== -1 && bestMatch.score >= 30) break;
       }
-      if (bestMatch.user1Index !== -1 && bestMatch.score >= 30) break;
+
+      if (bestMatch.user1Index !== -1) {
+        logger.info(`[Matchmaker] Match decided! Score: ${bestMatch.score}`);
+        const user2 = this.queue.splice(bestMatch.user2Index, 1)[0];
+        const user1 = this.queue.splice(bestMatch.user1Index, 1)[0];
+        const roomId = uuidv4();
+        
+        let commonInterests = [];
+        if (user1.interests && user2.interests) {
+          commonInterests = user1.interests.filter(it => user2.interests.includes(it));
+        }
+
+        let icebreaker = ICEBREAKER_PROMPTS.Default[Math.floor(Math.random() * ICEBREAKER_PROMPTS.Default.length)];
+        if (commonInterests.length > 0) {
+          const selectedInterest = commonInterests[Math.floor(Math.random() * commonInterests.length)];
+          const interestPrompts = ICEBREAKER_PROMPTS[selectedInterest] || ICEBREAKER_PROMPTS.Default;
+          icebreaker = `You both like ${selectedInterest}! Question: ${interestPrompts[Math.floor(Math.random() * interestPrompts.length)]}`;
+        }
+
+        this.activeMatches.set(roomId, {
+          user1: user1.id,
+          user2: user2.id,
+          user1Id: user1.userId,
+          user2Id: user2.userId,
+          status: 'active'
+        });
+
+        // Update reverse lookup map
+        this.userToMatch.set(user1.id, roomId);
+        this.userToMatch.set(user2.id, roomId);
+
+        user1.join(roomId);
+        user2.join(roomId);
+        user1.emit('match-found', { roomId, role: 'caller', remoteUserId: user2.userId, icebreaker, isWildcard: bestMatch.isWildcard });
+        user2.emit('match-found', { roomId, role: 'receiver', remoteUserId: user1.userId, icebreaker, isWildcard: bestMatch.isWildcard });
+        
+        // After making a match, try to match more users in the queue if any are left
+        if (this.queue.length >= 2) {
+          setTimeout(() => this.tryMatch(), 100);
+        }
+      }
+    } catch (err) {
+      logger.error(`[Matchmaker] tryMatch error: ${err.message}`);
+    } finally {
+      this.isMatching = false;
     }
-
-    if (bestMatch.user1Index === -1) {
-      return;
-    }
-
-    logger.info(`[Matchmaker] Match decided! Score: ${bestMatch.score}, Users: ${this.queue[bestMatch.user1Index].userId} & ${this.queue[bestMatch.user2Index].userId}`);
-
-    const user2 = this.queue.splice(bestMatch.user2Index, 1)[0];
-    const user1 = this.queue.splice(bestMatch.user1Index, 1)[0];
-    const roomId = uuidv4();
-    
-    // Conversation Starter Loop Logic
-    let commonInterests = [];
-    if (user1.interests && user2.interests) {
-      commonInterests = user1.interests.filter(it => user2.interests.includes(it));
-    }
-
-    let icebreaker = ICEBREAKER_PROMPTS.Default[Math.floor(Math.random() * ICEBREAKER_PROMPTS.Default.length)];
-    if (commonInterests.length > 0) {
-      const selectedInterest = commonInterests[Math.floor(Math.random() * commonInterests.length)];
-      const interestPrompts = ICEBREAKER_PROMPTS[selectedInterest] || ICEBREAKER_PROMPTS.Default;
-      icebreaker = `You both like ${selectedInterest}! Question: ${interestPrompts[Math.floor(Math.random() * interestPrompts.length)]}`;
-    }
-
-    this.activeMatches.set(roomId, {
-      user1: user1.id,
-      user2: user2.id,
-      user1Id: user1.userId,
-      user2Id: user2.userId,
-      status: 'active'
-    });
-
-    user1.join(roomId);
-    user2.join(roomId);
-    user1.emit('match-found', { roomId, role: 'caller', remoteUserId: user2.userId, icebreaker, isWildcard: bestMatch.isWildcard });
-    user2.emit('match-found', { roomId, role: 'receiver', remoteUserId: user1.userId, icebreaker, isWildcard: bestMatch.isWildcard });
   }
 
   handleDisconnect(socket, io) {
@@ -249,11 +229,19 @@ class Matchmaker {
       clearTimeout(pending.timeoutId);
       this.pendingDisconnects.delete(userId.toString());
 
-      // Update the match with the new socket ID
       const match = this.activeMatches.get(pending.roomId);
       if (match) {
-        if (match.user1 === pending.oldSocketId) match.user1 = socket.id;
-        if (match.user2 === pending.oldSocketId) match.user2 = socket.id;
+        // Update socket ID in active match
+        if (match.user1 === pending.oldSocketId) {
+          this.userToMatch.delete(pending.oldSocketId);
+          match.user1 = socket.id;
+          this.userToMatch.set(socket.id, pending.roomId);
+        }
+        if (match.user2 === pending.oldSocketId) {
+          this.userToMatch.delete(pending.oldSocketId);
+          match.user2 = socket.id;
+          this.userToMatch.set(socket.id, pending.roomId);
+        }
         
         socket.join(pending.roomId);
         io.to(pending.roomId).emit('peer-reconnected', { userId });
@@ -299,14 +287,17 @@ class Matchmaker {
         if (clientSocket) clientSocket.leave(roomId);
       }
     }
-    this.activeMatches.delete(roomId);
+    
+    const match = this.activeMatches.get(roomId);
+    if (match) {
+      this.userToMatch.delete(match.user1);
+      this.userToMatch.delete(match.user2);
+      this.activeMatches.delete(roomId);
+    }
   }
 
   getUserMatch(socketId) {
-    for (const [roomId, match] of this.activeMatches.entries()) {
-      if (match.user1 === socketId || match.user2 === socketId) return roomId;
-    }
-    return null;
+    return this.userToMatch.get(socketId) || null;
   }
 
   async registerConnection(roomId, socketId, userId, io) {
@@ -315,10 +306,14 @@ class Matchmaker {
 
     // Use userId for comparison as it's more stable than socketId
     if (match.user1Id && match.user1Id.toString() === userId.toString()) {
+      this.userToMatch.delete(match.user1);
       match.user1 = socketId;
+      this.userToMatch.set(socketId, roomId);
       match.user1Connected = true;
     } else if (match.user2Id && match.user2Id.toString() === userId.toString()) {
+      this.userToMatch.delete(match.user2);
       match.user2 = socketId;
+      this.userToMatch.set(socketId, roomId);
       match.user2Connected = true;
     }
 

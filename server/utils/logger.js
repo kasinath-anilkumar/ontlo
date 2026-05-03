@@ -46,12 +46,16 @@ const logActivity = async ({ userId, action, req, metadata = {} }) => {
       logData.userAgent = req.headers['user-agent'];
     }
 
-    await ActivityLog.create(logData);
+    // Fire and forget logging to avoid blocking the main thread
+    ActivityLog.create(logData).catch(error => {
+      logger.error('Failed to create activity log', { error: error.message });
+    });
     
     // Also log to Winston for observability
     logger.info(`Activity: ${action}`, { userId, ...logData.metadata, ip: logData.ip });
   } catch (error) {
-    logger.error('Failed to create activity log', { error: error.message });
+    // Top level catch only for synchronous errors in data prep
+    logger.error('Activity log error:', { error: error.message });
   }
 };
 

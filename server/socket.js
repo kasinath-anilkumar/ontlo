@@ -223,14 +223,14 @@ module.exports = (io) => {
 
               const recipientId = conn.users.find(u => u && u.toString() !== socket.userId.toString());
               if (recipientId) {
-                // Create persistent notification for message
-                await Notification.create({
+                // Fire and forget: Create persistent notification for message
+                Notification.create({
                   user: recipientId,
                   type: 'message',
                   content: finalMessage.length > 50 ? finalMessage.substring(0, 50) + '...' : finalMessage,
                   fromUser: socket.userId,
                   relatedId: roomId
-                });
+                }).catch(e => console.error("Notification error:", e));
 
                 io.to(`user_${recipientId.toString()}`).emit('notification-update', { 
                   type: 'message', 
@@ -272,13 +272,13 @@ module.exports = (io) => {
           // Create persistent notification for new connection/match
           const otherUserId = users.find(id => id.toString() !== uId.toString());
           if (otherUserId) {
-            await Notification.create({
+            Notification.create({
               user: uId,
               type: 'match',
               content: "You've got a new connection! ✨",
               fromUser: otherUserId,
               relatedId: roomId
-            });
+            }).catch(e => console.error("Match notification error:", e));
           }
 
           io.to(`user_${uId}`).emit('notification-update', { type: 'connection' });

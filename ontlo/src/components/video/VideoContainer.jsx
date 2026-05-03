@@ -1,4 +1,4 @@
-import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageSquare, Check, X, Timer, User, ChevronLeft, Settings, Star } from "lucide-react";
+import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageSquare, Check, X, Timer, User, ChevronLeft, Settings, Star, Video } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
@@ -188,7 +188,7 @@ const VideoContainer = () => {
     const newY = clientY - dragStart.current.y;
     
     setLocalVideoPos({ x: newX, y: newY });
-  }, [localVideoPos]);
+  }, []); // Ref based, no deps needed for stability
 
   const handleDragEnd = () => {
     if (!isDragging.current) return;
@@ -215,7 +215,7 @@ const VideoContainer = () => {
       window.removeEventListener('touchmove', handleDragMove);
       window.removeEventListener('touchend', handleDragEnd);
     };
-  }, [handleDragMove]);
+  }, [handleDragMove]); // Now handleDragMove is stable since it doesn't depend on localVideoPos
 
   // ─────────────────────────────────────────────────────────────────
   // 3. Cleanup helper — uses refs so it's always fresh, never stale
