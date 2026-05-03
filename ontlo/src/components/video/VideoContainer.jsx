@@ -45,6 +45,7 @@ const VideoContainer = () => {
   const [cameraError, setCameraError] = useState(null);
   const [penaltyMessage, setPenaltyMessage] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [cameraRequested, setCameraRequested] = useState(false);
   const [commonInterests, setCommonInterests] = useState([]);
   const [showControls, setShowControls] = useState(true);
   const [localVideoPos, setLocalVideoPos] = useState({ x: 0, y: 0 });
@@ -65,6 +66,9 @@ const VideoContainer = () => {
     let mounted = true;
 
     const startCamera = async () => {
+      // Only start if explicitly requested or already in/starting a call
+      if (!cameraRequested && !inCall && !isMatching) return;
+
       try {
         const constraints = {
           audio: true,
@@ -84,7 +88,13 @@ const VideoContainer = () => {
         setCameraReady(true);
       } catch (err) {
         console.error("Failed to get local stream", err);
-        setCameraError(err.name === 'NotAllowedError' ? 'Permission Denied' : 'Camera Error');
+        if (err.name === 'NotAllowedError') {
+          setCameraError('Permission Denied');
+        } else if (err.name === 'NotReadableError' || err.name === 'AbortError') {
+          setCameraError('Blocked by System');
+        } else {
+          setCameraError('Camera Error');
+        }
       }
     };
 
@@ -103,7 +113,7 @@ const VideoContainer = () => {
       }
       if (socket) socket.emit("leave-queue");
     };
-  }, [user?.lowBandwidth, socket]); // Re-initialize camera when quality settings change
+  }, [user?.lowBandwidth, socket, cameraRequested, inCall, isMatching]); // Re-initialize camera when quality settings change or requested
 
   // ─────────────────────────────────────────────────────────────────
   // 2. Call timers
@@ -627,11 +637,17 @@ const VideoContainer = () => {
               </div>
 
               {cameraError ? (
-                <div className="flex flex-col items-center p-8 bg-red-500/10 border border-red-500/20 rounded-3xl animate-in zoom-in duration-300">
+                <div className="flex flex-col items-center p-8 bg-red-500/10 border border-red-500/20 rounded-3xl animate-in zoom-in duration-300 mx-4 text-center">
                   <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
-                  <p className="text-white font-bold mb-2">Camera Blocked</p>
-                  <p className="text-gray-400 text-xs mb-6 max-w-xs">Please enable camera access in your browser settings to start matching.</p>
-                  <button onClick={() => window.location.reload()} className="px-6 py-2 bg-white/5 border border-white/10 text-white rounded-full hover:bg-white/10 transition">
+                  <p className="text-white font-bold mb-2">
+                    {cameraError === 'Blocked by System' ? 'Screen Overlay Detected' : 'Camera Blocked'}
+                  </p>
+                  <p className="text-gray-400 text-xs mb-6 max-w-xs leading-relaxed">
+                    {cameraError === 'Blocked by System' 
+                      ? 'Another app is drawing over Ontlo. Please close any chat bubbles, screen dimmers, or filters and try again.' 
+                      : 'Please enable camera access in your browser settings to start matching.'}
+                  </p>
+                  <button onClick={() => window.location.reload()} className="px-6 py-2 bg-white/5 border border-white/10 text-white rounded-full hover:bg-white/10 transition text-xs font-bold uppercase tracking-widest">
                     Retry Connection
                   </button>
                 </div>
@@ -657,11 +673,10 @@ const VideoContainer = () => {
                 </div>
               ) : (
                 <button
-                  onClick={startMatching}
-                  disabled={!cameraReady}
-                  className="bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:scale-105 transition transform disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
+                  className={`bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:scale-105 transition transform ${cameraError ? "opacity-40 cursor-not-allowed" : "opacity-100"}`}
                 >
-                  {cameraReady ? "Start Matching" : "Starting Camera..."}
+                  {cameraReady ? "Start Matching" : (cameraRequested && !cameraError ? "Starting Camera..." : "Enable Camera")}
                 </button>
               )}
             </div>
