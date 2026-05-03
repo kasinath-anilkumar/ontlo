@@ -4,6 +4,18 @@ const { checkUserBehavior } = require('../utils/abuseDetector');
 const cacheUtil = require('../utils/cache');
 const { logger } = require('../utils/logger');
 
+const ICEBREAKER_PROMPTS = {
+  "Tech": ["What app could you not live without?", "What's your take on AI taking over the world?"],
+  "Music": ["What's your current repeat song?", "Best concert you've ever been to?"],
+  "Gaming": ["What game are you currently grinding?", "All-time favorite game?", "PC or Console?"],
+  "Travel": ["Where is your dream vacation destination?", "Best trip you've ever taken?"],
+  "Movies": ["Top 3 favorite movies?", "What's a movie you can watch over and over?"],
+  "Art": ["Who is your favorite artist?", "What medium do you like working with the most?"],
+  "Fitness": ["What's your workout routine looking like these days?", "Favorite way to stay active?"],
+  "Cooking": ["What is your signature dish?", "If you could only eat one cuisine forever, what is it?"],
+  "Default": ["If you had to eat one food for the rest of your life, what would it be?", "What's the best piece of advice you've ever received?", "What's something you're looking forward to this week?"]
+};
+
 class Matchmaker {
   constructor() {
     this.queue = [];
@@ -99,19 +111,24 @@ class Matchmaker {
             }
           }
 
+          // Variable Reward Loop: 10% chance for a "Wildcard" serendipity match
+          const isWildcard = Math.random() < 0.10;
+
           // 2b. Check User Preferences (Mutual)
-          if (u1.matchPreferences && u2.matchPreferences) {
+          if (!isWildcard && u1.matchPreferences && u2.matchPreferences) {
             // Gender Preference
             if (u1.matchPreferences.gender !== 'All' && u1.matchPreferences.gender !== u2.gender) continue;
             if (u2.matchPreferences.gender !== 'All' && u2.matchPreferences.gender !== u1.gender) continue;
 
-            // Age Range Preference
-            if (u2.age < u1.matchPreferences.ageRange.min || u2.age > u1.matchPreferences.ageRange.max) continue;
-            if (u1.age < u2.matchPreferences.ageRange.min || u1.age > u2.matchPreferences.ageRange.max) continue;
-
             // Region Preference
             if (u1.matchPreferences.region !== 'Global' && u1.matchPreferences.region !== u2.region) continue;
             if (u2.matchPreferences.region !== 'Global' && u2.matchPreferences.region !== u1.region) continue;
+          }
+
+          // Age Range MUST always be respected regardless of wildcard status
+          if (u1.matchPreferences && u2.matchPreferences) {
+            if (u2.age < u1.matchPreferences.ageRange.min || u2.age > u1.matchPreferences.ageRange.max) continue;
+            if (u1.age < u2.matchPreferences.ageRange.min || u1.age > u2.matchPreferences.ageRange.max) continue;
           }
 
           // 3. Dynamic Interest Filtering
@@ -137,9 +154,13 @@ class Matchmaker {
           const u2SkipPenalty = Math.min((u2.skipCount || 0) * 2, 50);
           currentScore -= (u1SkipPenalty + u2SkipPenalty);
 
+          if (isWildcard) {
+            currentScore += 5; // Slight boost to ensure wildcard happens if other criteria are weak
+          }
+
           // If this is the best match found so far, keep it
           if (currentScore > bestMatch.score) {
-            bestMatch = { user1Index: i, user2Index: j, score: currentScore };
+            bestMatch = { user1Index: i, user2Index: j, score: currentScore, isWildcard };
           }
 
           // If we found a very good match (e.g. score > 20), stop searching
@@ -165,6 +186,19 @@ class Matchmaker {
     const user1 = this.queue.splice(bestMatch.user1Index, 1)[0];
     const roomId = uuidv4();
     
+    // Conversation Starter Loop Logic
+    let commonInterests = [];
+    if (user1.interests && user2.interests) {
+      commonInterests = user1.interests.filter(it => user2.interests.includes(it));
+    }
+
+    let icebreaker = ICEBREAKER_PROMPTS.Default[Math.floor(Math.random() * ICEBREAKER_PROMPTS.Default.length)];
+    if (commonInterests.length > 0) {
+      const selectedInterest = commonInterests[Math.floor(Math.random() * commonInterests.length)];
+      const interestPrompts = ICEBREAKER_PROMPTS[selectedInterest] || ICEBREAKER_PROMPTS.Default;
+      icebreaker = `You both like ${selectedInterest}! Question: ${interestPrompts[Math.floor(Math.random() * interestPrompts.length)]}`;
+    }
+
     this.activeMatches.set(roomId, {
       user1: user1.id,
       user2: user2.id,
@@ -175,8 +209,8 @@ class Matchmaker {
 
     user1.join(roomId);
     user2.join(roomId);
-    user1.emit('match-found', { roomId, role: 'caller', remoteUserId: user2.userId });
-    user2.emit('match-found', { roomId, role: 'receiver', remoteUserId: user1.userId });
+    user1.emit('match-found', { roomId, role: 'caller', remoteUserId: user2.userId, icebreaker, isWildcard: bestMatch.isWildcard });
+    user2.emit('match-found', { roomId, role: 'receiver', remoteUserId: user1.userId, icebreaker, isWildcard: bestMatch.isWildcard });
   }
 
   handleDisconnect(socket, io) {

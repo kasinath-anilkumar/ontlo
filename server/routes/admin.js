@@ -246,10 +246,24 @@ router.get('/reports', adminAuth(['admin', 'superadmin', 'moderator']), async (r
 router.post('/moderation/reports/:id/resolve', adminAuth(['admin', 'superadmin', 'moderator']), validate({ params: idParamSchema, body: resolveReportSchema }), async (req, res) => {
   try {
     const { action } = req.body;
-    await Report.findByIdAndUpdate(req.params.id, { 
+    const report = await Report.findByIdAndUpdate(req.params.id, { 
       status: 'resolved', 
       moderatorNote: `Action taken: ${action} by ${req.user.username}` 
     });
+
+    // Safety & Trust Loop: Close the feedback loop with the reporter
+    if (report && report.reporter) {
+      try {
+        const Notification = require('../models/Notification');
+        await Notification.create({
+          user: report.reporter,
+          type: 'system',
+          message: 'We reviewed your recent report and took action. Thank you for keeping Ontlo safe.'
+        });
+      } catch (notifErr) {
+        console.error('Failed to create trust loop notification:', notifErr);
+      }
+    }
 
     // AUDIT LOG
     await logActivity({

@@ -66,7 +66,9 @@ router.get('/discover', auth, async (req, res) => {
 router.get('/online', auth.optional, async (req, res) => {
   try {
     const currentUserId = req.userId;
-    if (!currentUserId) return res.json([]); // Guest sees no one in "Active Now"
+    if (!currentUserId) return res.json({ onlineConnections: [], matchingInterestCount: 0 });
+
+    const currentUser = await User.findById(currentUserId);
 
     // 1. Find all connection documents for this user
     const connections = await Connection.find({ users: currentUserId });
@@ -76,7 +78,7 @@ router.get('/online', auth.optional, async (req, res) => {
       conn.users.find(id => id.toString() !== currentUserId.toString())
     );
 
-    // 3. Find which of those connected users are currently online and ARE NOT admins
+    // 3. Find which of those connected users are currently online
     const onlineConnections = await User.find({
       _id: { $in: connectedUserIds },
       onlineStatus: true,
@@ -84,8 +86,19 @@ router.get('/online', auth.optional, async (req, res) => {
     })
     .limit(10)
     .select('username profilePic fullName');
+
+    // 4. FOMO Loop: Calculate count of online users matching interests
+    const matchingInterestCount = await User.countDocuments({
+      _id: { $ne: currentUserId },
+      onlineStatus: true,
+      role: 'user',
+      interests: { $in: currentUser.interests || [] }
+    });
     
-    res.json(onlineConnections);
+    res.json({
+      onlineConnections,
+      matchingInterestCount
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error' });
@@ -120,6 +133,45 @@ router.get('/:id', validate({ params: userIdParamSchema }), async (req, res) => 
     
     res.json(userObj);
   } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Social Return Loop: Ping a past connection
+router.post('/ping/:targetUserId', auth, async (req, res) => {
+  try {
+    const senderId = req.userId;
+    const targetUserId = req.params.targetUserId;
+
+    // Verify they are actually connections
+    const existingConnection = await Connection.findOne({
+      users: { $all: [senderId, targetUserId] }
+    });
+
+    if (!existingConnection) {
+      return res.status(403).json({ error: 'You can only ping established connections.' });
+    }
+
+    const sender = await User.findById(senderId);
+
+    // Create notification for target user
+    await Notification.create({
+      user: targetUserId,
+      type: 'interaction',
+      message: `${sender.fullName || sender.username} waved at you! 👋`,
+      metadata: { senderId }
+    });
+
+    await logActivity({
+      userId: senderId,
+      action: 'social_ping',
+      req,
+      metadata: { targetUserId }
+    });
+
+    res.json({ message: 'Ping sent successfully' });
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Server error' });
   }
 });

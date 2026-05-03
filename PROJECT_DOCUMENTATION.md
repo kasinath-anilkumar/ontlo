@@ -414,10 +414,11 @@ The Digital Personal Data Protection Act requires explicit consent, purpose limi
 
 ## 16. Product Roadmap
 
-### 16.1 Phase 1 (Current Release)
-*   Stabilization of WebRTC signaling.
-*   Implementation of compliance architecture.
-*   Delivery of Admin moderation tools.
+### 16.1 Phase 1 (Current Release - COMPLETED)
+*   Stabilization of WebRTC signaling and multi-peer lifecycle.
+*   Implementation of MNC-grade compliance architecture (DPDP 2023).
+*   Delivery of real-time Admin moderation and audit toolsets.
+*   **Implementation of 12 Ethical Retention Loops (Growth Engineering).**
 
 ### 16.2 Phase 2 (Monetization & Expansion)
 *   **Premium Tiers**: Implementation of a subscription model (`isPremium: true`) granting UI badges and priority matchmaking queue routing.
@@ -428,5 +429,32 @@ The Digital Personal Data Protection Act requires explicit consent, purpose limi
 *   **Global Sharding**: Deploying the stack to Edge infrastructure and utilizing MongoDB Global Clusters to ensure video latency remains low for cross-continental matches.
 
 ---
+
+## 17. Retention & Growth Engineering
+
+The Ontlo platform utilizes a series of **Value-Driven Habituation** loops designed to drive high Daily Active User (DAU) and Long-Term Value (LTV) without resorting to predatory or manipulative "dark patterns."
+
+### 17.1 Serendipity & Unpredictability (Variable Reward)
+*   **Wildcard Matching**: The matchmaking algorithm (`Matchmaker.js`) includes a 10% "Wildcard" probability that intentionally bypasses user-defined filters (Region/Gender) to create serendipitous human connections.
+*   **Visual Reinforcement**: Wildcard matches are visually flagged with a unique UI badge to frame the encounter as a "rare event," increasing psychological engagement.
+
+### 17.2 Information Gap & Intrigue (Curiosity Loop)
+*   **Progressive Exposure**: Connections begin with a 30-second heavy video blur (`curiosityBlurTimer`).
+*   **Psychological Hook**: By withholding the visual reveal while maintaining the audio/interest context, users are incentivized to initiate conversation to "earn" the visual reveal, reducing instant "looks-based" skipping.
+
+### 17.3 Friction Reduction (Conversation Starter)
+*   **Contextual Icebreakers**: Upon `match-found`, the system calculates the intersection of shared interests and emits a tailored prompt (e.g., *"You both like Music! Best concert you've ever been to?"*).
+*   **Impact**: This reduces the cognitive load of the first 10 seconds, which is the highest churn point in video social apps.
+
+### 17.4 Social Reciprocity (Social Return Loop)
+*   **Ping/Wave Mechanism**: Implemented a notification-based re-engagement system where users can "Ping" past connections.
+*   **Hook**: This leverages social obligation, bringing dormant users back into the application via contextual, user-generated triggers rather than generic system spam.
+
+### 17.5 Investment & Validation (Fast Feedback Loop)
+*   **Profile Boosts**: Updating profile bios or media grants a temporary 1-hour priority boost (`lastBoostedAt`) in the matchmaking queue.
+*   **Reward**: This ensures users receive immediate positive reinforcement (more matches/conversations) immediately after investing effort into their digital identity.
+
+---
+
 **End of Document.**  
 *Drafted by the Office of the Principal Architecture Review Board.*

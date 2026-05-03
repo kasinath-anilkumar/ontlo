@@ -47,6 +47,9 @@ const VideoContainer = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [cameraRequested, setCameraRequested] = useState(false);
   const [commonInterests, setCommonInterests] = useState([]);
+  const [icebreaker, setIcebreaker] = useState(null);
+  const [isWildcard, setIsWildcard] = useState(false);
+  const [curiosityBlurTimer, setCuriosityBlurTimer] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [localVideoPos, setLocalVideoPos] = useState({ x: 0, y: 0 });
   const isDragging = useRef(false);
@@ -127,6 +130,7 @@ const VideoContainer = () => {
           if (prev === 1) setIsBlurred(false);
           return prev > 0 ? prev - 1 : 0;
         });
+        setCuriosityBlurTimer(prev => (prev > 0 ? prev - 1 : 0));
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -333,7 +337,7 @@ const VideoContainer = () => {
   useEffect(() => {
     if (!socket) return;
 
-    const onMatchFound = async ({ roomId: rId, role, remoteUserId: remoteId }) => {
+    const onMatchFound = async ({ roomId: rId, role, remoteUserId: remoteId, icebreaker: prompt, isWildcard: wildcardFlag }) => {
       // If already in a call, clean up first without auto-rejoining
       if (peerConnectionRef.current) {
         endCallLocally(false);
@@ -349,6 +353,11 @@ const VideoContainer = () => {
       setChatMessages([]);
       setHasNewMessage(false);
       setIsMatching(false);
+      setIcebreaker(prompt);
+      setIsWildcard(wildcardFlag);
+
+      // Curiosity Loop: 30s Blur
+      setCuriosityBlurTimer(30);
 
       // ── UX Feedback ──
       if (navigator.vibrate) navigator.vibrate(100);
@@ -620,7 +629,14 @@ const VideoContainer = () => {
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className={`w-full h-full object-cover transition-all duration-700 ${(isBlurred || peerIsPrivate) ? "blur-[60px] scale-110" : "blur-0 scale-100"} ${inCall ? "block" : "hidden"}`}
+            style={{
+              filter: (isBlurred || peerIsPrivate) 
+                ? "blur(60px) scale(1.1)" 
+                : (curiosityBlurTimer > 0)
+                ? `blur(${curiosityBlurTimer * 2}px) scale(${1 + (curiosityBlurTimer / 60)})`
+                : "none"
+            }}
+            className={`w-full h-full object-cover transition-all duration-700 ${inCall ? "block" : "hidden"}`}
           />
 
           {/* Idle / Matching overlay — shown when not in call */}
@@ -717,6 +733,16 @@ const VideoContainer = () => {
               </div>
             )}
 
+            {/* Conversation Starter Loop: Icebreaker Prompt */}
+            {inCall && !isPiP && icebreaker && (
+              <div className={`absolute top-36 left-1/2 -translate-x-1/2 z-20 w-full flex flex-col items-center gap-2 pointer-events-none transition-all duration-1000 delay-700 px-4 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"}`}>
+                <div className="bg-[#151923]/80 backdrop-blur-xl px-5 py-3 rounded-2xl border border-purple-500/30 shadow-2xl flex flex-col items-center max-w-md text-center">
+                  <span className="text-[8px] text-purple-400 font-black uppercase tracking-[0.3em] mb-1">Conversation Starter</span>
+                  <p className="text-white text-xs sm:text-sm font-bold leading-relaxed">{icebreaker}</p>
+                </div>
+              </div>
+            )}
+
             {/* Top bar */}
             <div className={`absolute top-0 left-0 w-full p-4 pt-[calc(1rem+env(safe-area-inset-top))] md:pt-8 flex justify-between items-start z-10 transition-all duration-500 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10 pointer-events-none"}`}>
               <div className="flex items-center gap-3 pointer-events-auto">
@@ -741,7 +767,14 @@ const VideoContainer = () => {
                   <button onClick={reportUser} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-red-500/20 backdrop-blur-md flex items-center justify-center text-red-500 hover:bg-red-500/40 transition">
                     <AlertTriangle className="w-5 h-5" />
                   </button>
-                  <div className="bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full text-white font-black text-[9px] sm:text-[10px] mt-1 font-mono tracking-widest border border-white/5">LIVE</div>
+                  <div className="flex gap-1.5 mt-1">
+                    {isWildcard && (
+                      <div className="bg-gradient-to-r from-orange-500/80 to-yellow-500/80 backdrop-blur-md px-2.5 py-1 rounded-full text-white font-black text-[9px] sm:text-[10px] font-mono tracking-widest border border-white/20 shadow-lg flex items-center gap-1">
+                        <span>🎲</span> WILDCARD
+                      </div>
+                    )}
+                    <div className="bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full text-white font-black text-[9px] sm:text-[10px] font-mono tracking-widest border border-white/5">LIVE</div>
+                  </div>
                 </div>
               </div>
               </div>

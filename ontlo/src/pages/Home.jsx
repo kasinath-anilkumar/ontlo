@@ -13,6 +13,7 @@ const Home = () => {
   const { socket, user } = useSocket();
   const [counts, setCounts] = useState({ notifications: 0 });
   const [onlineCount, setOnlineCount] = useState(0);
+  const [matchingCount, setMatchingCount] = useState(0);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [loadingOnline, setLoadingOnline] = useState(true);
 
@@ -51,7 +52,10 @@ const Home = () => {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const data = await response.json();
-        if (response.ok) setOnlineUsers(data);
+        if (response.ok) {
+          setOnlineUsers(data.onlineConnections || []);
+          setMatchingCount(data.matchingInterestCount || 0);
+        }
       } catch (err) {
         console.error("Failed to fetch online users", err);
       } finally {
@@ -121,11 +125,22 @@ const Home = () => {
 
             {/* LEFT CONTENT */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2.5 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full w-fit border border-white/5">
-                <Globe className="w-3.5 h-3.5 text-purple-400" />
-                <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">
-                  <span className="text-white">{onlineCount.toLocaleString()}</span> Active Matches
-                </span>
+              <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2.5">
+                <div className="flex items-center gap-2.5 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full w-fit border border-white/5">
+                  <Globe className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">
+                    <span className="text-white">{onlineCount.toLocaleString()}</span> Active Matches
+                  </span>
+                </div>
+                
+                {matchingCount > 0 && (
+                  <div className="flex items-center gap-2.5 bg-pink-500/10 backdrop-blur-md px-3 py-1.5 rounded-full w-fit border border-pink-500/20 animate-in zoom-in duration-500">
+                    <Star className="w-3.5 h-3.5 text-pink-500 fill-current" />
+                    <span className="text-[10px] text-pink-200 font-bold uppercase tracking-widest">
+                      <span className="text-white">{matchingCount}</span> With your interests
+                    </span>
+                  </div>
+                )}
               </div>
 
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
