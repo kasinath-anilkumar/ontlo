@@ -52,7 +52,7 @@ const VideoContainer = () => {
   const [curiosityBlurTimer, setCuriosityBlurTimer] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [localVideoPos, setLocalVideoPos] = useState({ x: 0, y: 0 });
-  const isDragging = useRef(false);
+  const [isDraggingState, setIsDraggingState] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const localVideoRefContainer = useRef(null);
   const controlsTimeoutRef = useRef(null);
@@ -110,13 +110,8 @@ const VideoContainer = () => {
         localStreamRef.current.getTracks().forEach(t => t.stop());
         localStreamRef.current = null;
       }
-      // Clear any pending rejoin timer
-      if (rejoinTimerRef.current) {
-        clearTimeout(rejoinTimerRef.current);
-      }
-      if (socket) socket.emit("leave-queue");
     };
-  }, [user?.lowBandwidth, socket, cameraRequested, inCall, isMatching]); // Re-initialize camera when quality settings change or requested
+  }, [user?.lowBandwidth, socket, cameraRequested, inCall, isMatching]);
 
   // ─────────────────────────────────────────────────────────────────
   // 2. Call timers
@@ -171,7 +166,7 @@ const VideoContainer = () => {
   // 4. Draggable Local Video Logic
   // ─────────────────────────────────────────────────────────────────
   const handleDragStart = (e) => {
-    isDragging.current = true;
+    setIsDraggingState(true);
     const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
     const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
     dragStart.current = { x: clientX - localVideoPos.x, y: clientY - localVideoPos.y };
@@ -179,7 +174,7 @@ const VideoContainer = () => {
   };
 
   const handleDragMove = useCallback((e) => {
-    if (!isDragging.current) return;
+    if (!setIsDraggingState) return;
     const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
     const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
     
@@ -191,8 +186,7 @@ const VideoContainer = () => {
   }, []); // Ref based, no deps needed for stability
 
   const handleDragEnd = () => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
+    setIsDraggingState(false);
     
     // Snap to nearest corner (simplified)
     const windowWidth = window.innerWidth;
@@ -203,7 +197,7 @@ const VideoContainer = () => {
   };
 
   useEffect(() => {
-    if (isDragging.current) {
+    if (isDraggingState) {
       window.addEventListener('mousemove', handleDragMove);
       window.addEventListener('mouseup', handleDragEnd);
       window.addEventListener('touchmove', handleDragMove);
@@ -979,7 +973,7 @@ const VideoContainer = () => {
           className={`absolute rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl z-[60] cursor-grab active:cursor-grabbing transition-shadow ${
             isPiP ? "w-12 h-16 bottom-2 right-2" : 
             inCall ? "w-28 h-40 bottom-28 right-4 sm:bottom-auto sm:top-6 sm:right-20" : "w-28 h-40 top-24 sm:top-6 right-4 sm:right-6"
-          } ${isDragging.current ? "scale-105 shadow-purple-500/30" : "scale-100"}`}
+          } ${isDraggingState ? "scale-105 shadow-purple-500/30 border-purple-500/50" : "scale-100"}`}
         >
           <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1] pointer-events-none" />
           {!cameraEnabled && (
@@ -1045,8 +1039,40 @@ const VideoContainer = () => {
           }}
         />
       )}
+
+      <UnmountCleanup 
+        socket={socket} 
+        endCallLocally={endCallLocally} 
+        roomIdRef={roomIdRef} 
+        rejoinTimerRef={rejoinTimerRef} 
+      />
     </div>
   );
+};
+
+// Separate Cleanup Effect to handle unmount logic after all helpers are defined
+const UnmountCleanup = ({ socket, endCallLocally, roomIdRef, rejoinTimerRef }) => {
+  useEffect(() => {
+    return () => {
+      // Clear any pending rejoin timer
+      if (rejoinTimerRef.current) {
+        clearTimeout(rejoinTimerRef.current);
+      }
+      
+      // Leave rooms and queue
+      if (socket) {
+        socket.emit("leave-queue");
+        if (roomIdRef.current) {
+          socket.emit("leave-chat", { roomId: roomIdRef.current });
+        }
+      }
+      
+      // Clean up WebRTC
+      endCallLocally(false);
+    };
+  }, [socket, endCallLocally, roomIdRef, rejoinTimerRef]);
+
+  return null;
 };
 
 export default VideoContainer;

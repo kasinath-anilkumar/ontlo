@@ -38,7 +38,7 @@ setInterval(refreshKeywords, 60000);
  * @returns {Object} { clean: boolean, text: string, score: number, flags: Array }
  */
 const moderateText = (text) => {
-  if (!text) return { clean: true, text, score: 0, flags: [] };
+  if (!text || typeof text !== 'string') return { clean: true, text: String(text || ''), score: 0, flags: [] };
 
   let isFlagged = false;
   let moderatedText = text;
