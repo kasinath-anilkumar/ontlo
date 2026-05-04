@@ -157,10 +157,6 @@ class Matchmaker {
             if (u1.location && u2.location && u1.location === u2.location) currentScore += 15;
             if (u1.region && u2.region && u1.region !== 'Global' && u1.region === u2.region) currentScore += 25;
 
-            const u1SkipPenalty = Math.min((u1.skipCount || 0) * 2, 50);
-            const u2SkipPenalty = Math.min((u2.skipCount || 0) * 2, 50);
-            currentScore -= (u1SkipPenalty + u2SkipPenalty);
-
             if (isWildcard) currentScore += 5;
 
             if (currentScore > bestMatch.score) {
@@ -296,15 +292,10 @@ class Matchmaker {
     const targetUserId = userId || io.sockets.sockets.get(socketId)?.userId;
     if (targetUserId) {
       try {
-        await User.findByIdAndUpdate(targetUserId, {
-          $inc: { skipCount: 1 },
-          $set: { lastSkipAt: new Date() }
-        });
-        
-        // Trigger abuse detection
+        // Trigger abuse detection (remains for other behaviors like reports)
         checkUserBehavior(targetUserId, io);
       } catch (err) {
-        console.error("Skip count increment error:", err);
+        console.error("Abuse check error:", err);
       }
     }
 

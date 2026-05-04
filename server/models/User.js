@@ -94,13 +94,6 @@ const UserSchema = new mongoose.Schema({
   lockUntil: {
     type: Number
   },
-  skipCount: {
-    type: Number,
-    default: 0
-  },
-  lastSkipAt: {
-    type: Date
-  },
   isPremium: {
     type: Boolean,
     default: false

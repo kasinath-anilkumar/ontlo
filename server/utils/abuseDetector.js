@@ -14,8 +14,7 @@ const checkUserBehavior = async (userId, io) => {
 
     let suspicionScore = 0;
 
-    // 1. Check skip count (from Task 48)
-    if (user.skipCount > 20) suspicionScore += 20;
+    // 1. Check report count (removed skip count check per user request)
 
     // 2. Check report count
     const reportStats = await Report.getRepeatOffenderStats(userId);
