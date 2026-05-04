@@ -41,7 +41,7 @@ const AppLayout = ({ children }) => {
           <VideoContainer />
         </div>
         
-        {isRightPanelOpen && (
+        {isRightPanelOpen && location.pathname !== '/video' && (
           <div className="hidden xl:block animate-in slide-in-from-right duration-300">
             <RightPanel onClose={() => setIsRightPanelOpen(false)} />
           </div>
