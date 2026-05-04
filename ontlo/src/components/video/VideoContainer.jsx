@@ -93,10 +93,20 @@ const VideoContainer = () => {
         const pc = peerConnectionRef.current;
         if (pc && pc.signalingState !== 'closed') {
            const senders = pc.getSenders();
+           let tracksAdded = false;
            stream.getTracks().forEach(track => {
              const alreadyAdded = senders.find(s => s.track?.id === track.id);
-             if (!alreadyAdded) pc.addTrack(track, stream);
+             if (!alreadyAdded) {
+               pc.addTrack(track, stream);
+               tracksAdded = true;
+             }
            });
+           
+           if (tracksAdded && pc.signalingState === 'stable') {
+             pc.createOffer().then(offer => pc.setLocalDescription(offer)).then(() => {
+               socket.emit("webrtc-offer", { offer: pc.localDescription, roomId: roomIdRef.current });
+             }).catch(e => console.warn("Renegotiation failed:", e));
+           }
         }
       } catch (err) {
         console.error("Failed to get local stream", err);
@@ -205,8 +215,11 @@ const VideoContainer = () => {
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
         { urls: "stun:stun2.l.google.com:19302" },
+        { urls: "stun:stun3.l.google.com:19302" },
+        { urls: "stun:stun4.l.google.com:19302" },
         { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
-        { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" }
+        { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+        { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
       ],
       iceCandidatePoolSize: 10,
     });
@@ -261,10 +274,15 @@ const VideoContainer = () => {
         socket.emit("webrtc-offer", { offer, roomId: rId });
       }
 
-      apiFetch(`${API_URL}/api/users/${remoteId}`).then(res => res.json()).then(data => {
+      apiFetch(`${API_URL}/api/users/${remoteId}`).then(res => {
+        if (res.status === 401) throw new Error("Unauthorized");
+        return res.json();
+      }).then(data => {
         setRemoteUser(data);
         if (user?.interests && data?.interests) setCommonInterests(user.interests.filter(i => data.interests.includes(i)));
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn("User fetch failed or unauthorized:", err);
+      });
     };
 
     const onOffer = async ({ offer }) => {

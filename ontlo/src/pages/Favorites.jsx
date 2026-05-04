@@ -51,7 +51,7 @@ const Favorites = () => {
       <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-pink-600/10 blur-[100px] rounded-full pointer-events-none animate-pulse"></div>
 
       {/* Header */}
-      <div className="p-6 md:p-10 flex items-center justify-between z-10">
+      <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl p-6 md:p-10 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => navigate(-1)}

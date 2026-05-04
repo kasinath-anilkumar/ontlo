@@ -72,7 +72,7 @@ const Home = () => {
       <div className="absolute bottom-20 left-0 w-[300px] h-[300px] bg-pink-600/5 blur-[100px] rounded-full pointer-events-none"></div>
 
       {/* Top Bar */}
-      <header className="flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-10 px-1">
+      <header className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 -mt-6 sm:-mt-8 mb-6 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 border-b border-white/5">
         <div className="relative flex-1 md:flex-none md:w-64 hidden xs:block">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />

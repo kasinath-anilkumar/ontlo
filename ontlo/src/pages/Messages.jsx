@@ -118,8 +118,8 @@ const Messages = () => {
 
       {/* User List Pane */}
       <div className={`w-full md:w-96 flex flex-col h-full bg-[#0B0E14] z-10 transition-all duration-300 ${selectedConnection ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-6 pb-4">
-          <div className="flex items-center justify-between mb-8">
+        <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl p-6 pb-4 border-b border-white/5">
+          <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-black text-white tracking-tight">Messages</h1>
             <button onClick={() => navigate("/video")} className="w-10 h-10 rounded-full bg-[#151923] border border-[#1e293b] flex items-center justify-center text-white hover:bg-[#1e293b] transition shadow-lg">
               <Plus className="w-5 h-5" />

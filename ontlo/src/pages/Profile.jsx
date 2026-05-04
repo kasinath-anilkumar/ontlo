@@ -223,7 +223,7 @@ const Profile = () => {
       <div className={`flex-1 h-full bg-[#0B0E14] z-20 ${!activeTab && 'hidden md:flex'}`}>
         {activeTab ? (
           <div className="h-full flex flex-col w-full animate-in slide-in-from-right-4 duration-300">
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[#1e293b]/30">
+            <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl flex items-center justify-between p-4 sm:p-6 border-b border-[#1e293b]/30">
               <div className="flex items-center gap-4">
                 <button onClick={() => setActiveTab(null)} className="md:hidden p-2 -ml-2 text-gray-400 hover:text-white transition"><ChevronLeft className="w-6 h-6" /></button>
                 <h2 className="text-xl font-black text-white uppercase tracking-tight">

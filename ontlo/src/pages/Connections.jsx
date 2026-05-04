@@ -71,7 +71,7 @@ const Connections = () => {
     <div className="h-full bg-transparent p-4 sm:p-6 lg:p-8 xl:p-10 overflow-y-auto w-full max-w-3xl mx-auto scrollbar-hide">
       
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 xl:-mx-10 xl:px-10 mb-6 flex items-center justify-between border-b border-white/5">
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight italic">Connections</h1>
       </div>
 

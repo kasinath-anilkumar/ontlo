@@ -77,7 +77,7 @@ const Notifications = () => {
     <div className="h-full bg-transparent flex flex-col w-full max-w-2xl mx-auto p-4 sm:p-8">
       
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-4 -mx-4 px-4 sm:-mx-8 sm:px-8 mb-4 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-full transition md:hidden">
             <ChevronLeft className="w-6 h-6" />
