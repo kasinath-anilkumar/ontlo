@@ -91,24 +91,20 @@ const apiLimiter = rateLimit({
 });
 
 const cspDirectives = {
-  defaultSrc: ["'self'"],
-  baseUri: ["'self'"],
-  objectSrc: ["'none'"],
-  frameAncestors: ["'none'"],
-  scriptSrc: ["'self'"],
-  scriptSrcAttr: ["'none'"],
-  styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-  imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'https://res.cloudinary.com'],
-  fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com', 'data:'],
-  connectSrc: ["'self'", 'https:', 'wss:', 'https://ontlo-server.onrender.com', 'https://ontlo.onrender.com', 'wss://ontlo-server.onrender.com'],
-  mediaSrc: ["'self'", "https://assets.mixkit.co", "blob:", "https:"],
-  formAction: ["'self'"],
+  defaultSrc: "'self'",
+  baseUri: "'self'",
+  objectSrc: "'none'",
+  frameAncestors: "'none'",
+  scriptSrc: "'self'",
+  scriptSrcAttr: "'none'",
+  styleSrc: "'self' 'unsafe-inline' https://fonts.googleapis.com",
+  imgSrc: "'self' data: blob: https: https://res.cloudinary.com",
+  fontSrc: "'self' data: https://fonts.gstatic.com",
+  connectSrc: "'self' https: wss: https://ontlo-server.onrender.com https://ontlo.onrender.com wss://ontlo-server.onrender.com",
+  mediaSrc: "'self' https://assets.mixkit.co blob:",
+  formAction: "'self'",
   upgradeInsecureRequests: []
 };
-
-Object.keys(cspDirectives).forEach((key) => {
-  if (cspDirectives[key] === null) delete cspDirectives[key];
-});
 
 // Middleware
 app.use(cors(corsOptions));
