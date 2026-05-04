@@ -14,7 +14,7 @@ export const apiFetch = async (url, options = {}) => {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); 
+  const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s for cold starts
 
   const token = localStorage.getItem("token");
   const config = {
