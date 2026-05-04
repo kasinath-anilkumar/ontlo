@@ -25,7 +25,18 @@ router.patch('/:id/read', auth, async (req, res) => {
       { _id: req.params.id, user: req.user.id },
       { isRead: true }
     );
+    
+    // Response immediately
     res.json({ message: 'Marked as read' });
+
+    // Background update (Non-blocking)
+    if (req.io) {
+      (async () => {
+        const { getUserCounts } = require('../utils/stats');
+        const counts = await getUserCounts(req.user.id);
+        req.io.to(`user_${req.user.id}`).emit('counts-update', counts);
+      })().catch(e => console.error("BG Count Error:", e));
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -39,11 +50,17 @@ router.post('/read-all', auth, async (req, res) => {
       { isRead: true }
     );
 
-    if (req.io) {
-      req.io.emit('notification-update');
-    }
-
+    // Response immediately
     res.json({ message: 'All marked as read' });
+
+    // Background update (Non-blocking)
+    if (req.io) {
+      (async () => {
+        const { getUserCounts } = require('../utils/stats');
+        const counts = await getUserCounts(req.user.id);
+        req.io.to(`user_${req.user.id}`).emit('counts-update', counts);
+      })().catch(e => console.error("BG Count Error:", e));
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -52,41 +69,9 @@ router.post('/read-all', auth, async (req, res) => {
 // Get notification counts for the user
 router.get('/counts', auth, async (req, res) => {
   try {
-    const userId = req.user.id;
-    const mongoose = require('mongoose');
-
-    // Run all count queries in parallel for maximum performance
-    const [unreadChatResults, unreadNotifications, user] = await Promise.all([
-      // 1. Count distinct connectionIds with unread messages where user is NOT the sender
-      Message.aggregate([
-        { 
-          $match: { 
-            isRead: false, 
-            sender: { $ne: new mongoose.Types.ObjectId(userId) } 
-          } 
-        },
-        { $group: { _id: "$connectionId" } },
-        { $count: "count" }
-      ]),
-      
-      // 2. Count unread general notifications
-      Notification.countDocuments({
-        user: userId,
-        isRead: false
-      }),
-
-      // 3. Get user's connection array length (only select the connections field)
-      User.findById(userId).select('connections')
-    ]);
-
-    const unreadChatCount = unreadChatResults.length > 0 ? unreadChatResults[0].count : 0;
-    const connectionsCount = user?.connections ? user.connections.length : 0;
-
-    res.json({
-      messages: unreadChatCount,
-      notifications: unreadNotifications,
-      connections: connectionsCount
-    });
+    const { getUserCounts } = require('../utils/stats');
+    const counts = await getUserCounts(req.user.id);
+    res.json(counts);
   } catch (err) {
     console.error('[Notification Counts Error]:', err);
     res.status(500).json({ error: 'Server error' });

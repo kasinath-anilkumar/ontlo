@@ -1,40 +1,28 @@
 import { Video, MessageSquare, ChevronRight, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import API_URL, { apiFetch } from "../../utils/api";
+import { useSocket } from "../../context/SocketContext";
 
 const RightPanel = ({ onClose }) => {
-  const [onlineUsers, setOnlineUsers] = useState([]);
+  const { onlineUsers, isInitialLoad } = useSocket();
   const [recentConnections, setRecentConnections] = useState([]);
   const navigate = useNavigate();
 
+  // We still fetch "Recent Connections" on mount, but we don't poll
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchRecent = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
-
-        // Fetch Online Connections
-        const onlineRes = await apiFetch(`${API_URL}/api/connections/online`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const onlineData = await onlineRes.json();
-        if (onlineRes.ok) setOnlineUsers(onlineData);
-
-        // Fetch All Connections (for Recent)
-        const connectionsRes = await apiFetch(`${API_URL}/api/connections`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const connectionsData = await connectionsRes.json();
-        if (connectionsRes.ok) setRecentConnections(connectionsData.slice(0, 5));
+        const { apiFetch, API_URL } = await import("../../utils/api");
+        const res = await apiFetch(`${API_URL}/api/connections`);
+        const data = await res.json();
+        if (res.ok) setRecentConnections(data.slice(0, 5));
       } catch (err) {
-        console.error("Failed to fetch sidebar data", err);
+        console.error("Failed to fetch recent connections", err);
       }
     };
-
-    fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+    fetchRecent();
   }, []);
 
   const formatTimeAgo = (date) => {
@@ -50,8 +38,6 @@ const RightPanel = ({ onClose }) => {
 
   return (
     <div className="w-80 bg-[#0B0E14] border-l border-white/5 flex flex-col h-screen overflow-y-auto hidden xl:flex relative">
-      
-      {/* Header with Close */}
       <div className="p-6 pb-2 flex justify-between items-center">
          <h1 className="text-xl font-black text-white tracking-tighter">Dashboard</h1>
          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-gray-500 hover:text-white transition-all group">
@@ -60,7 +46,6 @@ const RightPanel = ({ onClose }) => {
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Online Now Section */}
         <section className="bg-[#151923]/40 border border-white/5 rounded-[32px] p-5 shadow-xl">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-sm font-black text-white uppercase tracking-widest">Online Now</h2>
@@ -93,13 +78,14 @@ const RightPanel = ({ onClose }) => {
                   <Video className="w-5 h-5" />
                 </button>
               </div>
-            )) : (
+            )) : isInitialLoad ? (
+                <p className="text-[10px] text-gray-600 font-bold uppercase text-center py-4 tracking-widest animate-pulse">Loading...</p>
+            ) : (
               <p className="text-[10px] text-gray-600 font-bold uppercase text-center py-4 tracking-widest">No connections online</p>
             )}
           </div>
         </section>
 
-        {/* Recent Connections Section */}
         <section className="bg-[#151923]/40 border border-white/5 rounded-[32px] p-5 shadow-xl">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-sm font-black text-white uppercase tracking-widest">Recent Connections</h2>
@@ -137,7 +123,6 @@ const RightPanel = ({ onClose }) => {
           </div>
         </section>
 
-        {/* Safety Card matching design */}
         <div className="bg-gradient-to-br from-[#151923] to-[#0B0E14] border border-white/5 p-6 rounded-[32px] relative overflow-hidden shadow-2xl">
           <div className="absolute top-0 right-0 w-24 h-24 bg-purple-600/5 blur-3xl rounded-full"></div>
           <div className="relative z-10 flex flex-col items-center text-center">

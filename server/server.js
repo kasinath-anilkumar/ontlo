@@ -100,7 +100,7 @@ const cspDirectives = {
   styleSrc: "'self' 'unsafe-inline' https://fonts.googleapis.com",
   imgSrc: "'self' data: blob: https: https://res.cloudinary.com",
   fontSrc: "'self' data: https://fonts.gstatic.com",
-  connectSrc: "'self' https: wss: https://ontlo-server.onrender.com https://ontlo.onrender.com wss://ontlo-server.onrender.com",
+  connectSrc: "'self' https: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*",
   mediaSrc: "'self' https://assets.mixkit.co blob:",
   formAction: "'self'",
   upgradeInsecureRequests: []
@@ -125,24 +125,28 @@ app.use((req, res, next) => {
 });
 
 app.use(cors(corsOptions));
-app.use(helmet({
-  contentSecurityPolicy: {
-    useDefaults: false,
-    directives: cspDirectives
-  }
-}));
 
-app.use(compression());
+// Only use security headers in production, disable compression as it's too heavy for free tier
+if (isProduction) {
+  app.use(helmet({
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: cspDirectives
+    }
+  }));
+} else {
+  app.use(helmet({ contentSecurityPolicy: false }));
+}
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// Lightweight request logging (No DB hits here)
 app.use((req, res, next) => {
-  req._mark('BaseMiddleware');
+  req._mark = (name) => {}; // Placeholder for profiler if needed
   if (req.path.startsWith('/api/')) {
-    const hasToken = !!req.cookies?.token;
-    const hasRefresh = !!req.cookies?.refreshToken;
-    console.log(`[Request] ${req.method} ${req.path} | token=${hasToken}`);
+    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.path}`);
   }
   next();
 });
@@ -164,7 +168,7 @@ app.use((req, res, next) => {
 app.use(mongoSanitize());
 app.use(xss());
 app.use(monitor.requestMonitor);
-app.use(maintenanceMiddleware);
+// app.use(maintenanceMiddleware);
 
 app.use((req, res, next) => {
   req._mark('MaintenanceCheck');

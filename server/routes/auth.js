@@ -112,7 +112,8 @@ router.post('/check-username', async (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: 'Username is required' });
     
-    const existingUser = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+    // Direct indexed query is much faster than regex on free tier
+    const existingUser = await User.findOne({ username }).select('_id');
     res.json({ available: !existingUser });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

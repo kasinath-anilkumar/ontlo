@@ -1,69 +1,32 @@
-import { Search, Edit, Loader2, MessageSquare, Heart, ChevronLeft, MoreVertical, Plus, User } from "lucide-react";
+import { Search, Edit, Loader2, MessageSquare, Heart, ChevronLeft, Plus, User } from "lucide-react";
 import Skeleton from "../components/ui/Skeleton";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import API_URL, { apiFetch } from "../utils/api";
 import { useSocket } from "../context/SocketContext";
 import ChatPanel from "../components/chat/ChatPanel";
 
 const Messages = () => {
   const [connections, setConnections] = useState([]);
-  const [filteredConnections, setFilteredConnections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [perChatCounts, setPerChatCounts] = useState({});
   const navigate = useNavigate();
   const location = useLocation();
-  const { socket } = useSocket();
-
-  const fetchCounts = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await apiFetch(`${API_URL}/api/notifications/counts`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (response.ok) setPerChatCounts(data.perChat || {});
-    } catch (err) {}
-  };
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (selectedConnection && window.innerWidth < 768) {
-        document.body.classList.add('hide-bottom-nav');
-      } else {
-        document.body.classList.remove('hide-bottom-nav');
-      }
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      document.body.classList.remove('hide-bottom-nav');
-    };
-  }, [selectedConnection, location.pathname]);
+  const { counts } = useSocket();
 
   const fetchConnections = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await apiFetch(`${API_URL}/api/connections`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      const { apiFetch, API_URL } = await import("../utils/api");
+      const response = await apiFetch(`${API_URL}/api/connections`);
       const data = await response.json();
       if (response.ok) {
         setConnections(data);
-        setFilteredConnections(data);
         
-        // Priority 1: ID from navigation state (Connections page)
         const stateId = location.state?.selectId;
         if (stateId) {
           const target = data.find(c => c.id === stateId);
           if (target) setSelectedConnection(target);
-        } 
-        // Priority 2: Auto-select first one on desktop only
-        else if (data.length > 0 && window.innerWidth > 768) {
+        } else if (data.length > 0 && window.innerWidth > 768 && !selectedConnection) {
           setSelectedConnection(data[0]);
         }
       }
@@ -76,47 +39,18 @@ const Messages = () => {
 
   useEffect(() => {
     fetchConnections();
-    fetchCounts();
   }, [location.state]);
 
-  useEffect(() => {
-    if (!socket) return;
-    
-    const refreshAll = () => {
-      fetchConnections();
-      fetchCounts();
-    };
-
-    socket.on("notification-update", refreshAll);
-    socket.on("connect", refreshAll);
-
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") refreshAll();
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    return () => {
-      socket.off("notification-update", refreshAll);
-      socket.off("connect", refreshAll);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [socket]);
-
-  const handleSearch = (e) => {
-    const query = e.target.value.toLowerCase();
-    setSearchQuery(query);
-    setFilteredConnections(
-      connections.filter(c => c.user.username.toLowerCase().includes(query))
+  const filteredConnections = useMemo(() => {
+    return connections.filter(c => 
+      c.user.username.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  };
+  }, [connections, searchQuery]);
 
   return (
     <div className="absolute inset-0 flex bg-transparent overflow-hidden">
-      
-      {/* Background Glows */}
       <div className="absolute top-0 left-0 w-64 h-64 bg-purple-600/5 blur-[100px] pointer-events-none"></div>
 
-      {/* User List Pane */}
       <div className={`w-full md:w-96 flex flex-col h-full bg-[#0B0E14] z-10 transition-all duration-300 ${selectedConnection ? 'hidden md:flex' : 'flex'}`}>
         <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl p-6 pb-4 border-b border-white/5">
           <div className="flex items-center justify-between mb-4">
@@ -134,10 +68,7 @@ const Messages = () => {
               type="text" 
               placeholder="Search conversations..." 
               value={searchQuery}
-              onChange={handleSearch}
-              autoComplete="off"
-              spellCheck={false}
-              data-gramm="false"
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[#151923] border border-[#1e293b] text-white text-sm rounded-2xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-purple-500/50 transition-all shadow-inner"
             />
           </div>
@@ -157,7 +88,7 @@ const Messages = () => {
               ))}
             </div>
           ) : filteredConnections.length === 0 ? (
-            <div className="text-center  p-12 bg-[#151923]/20 rounded-3xl mx-4 border border-[#1e293b]/50 border-dashed">
+            <div className="text-center p-12 bg-[#151923]/20 rounded-3xl mx-4 border border-[#1e293b]/50 border-dashed">
               <MessageSquare className="w-12 h-12 text-gray-700 mx-auto mb-4 opacity-30" />
               <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">No conversations</p>
             </div>
@@ -189,12 +120,11 @@ const Messages = () => {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  {perChatCounts[conn.id] > 0 && selectedConnection?.id !== conn.id && (
+                  {counts.perChat?.[conn.id] > 0 && selectedConnection?.id !== conn.id && (
                     <span className="bg-pink-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-pink-500/20 animate-pulse">
-                      {perChatCounts[conn.id]}
+                      {counts.perChat[conn.id]}
                     </span>
                   )}
-                  {selectedConnection?.id !== conn.id && <div className="w-2 h-2 bg-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>}
                 </div>
               </div>
             ))
@@ -202,7 +132,6 @@ const Messages = () => {
         </div>
       </div>
 
-      {/* Chat Pane */}
       <div className={`flex-1 h-full bg-[#0B0E14] z-20 ${!selectedConnection && 'hidden md:flex'}`}>
         {selectedConnection ? (
           <div className="h-full flex flex-col w-full animate-in slide-in-from-right-4 duration-300">
@@ -228,7 +157,6 @@ const Messages = () => {
           </div>
         )}
       </div>
-
     </div>
   );
 };

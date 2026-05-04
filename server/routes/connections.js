@@ -10,13 +10,31 @@ const { connectionIdParamSchema } = require('../validators/connection.validator'
 // Get user connections with last message
 router.get('/', auth, async (req, res) => {
   try {
+    // 1. Get connections
     const connections = await Connection.find({ users: req.userId })
       .populate('users', 'username profilePic onlineStatus age gender location bio fullName');
     
-    // Format the response to return the *other* user in each connection + last message
-    const formatted = await Promise.all(connections.map(async (c) => {
+    // 2. Fetch last messages for all connections in ONE query using aggregation
+    const connectionIds = connections.map(c => c._id);
+    const lastMessages = await Message.aggregate([
+      { $match: { connectionId: { $in: connectionIds } } },
+      { $sort: { timestamp: -1 } }, // Use 'timestamp' per Message schema
+      { 
+        $group: { 
+          _id: "$connectionId", 
+          text: { $first: "$text" }, 
+          timestamp: { $first: "$timestamp" } 
+        } 
+      }
+    ]);
+
+    // Map messages for easy lookup
+    const messageMap = new Map(lastMessages.map(m => [m._id.toString(), m]));
+
+    // 3. Format response
+    const formatted = connections.map((c) => {
       const otherUser = c.users.find(u => u && u._id.toString() !== req.userId);
-      const lastMsg = await Message.findOne({ connectionId: c._id }).sort({ createdAt: -1 });
+      const lastMsg = messageMap.get(c._id.toString());
       
       return {
         id: c._id,
@@ -25,10 +43,10 @@ router.get('/', auth, async (req, res) => {
         createdAt: c.createdAt,
         lastMessage: lastMsg ? {
           text: lastMsg.text,
-          createdAt: lastMsg.createdAt
+          createdAt: lastMsg.timestamp
         } : null
       };
-    }));
+    });
 
     // Sort by last message activity or creation date
     formatted.sort((a, b) => {

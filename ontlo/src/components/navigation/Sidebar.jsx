@@ -1,14 +1,11 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
-import { useEffect, useState } from "react";
-import API_URL, { apiFetch } from "../../utils/api";
 import logo from "../../assets/ontlo_Logo.png";
 import { 
   Home, 
   Video, 
   Heart, 
   MessageSquare, 
-  Users, 
   Star, 
   User,
   ChevronRight,
@@ -16,46 +13,15 @@ import {
 } from "lucide-react";
 
 const Sidebar = () => {
-  const { user, socket } = useSocket();
+  const { user, counts } = useSocket();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ connections: 0, messages: 0, likes: 0, notifications: 0 });
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await apiFetch(`${API_URL}/api/notifications/counts`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (response.ok) setStats(data);
-      } catch (err) {
-        console.error("Failed to fetch stats", err);
-      }
-    };
-    
-    if (user) fetchStats();
-
-    if (socket) {
-      socket.on("notification-update", fetchStats);
-      socket.on("chat-message", fetchStats);
-    }
-
-    return () => {
-      if (socket) {
-        socket.off("notification-update", fetchStats);
-        socket.off("chat-message", fetchStats);
-      }
-    };
-  }, [user, socket]);
 
   const navItems = [
     { name: "Home", path: "/", icon: Home },
     { name: "Video Chat", path: "/video", icon: Video },
-    { name: "Notifications", path: "/notifications", icon: Bell, badge: stats.notifications },
-    { name: "Connections", path: "/connections", icon: Heart, badge: stats.connections },
-    { name: "Messages", path: "/messages", icon: MessageSquare, badge: stats.messages },
-      // { name: "Who Liked You", path: "/who-liked-you", icon: Users, badge: stats.likes },
+    { name: "Notifications", path: "/notifications", icon: Bell, badge: counts.notifications },
+    { name: "Connections", path: "/connections", icon: Heart, badge: counts.connections },
+    { name: "Messages", path: "/messages", icon: MessageSquare, badge: counts.messages },
     { name: "Favorites", path: "/favorites", icon: Star },
     { name: "Profile & Settings", path: "/profile", icon: User },
   ];
@@ -87,7 +53,6 @@ const Sidebar = () => {
           >
             {({ isActive }) => (
               <>
-                {/* Active Glow matching theme */}
                 {isActive && (
                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-pink-500/10 opacity-100"></div>
                 )}
@@ -107,7 +72,6 @@ const Sidebar = () => {
                   {item.badge > 99 ? '99+' : item.badge}
                 </span>
                 
-                {/* Left active border indicator */}
                 {isActive && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-r-full shadow-[2px_0_10px_rgba(168,85,247,0.5)]"></div>
                 )}

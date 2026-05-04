@@ -1,58 +1,9 @@
 import { NavLink } from "react-router-dom";
 import { Home, Video, Heart, MessageSquare, User, Bell } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useSocket } from "../../context/SocketContext";
-import API_URL, { apiFetch } from "../../utils/api";
 
 const BottomNav = () => {
-  const { socket } = useSocket();
-  const [counts, setCounts] = useState({ messages: 0, notifications: 0 });
-
-  useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await apiFetch(`${API_URL}/api/notifications/counts`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (response.ok) setCounts(data);
-      } catch (err) {
-        console.error("Failed to fetch notification counts", err);
-      }
-    };
-
-    fetchCounts();
-
-    // Re-fetch on socket events
-    if (socket) {
-      socket.on("connect", fetchCounts);
-      socket.on("notification-update", fetchCounts);
-      socket.on("chat-message", fetchCounts);
-    }
-
-    // Refresh when user comes back to the tab
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        fetchCounts();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    const interval = setInterval(fetchCounts, 15000); // Check every 15s fallback
-    
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (socket) {
-        socket.off("connect", fetchCounts);
-        socket.off("notification-update", fetchCounts);
-        socket.off("chat-message", fetchCounts);
-      }
-    };
-  }, [socket]);
-
-  // Bottom nav is now permanently fixed based on user feedback
+  const { counts } = useSocket();
 
   const navItems = [
     { name: "Home", path: "/", icon: Home },
@@ -70,7 +21,6 @@ const BottomNav = () => {
       `}
     >
       <div className="flex items-center justify-around py-3 px-2 relative">
-        {/* Animated background indicator matching theme */}
         <div className="absolute inset-0 bg-gradient-to-t from-purple-600/5 to-transparent pointer-events-none"></div>
 
         {navItems.map((item) => (
@@ -87,7 +37,6 @@ const BottomNav = () => {
           >
             {({ isActive }) => (
               <>
-                {/* Active Indicator Glow */}
                 {isActive && (
                   <div className="absolute -top-[12px] left-1/2 -translate-x-1/2 w-8 h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-b-full shadow-[0_2px_10px_rgba(168,85,247,0.5)]"></div>
                 )}
