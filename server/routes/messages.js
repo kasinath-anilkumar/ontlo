@@ -12,7 +12,9 @@ const requireConnectionMember = async (req, res, next) => {
     const connection = await Connection.findOne({
       _id: req.params.connectionId,
       users: req.userId
-    });
+    })
+      .select('_id')
+      .lean();
 
     if (!connection) {
       return res.status(404).json({ error: 'Connection not found' });
@@ -30,7 +32,8 @@ router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema })
   try {
     const messages = await Message.find({ connectionId: req.params.connectionId })
       .sort({ timestamp: 1 })
-      .limit(100);
+      .limit(100)
+      .lean();
     
     // Format for frontend
     const formatted = messages.map(m => ({

@@ -20,20 +20,21 @@ const authenticate = (req, res, next) => {
 router.get('/', authenticate, async (req, res) => {
   try {
     const userId = req.userId;
-    
-    // Count mutual connections
+
     const connectionCount = await Connection.countDocuments({
-      $or: [
-        { requester: userId, status: 'accepted' },
-        { recipient: userId, status: 'accepted' }
-      ]
+      users: userId,
+      status: 'active'
     });
 
-    // Count unread messages (sender != user)
-    const unreadMessagesCount = await Message.countDocuments({
-      isRead: false,
-      sender: { $ne: userId }
-    });
+    const connIds = await Connection.find({ users: userId, status: 'active' }).distinct('_id');
+    const unreadMessagesCount =
+      connIds.length === 0
+        ? 0
+        : await Message.countDocuments({
+            connectionId: { $in: connIds },
+            isRead: false,
+            sender: { $ne: userId }
+          });
 
     res.json({
       connections: connectionCount,

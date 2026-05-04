@@ -26,11 +26,16 @@ router.get('/discover', auth, async (req, res) => {
   try {
     const currentUserId = req.userId;
 
-    const currentUser = await User.findById(currentUserId);
-    
-    // Fetch algorithm settings from Admin Panel config
-    const config = await AppConfig.findOne({ key: 'matchmaking_settings' });
-    const settings = config ? config.value : { radius: 50, ageGap: 5, boostPremium: true };
+    const currentUser = await User.findById(currentUserId).select('age').lean();
+    if (!currentUser) return res.status(404).json({ error: 'User not found' });
+
+    // AppConfig is a single document (radius, ageGap, boostPremium on root schema)
+    const config = await AppConfig.findOne().lean();
+    const settings = {
+      radius: config?.radius ?? 50,
+      ageGap: config?.ageGap ?? 5,
+      boostPremium: config?.boostPremium !== false
+    };
 
     const query = {
       _id: { $ne: currentUserId },
@@ -69,10 +74,13 @@ router.get('/online', auth.optional, async (req, res) => {
     const currentUserId = req.userId;
     if (!currentUserId) return res.json({ onlineConnections: [], matchingInterestCount: 0 });
 
-    const currentUser = await User.findById(currentUserId);
+    const currentUser = await User.findById(currentUserId).select('interests').lean();
+    if (!currentUser) return res.json({ onlineConnections: [], matchingInterestCount: 0 });
 
     // 1. Find all connection documents for this user
-    const connections = await Connection.find({ users: currentUserId }).lean();
+    const connections = await Connection.find({ users: currentUserId, status: 'active' })
+      .select('users')
+      .lean();
     
     // 2. Extract the "other" user IDs
     const connectedUserIds = connections.map(conn => 
@@ -155,14 +163,15 @@ router.post('/ping/:targetUserId', auth, async (req, res) => {
       return res.status(403).json({ error: 'You can only ping established connections.' });
     }
 
-    const sender = await User.findById(senderId);
+    const sender = await User.findById(senderId).select('username fullName').lean();
+    if (!sender) return res.status(404).json({ error: 'User not found' });
 
-    // Create notification for target user
     await Notification.create({
       user: targetUserId,
-      type: 'interaction',
-      message: `${sender.fullName || sender.username} waved at you! 👋`,
-      metadata: { senderId }
+      type: 'system',
+      content: `${sender.fullName || sender.username} waved at you! 👋`,
+      fromUser: senderId,
+      relatedId: existingConnection._id.toString()
     });
 
     await logActivity({

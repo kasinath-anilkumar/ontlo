@@ -225,18 +225,20 @@ const VideoContainer = () => {
     });
     pc.onicecandidate = (e) => { if (e.candidate && roomIdRef.current && socket) socket.emit("webrtc-ice-candidate", { candidate: e.candidate, roomId: roomIdRef.current }); };
     pc.ontrack = (e) => {
-      if (remoteVideoRef.current) {
-        if (e.streams && e.streams.length > 0) {
-          remoteVideoRef.current.srcObject = e.streams[0];
-        } else {
-          let stream = remoteVideoRef.current.srcObject;
-          if (!stream) {
-            stream = new MediaStream();
-            remoteVideoRef.current.srcObject = stream;
-          }
-          stream.addTrack(e.track);
+      const el = remoteVideoRef.current;
+      if (!el) return;
+      if (e.streams && e.streams.length > 0) {
+        el.srcObject = e.streams[0];
+      } else {
+        let stream = el.srcObject;
+        if (!(stream instanceof MediaStream)) {
+          stream = new MediaStream();
+          el.srcObject = stream;
         }
+        stream.addTrack(e.track);
       }
+      // Mobile / autoplay policies: explicitly try to play remote A/V
+      el.play?.().catch(() => {});
     };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected") {
@@ -259,6 +261,28 @@ const VideoContainer = () => {
   useEffect(() => {
     if (!socket) return;
 
+    /** Wait until getUserMedia (driven by inCall / isMatching) fills localStreamRef */
+    const waitForLocalStream = async (maxMs = 20000) => {
+      const start = Date.now();
+      while (!localStreamRef.current && Date.now() - start < maxMs) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      return localStreamRef.current;
+    };
+
+    const attachLocalTracks = (pc, stream) => {
+      if (!stream || !pc || pc.signalingState === 'closed') return;
+      const senderTrackIds = new Set(
+        pc.getSenders().map((s) => s.track?.id).filter(Boolean)
+      );
+      stream.getTracks().forEach((track) => {
+        if (!senderTrackIds.has(track.id)) {
+          pc.addTrack(track, stream);
+          senderTrackIds.add(track.id);
+        }
+      });
+    };
+
     const onMatchFound = async ({ roomId: rId, role, remoteUserId: remoteId, icebreaker: prompt, isWildcard: wildcardFlag }) => {
       if (peerConnectionRef.current) endCallLocally(false);
       roomIdRef.current = rId; setInCall(true); setIsBlurred(true); setSafetyBlurTimer(3);
@@ -269,13 +293,21 @@ const VideoContainer = () => {
       const pc = createPeerConnection(rId); peerConnectionRef.current = pc;
       iceQueue.current = []; // Reset queue for new match
 
-      const stream = localStreamRef.current;
-      if (stream) stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      const stream = (await waitForLocalStream()) || localStreamRef.current;
+      if (!stream) {
+        console.error('[WebRTC] No local camera/microphone — cannot start call');
+        return;
+      }
 
-      if (role === "caller") {
-        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+      // Caller: attach local A/V then offer. Receiver: attach only after setRemote(offer) in onOffer (correct Unified Plan order).
+      if (role === 'caller') {
+        attachLocalTracks(pc, stream);
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        });
         await pc.setLocalDescription(offer);
-        socket.emit("webrtc-offer", { offer, roomId: rId });
+        socket.emit('webrtc-offer', { offer: pc.localDescription, roomId: rId });
       }
 
       apiFetch(`${API_URL}/api/users/${remoteId}`).then(res => {
@@ -293,18 +325,27 @@ const VideoContainer = () => {
       const pc = peerConnectionRef.current;
       if (!pc) return;
       try {
+        const stream = (await waitForLocalStream()) || localStreamRef.current;
+        if (!stream) {
+          console.error('[WebRTC] Receiver has no local media — cannot answer');
+          return;
+        }
+        // Apply remote SDP first, then send local A/V so the answer includes our tracks (bidirectional).
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await pc.createAnswer();
+        attachLocalTracks(pc, stream);
+        const answer = await pc.createAnswer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        });
         await pc.setLocalDescription(answer);
-        socket.emit("webrtc-answer", { answer, roomId: roomIdRef.current });
+        socket.emit('webrtc-answer', { answer: pc.localDescription, roomId: roomIdRef.current });
 
-        // Process queued ICE candidates
         while (iceQueue.current.length > 0) {
           const candidate = iceQueue.current.shift();
-          await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("ICE Queue error:", e));
+          await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch((e) => console.error('ICE Queue error:', e));
         }
       } catch (err) {
-        console.error("Failed to handle offer", err);
+        console.error('Failed to handle offer', err);
       }
     };
 

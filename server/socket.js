@@ -8,9 +8,11 @@ const AppConfig = require('./models/AppConfig');
 const Notification = require('./models/Notification');
 const { JWT_SECRET } = require('./config/jwt');
 const { getUserCounts, getOnlineConnections } = require('./utils/stats');
+const { attachMatchmakingProfile } = require('./utils/socketMatchProfile');
 
 module.exports = (io) => {
   const onlineUsers = new Set();
+  let lastOnlineCountEmit = 0;
   let maintenanceMode = false;
 
   const checkMaintenance = async () => {
@@ -38,13 +40,21 @@ module.exports = (io) => {
   // When someone connects/disconnects, we need to update all their friends
   const notifyFriendsOfStatus = async (userId) => {
     try {
-      const connections = await Connection.find({ users: userId });
-      for (const conn of connections) {
-        const friendId = conn.users.find(u => u.toString() !== userId.toString());
-        if (friendId) {
-          pushOnlineFriends(friendId.toString());
-        }
-      }
+      const connections = await Connection.find({ users: userId, status: 'active' })
+        .select('users')
+        .lean();
+      const friendIds = [
+        ...new Set(
+          connections
+            .map((conn) => {
+              const fid = conn.users.find((u) => u.toString() !== userId.toString());
+              return fid ? fid.toString() : null;
+            })
+            .filter(Boolean)
+        )
+      ];
+      // Run in parallel — sequential awaits were N round-trips and felt very slow on free tier.
+      await Promise.all(friendIds.map((fid) => pushOnlineFriends(fid)));
     } catch (err) {
       console.error('Error notifying friends of status:', err);
     }
@@ -69,21 +79,24 @@ module.exports = (io) => {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
         socket.userId = decoded.id;
-        
-        const user = await User.findById(socket.userId).select('age onlineStatus blockedUsers role interests location matchPreferences gender');
+
+        const user = await attachMatchmakingProfile(socket);
         if (user) {
           socket.join(`user_${socket.userId}`);
-          
+
           if (user.role === 'user') {
             onlineUsers.add(socket.userId.toString());
             await User.findByIdAndUpdate(socket.userId, { onlineStatus: true });
-            
-            // Push initial data to the connecting user
+
             pushUserStats(socket.userId);
             pushOnlineFriends(socket.userId);
-            
-            // Notify friends that this user is now online
             notifyFriendsOfStatus(socket.userId);
+
+            const now = Date.now();
+            if (now - lastOnlineCountEmit > 5000) {
+              lastOnlineCountEmit = now;
+              io.emit('online-count', { count: onlineUsers.size });
+            }
           }
 
           matchmaker.handleReconnect(socket, io);
@@ -94,7 +107,14 @@ module.exports = (io) => {
     }
 
     socket.on('join-queue', async () => {
-      if (maintenanceMode && socket.role !== 'admin' && socket.role !== 'superadmin') {
+      if (!socket.userId) {
+        return socket.emit('error', { message: 'Not authenticated.' });
+      }
+      await attachMatchmakingProfile(socket);
+      if (
+        maintenanceMode &&
+        !['admin', 'superadmin', 'moderator'].includes(socket.role)
+      ) {
         return socket.emit('error', { message: 'System is under maintenance.' });
       }
       matchmaker.joinQueue(socket);
@@ -102,6 +122,54 @@ module.exports = (io) => {
 
     socket.on('leave-queue', () => {
       matchmaker.leaveQueue(socket.id);
+    });
+
+    // WebRTC signaling relay (required for offer/answer/ICE to reach the peer)
+    const relayIfInRoom = (roomId, event, payload) => {
+      if (!roomId || typeof roomId !== 'string' || !socket.rooms?.has(roomId)) return;
+      socket.to(roomId).emit(event, payload);
+    };
+
+    socket.on('webrtc-offer', ({ offer, roomId }) => {
+      if (!offer) return;
+      relayIfInRoom(roomId, 'webrtc-offer', { offer });
+    });
+
+    socket.on('webrtc-answer', ({ answer, roomId }) => {
+      if (!answer) return;
+      relayIfInRoom(roomId, 'webrtc-answer', { answer });
+    });
+
+    socket.on('webrtc-ice-candidate', ({ candidate, roomId }) => {
+      if (!candidate) return;
+      relayIfInRoom(roomId, 'webrtc-ice-candidate', { candidate });
+    });
+
+    socket.on('action-skip', () => {
+      matchmaker.skipMatch(socket.id, io, 'skipped', socket.userId);
+    });
+
+    socket.on('join-chat', ({ roomId }) => {
+      if (!roomId || typeof roomId !== 'string') return;
+      socket.join(roomId);
+    });
+
+    socket.on('leave-chat', ({ roomId }) => {
+      if (!roomId || typeof roomId !== 'string') return;
+      socket.leave(roomId);
+    });
+
+    socket.on('typing', ({ roomId, username }) => {
+      relayIfInRoom(roomId, 'typing', { username });
+    });
+
+    socket.on('stop-typing', ({ roomId }) => {
+      relayIfInRoom(roomId, 'stop-typing', {});
+    });
+
+    socket.on('messages-read', ({ connectionId }) => {
+      if (!connectionId) return;
+      relayIfInRoom(connectionId, 'messages-read', { connectionId });
     });
 
     socket.on('chat-message', async ({ message, imageUrl, roomId }) => {
@@ -121,8 +189,8 @@ module.exports = (io) => {
       // Persistent Storage
       if (roomId.length === 24) {
         try {
-          const conn = await Connection.findById(roomId);
-          if (conn && conn.users.some(u => u.toString() === socket.userId.toString())) {
+          const conn = await Connection.findById(roomId).select('users').lean();
+          if (conn && conn.users.some((u) => u.toString() === socket.userId.toString())) {
             const newMessage = new Message({
               connectionId: roomId,
               sender: socket.userId,
@@ -144,8 +212,12 @@ module.exports = (io) => {
 
               // Push the rich notification with sender profile
               const sender = await User.findById(socket.userId).select('username profilePic');
+              const notifPayload =
+                typeof notification.toObject === 'function'
+                  ? notification.toObject()
+                  : { ...notification };
               io.to(`user_${recipientId}`).emit('new-notification', {
-                ...notification._doc,
+                ...notifPayload,
                 fromUser: sender
               });
               
@@ -186,9 +258,14 @@ module.exports = (io) => {
         if (userSockets.length === 0) {
           onlineUsers.delete(userIdStr);
           await User.findByIdAndUpdate(socket.userId, { onlineStatus: false });
-          
-          // Notify friends that this user is now offline
+
           notifyFriendsOfStatus(socket.userId);
+
+          const now = Date.now();
+          if (now - lastOnlineCountEmit > 5000) {
+            lastOnlineCountEmit = now;
+            io.emit('online-count', { count: onlineUsers.size });
+          }
         }
       }
     });

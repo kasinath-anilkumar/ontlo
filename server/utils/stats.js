@@ -36,32 +36,39 @@ const getUserCounts = async (userId, forceRefresh = false) => {
   // 3. Execute Query
   const fetchPromise = (async () => {
     try {
-      const [unreadNotifications, user, perChatResults] = await Promise.all([
+      const oid = new mongoose.Types.ObjectId(userIdStr);
+      const [unreadNotifications, connectionCount, connIds] = await Promise.all([
         Notification.countDocuments({ user: userId, isRead: false }),
-        User.findById(userId).select('connections'),
-        Message.aggregate([
-          { 
-            $match: { 
-              isRead: false, 
-              sender: { $ne: new mongoose.Types.ObjectId(userId) } 
-            } 
-          },
-          { $group: { _id: "$connectionId", count: { $sum: 1 } } }
-        ])
+        Connection.countDocuments({ users: userId, status: 'active' }),
+        Connection.find({ users: userId, status: 'active' }).distinct('_id')
       ]);
+
+      const perChatResults =
+        connIds.length === 0
+          ? []
+          : await Message.aggregate([
+              {
+                $match: {
+                  connectionId: { $in: connIds },
+                  isRead: false,
+                  sender: { $ne: oid }
+                }
+              },
+              { $group: { _id: '$connectionId', count: { $sum: 1 } } }
+            ]);
 
       const perChat = {};
       let totalUnreadMessages = 0;
-      perChatResults.forEach(r => {
+      perChatResults.forEach((r) => {
         const count = r.count || 0;
         perChat[r._id.toString()] = count;
-        totalUnreadMessages += 1;
+        totalUnreadMessages += count;
       });
 
       const result = {
         messages: totalUnreadMessages,
         notifications: unreadNotifications,
-        connections: user?.connections ? user.connections.length : 0,
+        connections: connectionCount,
         perChat
       };
 
@@ -114,8 +121,9 @@ const getOnlineConnections = async (userId, forceRefresh = false) => {
   // 3. Execute Query
   const fetchPromise = (async () => {
     try {
-      const connections = await Connection.find({ users: userId })
-        .populate('users', 'username profilePic onlineStatus age gender location bio fullName');
+      const connections = await Connection.find({ users: userId, status: 'active' })
+        .populate('users', 'username profilePic onlineStatus')
+        .lean();
       
       const result = connections
         .map(c => {

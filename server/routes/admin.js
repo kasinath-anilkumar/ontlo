@@ -22,6 +22,8 @@ const {
 } = require('../validators/admin.validator');
 const { refreshKeywords } = require('../utils/moderation');
 const { logActivity } = require('../utils/logger');
+const AppConfig = require('../models/AppConfig');
+const cacheUtil = require('../utils/cache');
 
 // Dashboard Overview Stats
 router.get('/stats', adminAuth(['admin', 'superadmin', 'moderator']), async (req, res) => {
@@ -363,12 +365,12 @@ router.post('/config/keywords', adminAuth(['admin', 'superadmin']), validate({ b
     const { keywords } = req.body; // Array of strings
     
     await AppConfig.findOneAndUpdate(
-      { key: 'banned_keywords' },
-      { value: keywords, updatedBy: req.user._id },
+      {},
+      { bannedKeywords: keywords, updatedBy: req.user._id },
       { upsert: true, new: true }
     );
 
-    // Trigger local cache refresh
+    cacheUtil.del('app_config');
     await refreshKeywords();
 
     res.json({ message: 'Banned keywords updated successfully' });
@@ -450,18 +452,18 @@ router.post('/support/:id/resolve', adminAuth(['admin', 'superadmin', 'moderator
   }
 });
 
-// Matchmaking: Get/Update Algorithm Settings
+// Matchmaking: Get/Update Algorithm Settings (same fields as root AppConfig document)
 router.get('/matchmaking/config', adminAuth(['admin', 'superadmin']), async (req, res) => {
   try {
-    let config = await AppConfig.findOne({ key: 'matchmaking_settings' });
+    let config = await AppConfig.findOne();
     if (!config) {
-      config = new AppConfig({
-        key: 'matchmaking_settings',
-        value: { radius: 50, ageGap: 5, boostPremium: true }
-      });
-      await config.save();
+      config = await AppConfig.create({});
     }
-    res.json(config.value);
+    res.json({
+      radius: config.radius,
+      ageGap: config.ageGap,
+      boostPremium: config.boostPremium
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -470,11 +472,13 @@ router.get('/matchmaking/config', adminAuth(['admin', 'superadmin']), async (req
 router.post('/matchmaking/config', adminAuth(['admin', 'superadmin']), validate({ body: matchmakingConfigSchema }), async (req, res) => {
   try {
     const { settings } = req.body;
-    await AppConfig.findOneAndUpdate(
-      { key: 'matchmaking_settings' },
-      { value: settings, updatedBy: req.user._id },
-      { upsert: true }
-    );
+    const patch = { updatedBy: req.user._id };
+    if (settings.radius != null) patch.radius = settings.radius;
+    if (settings.ageGap != null) patch.ageGap = settings.ageGap;
+    if (settings.boostPremium != null) patch.boostPremium = settings.boostPremium;
+
+    await AppConfig.findOneAndUpdate({}, patch, { upsert: true, new: true });
+    cacheUtil.del('app_config');
     res.json({ message: 'Algorithm settings updated' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -603,7 +607,6 @@ router.post('/users/:id/update', adminAuth(['admin', 'superadmin']), validate({ 
 // Config: Get global app settings
 router.get('/config', adminAuth(['admin', 'superadmin']), async (req, res) => {
   try {
-    const AppConfig = require('../models/AppConfig');
     let config = await AppConfig.findOne();
     if (!config) {
       config = await AppConfig.create({});
@@ -617,14 +620,13 @@ router.get('/config', adminAuth(['admin', 'superadmin']), async (req, res) => {
 // Config: Update global settings
 router.post('/config/update', adminAuth(['admin', 'superadmin']), validate({ body: configUpdateSchema }), async (req, res) => {
   try {
-    const AppConfig = require('../models/AppConfig');
-    const { refreshKeywords } = require('../utils/moderation');
-    
     // We update the single config document
     const config = await AppConfig.findOneAndUpdate({}, { ...req.body, updatedBy: req.user._id }, { 
       returnDocument: 'after', 
       upsert: true 
     });
+
+    cacheUtil.del('app_config');
     
     // Trigger immediate refresh in socket moderation engine if keywords changed
     if (req.body.bannedKeywords) {

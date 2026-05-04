@@ -1,17 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const Message = require('../models/Message');
-const User = require('../models/User');
 const Notification = require('../models/Notification');
 
 // Get all notifications for the user
 router.get('/', auth, async (req, res) => {
   try {
-    const notifications = await Notification.find({ user: req.user.id })
+    const notifications = await Notification.find({ user: req.userId })
       .populate('fromUser', 'username profilePic')
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(50)
+      .lean();
     res.json(notifications);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -22,7 +21,7 @@ router.get('/', auth, async (req, res) => {
 router.patch('/:id/read', auth, async (req, res) => {
   try {
     await Notification.findOneAndUpdate(
-      { _id: req.params.id, user: req.user.id },
+      { _id: req.params.id, user: req.userId },
       { isRead: true }
     );
     
@@ -33,8 +32,8 @@ router.patch('/:id/read', auth, async (req, res) => {
     if (req.io) {
       (async () => {
         const { getUserCounts } = require('../utils/stats');
-        const counts = await getUserCounts(req.user.id, true); // Force refresh
-        req.io.to(`user_${req.user.id}`).emit('counts-update', counts);
+        const counts = await getUserCounts(req.userId, true); // Force refresh
+        req.io.to(`user_${req.userId}`).emit('counts-update', counts);
       })().catch(e => console.error("BG Count Error:", e));
     }
   } catch (err) {
@@ -46,7 +45,7 @@ router.patch('/:id/read', auth, async (req, res) => {
 router.post('/read-all', auth, async (req, res) => {
   try {
     await Notification.updateMany(
-      { user: req.user.id, isRead: false },
+      { user: req.userId, isRead: false },
       { isRead: true }
     );
 
@@ -57,8 +56,8 @@ router.post('/read-all', auth, async (req, res) => {
     if (req.io) {
       (async () => {
         const { getUserCounts } = require('../utils/stats');
-        const counts = await getUserCounts(req.user.id);
-        req.io.to(`user_${req.user.id}`).emit('counts-update', counts);
+        const counts = await getUserCounts(req.userId);
+        req.io.to(`user_${req.userId}`).emit('counts-update', counts);
       })().catch(e => console.error("BG Count Error:", e));
     }
   } catch (err) {
@@ -70,7 +69,7 @@ router.post('/read-all', auth, async (req, res) => {
 router.get('/counts', auth, async (req, res) => {
   try {
     const { getUserCounts } = require('../utils/stats');
-    const counts = await getUserCounts(req.user.id);
+    const counts = await getUserCounts(req.userId);
     res.json(counts);
   } catch (err) {
     console.error('[Notification Counts Error]:', err);

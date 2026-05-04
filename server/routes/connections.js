@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const Connection = require('../models/Connection');
-const User = require('../models/User');
 const auth = require('../middleware/auth');
 const Message = require('../models/Message');
 const validate = require('../middleware/validate');
@@ -11,22 +10,26 @@ const { connectionIdParamSchema } = require('../validators/connection.validator'
 router.get('/', auth, async (req, res) => {
   try {
     // 1. Get connections
-    const connections = await Connection.find({ users: req.userId })
-      .populate('users', 'username profilePic onlineStatus age gender location bio fullName');
+    const connections = await Connection.find({ users: req.userId, status: 'active' })
+      .populate('users', 'username profilePic onlineStatus')
+      .lean();
     
     // 2. Fetch last messages for all connections in ONE query using aggregation
     const connectionIds = connections.map(c => c._id);
-    const lastMessages = await Message.aggregate([
-      { $match: { connectionId: { $in: connectionIds } } },
-      { $sort: { timestamp: -1 } }, // Use 'timestamp' per Message schema
-      { 
-        $group: { 
-          _id: "$connectionId", 
-          text: { $first: "$text" }, 
-          timestamp: { $first: "$timestamp" } 
-        } 
-      }
-    ]);
+    const lastMessages =
+      connectionIds.length === 0
+        ? []
+        : await Message.aggregate([
+            { $match: { connectionId: { $in: connectionIds } } },
+            { $sort: { timestamp: -1 } },
+            {
+              $group: {
+                _id: '$connectionId',
+                text: { $first: '$text' },
+                timestamp: { $first: '$timestamp' }
+              }
+            }
+          ]);
 
     // Map messages for easy lookup
     const messageMap = new Map(lastMessages.map(m => [m._id.toString(), m]));
@@ -81,9 +84,10 @@ router.delete('/:id', auth, validate({ params: connectionIdParamSchema }), async
 // Get only online connections
 router.get('/online', auth, async (req, res) => {
   try {
-    const connections = await Connection.find({ users: req.userId })
-      .populate('users', 'username profilePic onlineStatus age gender location bio fullName');
-    
+    const connections = await Connection.find({ users: req.userId, status: 'active' })
+      .populate('users', 'username profilePic onlineStatus')
+      .lean();
+
     const onlineOnes = connections
       .map(c => {
         const otherUser = c.users.find(u => u && u._id.toString() !== req.userId);

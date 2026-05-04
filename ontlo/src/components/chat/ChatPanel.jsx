@@ -15,7 +15,7 @@ const ICEBREAKERS = [
 ];
 
 const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessages, onSendMessage, isStandaloneChat }) => {
-  const { socket, activeRoomId: contextRoomId, user } = useSocket();
+  const { socket, user } = useSocket();
   const [internalMessages, setInternalMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -43,7 +43,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     };
   }, []);
 
-  const effectiveRoomId = roomId || contextRoomId || connectionId;
+  const effectiveRoomId = roomId || connectionId;
 
   // Use persisted messages (from parent/video mode) or internal messages (standalone mode)
   const messages = persistedMessages ?? internalMessages;
@@ -60,20 +60,24 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const response = await apiFetch(`${API_URL}/api/messages/${connectionId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
+        const headers = { Authorization: `Bearer ${token}` };
+        const [response, readRes] = await Promise.all([
+          apiFetch(`${API_URL}/api/messages/${connectionId}`, {
+            headers,
+            signal: controller.signal,
+          }),
+          apiFetch(`${API_URL}/api/messages/${connectionId}/read`, {
+            method: "POST",
+            headers,
+            signal: controller.signal,
+          }),
+        ]);
         const data = await response.json();
-        if (!mountedRef.current) return; // bail if unmounted while awaiting
+        if (!mountedRef.current) return;
         if (response.ok) setInternalMessages(data);
-
-        // Mark as read
-        await apiFetch(`${API_URL}/api/messages/${connectionId}/read`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
+        if (!readRes.ok && mountedRef.current) {
+          console.warn("Mark read failed", readRes.status);
+        }
         if (!mountedRef.current) return;
         if (socket) {
           socket.emit("notification-update", { type: "read", connectionId });

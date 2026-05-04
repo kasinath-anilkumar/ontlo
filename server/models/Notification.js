@@ -30,6 +30,6 @@ const NotificationSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 NotificationSchema.index({ user: 1, isRead: 1 }); // Optimized for countDocuments query
-NotificationSchema.index({ createdAt: -1 }); // Optimized for list view query
+NotificationSchema.index({ user: 1, createdAt: -1 }); // List + sort by user (replaces global createdAt-only for this use case)
 
 module.exports = mongoose.model('Notification', NotificationSchema);

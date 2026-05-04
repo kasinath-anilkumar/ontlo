@@ -1,15 +1,9 @@
-import ChatPanel from "../components/chat/ChatPanel";
-
+/**
+ * Route `/video`: main UI is rendered by `VideoContainer` in `AppLayout` (full-screen when on this path).
+ * This outlet keeps the route valid for the router and document title; no duplicate video mount here.
+ */
 const Video = () => {
-  return (
-    <div className="flex h-full w-full">
-
-      {/* Video Section (Placeholder for global VideoContainer) */}
-      <div className="flex-1 relative w-full h-full">
-      </div>
-
-    </div>
-  );
+  return <div className="min-h-[50vh] w-full shrink-0" aria-hidden />;
 };
 
 export default Video;

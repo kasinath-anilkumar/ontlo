@@ -25,7 +25,6 @@ const Notifications = () => {
 
   useEffect(() => {
     fetchNotifications();
-    markAllRead();
   }, []);
 
   const markAsRead = async (id) => {

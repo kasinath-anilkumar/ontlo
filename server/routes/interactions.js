@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const User = require('../models/User');
 const Like = require('../models/Like');
@@ -11,7 +12,8 @@ router.get('/received', auth, async (req, res) => {
   try {
     const likes = await Like.find({ toUser: req.user.id })
       .populate('fromUser', 'username profilePic age gender bio isPremium')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     
     res.json(likes);
   } catch (err) {
@@ -42,8 +44,11 @@ router.post('/:userId', auth, async (req, res) => {
 // Get current user's favorites
 router.get('/favorites', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).populate('favorites', 'username profilePic age gender bio onlineStatus');
-    res.json(user.favorites);
+    const user = await User.findById(req.user.id)
+      .populate('favorites', 'username profilePic age gender bio onlineStatus')
+      .select('favorites')
+      .lean();
+    res.json(user?.favorites || []);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -54,12 +59,14 @@ router.post('/favorites/:userId', auth, async (req, res) => {
   try {
     const targetUserId = req.params.userId;
     const user = await User.findById(req.user.id);
-    
-    const index = user.favorites.indexOf(targetUserId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const targetOid = new mongoose.Types.ObjectId(targetUserId);
+    const index = user.favorites.findIndex((id) => id.toString() === targetUserId);
     if (index > -1) {
       user.favorites.splice(index, 1);
     } else {
-      user.favorites.push(targetUserId);
+      user.favorites.push(targetOid);
     }
     
     await user.save();

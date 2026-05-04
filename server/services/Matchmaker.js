@@ -5,6 +5,12 @@ const cacheUtil = require('../utils/cache');
 const { logger } = require('../utils/logger');
 const Connection = require('../models/Connection');
 
+const DEFAULT_ICEBREAKERS = [
+  "What is one thing you are grateful for today?",
+  "If you could learn any skill instantly, what would it be?",
+  "What is a small thing that made your week better?"
+];
+
 const ICEBREAKER_PROMPTS = {
   "Tech": ["What app could you not live without?", "What's your take on AI taking over the world?"],
   "Music": ["What's your current repeat song?", "Best concert you've ever been to?"],
@@ -204,10 +210,11 @@ class Matchmaker {
           commonInterests = user1.interests.filter(it => user2.interests.includes(it));
         }
 
-        let icebreaker = ICEBREAKER_PROMPTS.Default[Math.floor(Math.random() * ICEBREAKER_PROMPTS.Default.length)];
+        let icebreaker =
+          DEFAULT_ICEBREAKERS[Math.floor(Math.random() * DEFAULT_ICEBREAKERS.length)];
         if (commonInterests.length > 0) {
           const selectedInterest = commonInterests[Math.floor(Math.random() * commonInterests.length)];
-          const interestPrompts = ICEBREAKER_PROMPTS[selectedInterest] || ICEBREAKER_PROMPTS.Default;
+          const interestPrompts = ICEBREAKER_PROMPTS[selectedInterest] || DEFAULT_ICEBREAKERS;
           icebreaker = `You both like ${selectedInterest}! Question: ${interestPrompts[Math.floor(Math.random() * interestPrompts.length)]}`;
         }
 
@@ -376,4 +383,7 @@ class Matchmaker {
   }
 }
 
-module.exports = new Matchmaker();
+const matchmakerSingleton = new Matchmaker();
+/** Exposed for tests / scripts that need an isolated queue (e.g. `node server/testMatching.js`). */
+matchmakerSingleton.Matchmaker = Matchmaker;
+module.exports = matchmakerSingleton;

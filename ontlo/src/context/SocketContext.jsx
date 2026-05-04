@@ -52,17 +52,22 @@ export const SocketProvider = ({ children }) => {
           apiFetch(`${API_URL}/api/connections/online`)
         ]);
 
-        if (meRes.ok) {
-          const userData = await meRes.json();
-          setUser(userData);
-          localStorage.setItem('user', JSON.stringify(userData));
-        }
+        const [meData, countsData, onlineData] = await Promise.all([
+          meRes.ok ? meRes.json() : null,
+          countsRes.ok ? countsRes.json() : null,
+          onlineRes.ok ? onlineRes.json() : null
+        ]);
 
-        if (countsRes.ok) setCounts(await countsRes.json());
-        if (onlineRes.ok) setOnlineUsers(await onlineRes.json());
+        if (meData) {
+          setUser(meData);
+          localStorage.setItem('user', JSON.stringify(meData));
+        }
+        if (countsData) setCounts(countsData);
+        if (onlineData) setOnlineUsers(onlineData);
       } catch (err) {
         console.error("Initial app data fetch failed", err);
       } finally {
+        isFetchingRef.current = false;
         setIsInitialLoad(false);
       }
     };

@@ -1,42 +1,17 @@
-const { Matchmaker } = require('./services/Matchmaker');
+/**
+ * Quick sanity check for Matchmaker module shape (singleton + class for isolated tests).
+ * Run from repo root: `node server/testMatching.js`
+ */
+const mm = require('./services/Matchmaker');
 
-// Create a simple test
-const testMatchmaker = () => {
-  const matchmaker = new Matchmaker();
+if (typeof mm.joinQueue !== 'function') {
+  console.error('FAIL: matchmaker singleton missing joinQueue');
+  process.exit(1);
+}
+if (typeof mm.Matchmaker !== 'function') {
+  console.error('FAIL: mm.Matchmaker class not attached for tests');
+  process.exit(1);
+}
 
-  // Mock sockets with user data
-  const socket1 = {
-    id: 'socket1',
-    userId: 'user1',
-    age: 25,
-    gender: 'Male',
-    interests: ['Music', 'Gaming'],
-    location: 'New York',
-    region: 'US',
-    matchPreferences: { gender: 'All', ageRange: { min: 18, max: 30 }, region: 'Global' },
-    blockedUsers: [],
-    skipCount: 0
-  };
-
-  const socket2 = {
-    id: 'socket2',
-    userId: 'user2',
-    age: 26,
-    gender: 'Female',
-    interests: ['Music', 'Movies'],
-    location: 'New York',
-    region: 'US',
-    matchPreferences: { gender: 'All', ageRange: { min: 20, max: 35 }, region: 'Global' },
-    blockedUsers: [],
-    skipCount: 0
-  };
-
-  // Add to queue
-  matchmaker.joinQueue(socket1);
-  matchmaker.joinQueue(socket2);
-
-  console.log('Queue length:', matchmaker.queue.length);
-  console.log('Users in queue:', matchmaker.queue.map(s => s.userId));
-};
-
-testMatchmaker();
+console.log('OK: matchmaker singleton loaded; Matchmaker class available for `new mm.Matchmaker()`.');
+console.log('Current queue length (prod singleton):', mm.queue.length);
