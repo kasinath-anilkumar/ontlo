@@ -1,7 +1,8 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SocketProvider } from "./context/SocketContext";
 import { Loader2 } from "lucide-react";
+import { lazyWithRetry as lazy } from "./utils/lazyRetry";
 
 // Lazy load components
 const AppLayout = lazy(() => import("./components/layout/AppLayout"));
