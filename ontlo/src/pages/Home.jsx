@@ -7,6 +7,7 @@ import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
 import banner1 from "../assets/banner1.png";
 import banner2 from "../assets/banner2.png";
+import logo from "../assets/ontlo_Logo.png";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -66,13 +67,17 @@ const Home = () => {
   }, [onlineCount]);
 
   return (
-    <div className="flex flex-col h-full space-y-4 sm:space-y-6 pt-6 sm:pt-8 pb-24 sm:pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden">
+    <div className="flex flex-col h-full space-y-4 sm:space-y-6 pb-24 sm:pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden ">
       {/* Background Glows */}
       <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="absolute bottom-20 left-0 w-[300px] h-[300px] bg-pink-600/5 blur-[100px] rounded-full pointer-events-none"></div>
 
       {/* Top Bar */}
       <header className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 -mt-6 sm:-mt-8 mb-6 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 border-b border-white/5">
+        <div className="block sm:hidden flex-shrink-0">
+          <img src={logo} alt="Ontlo" className="h-8 w-auto object-contain drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
+        </div>
+        
         <div className="relative flex-1 md:flex-none md:w-64 hidden xs:block">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />
@@ -111,7 +116,7 @@ const Home = () => {
       </header>
 
       {/* Hero Section */}
-      <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10">
+      <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10 pt-6">
         <div className="mb-5 sm:mb-6">
           <h1 className="text-lg sm:text-xl md:text-2xl font-black text-white mb-0.5 tracking-tight">{getDynamicGreeting()}, {user?.fullName?.split(' ')[0] || user?.username} 👋</h1>
           <p className="text-[11px] sm:text-xs md:text-sm text-gray-400 font-medium tracking-tight">Ready to meet someone new?</p>

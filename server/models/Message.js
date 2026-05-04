@@ -26,9 +26,11 @@ const MessageSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   }
-});
+}, { timestamps: true });
 
 MessageSchema.index({ connectionId: 1, timestamp: -1 });
 MessageSchema.index({ sender: 1 });
+MessageSchema.index({ isRead: 1, sender: 1 }); // Optimized for unread counts query
+MessageSchema.index({ connectionId: 1, isRead: 1 }); // Optimized for chat-specific unread counts
 
 module.exports = mongoose.model('Message', MessageSchema);

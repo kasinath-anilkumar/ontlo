@@ -146,10 +146,10 @@ const RightPanel = ({ onClose }) => {
             </div>
             <h3 className="text-lg font-black text-white mb-2 uppercase tracking-tight">Safety First</h3>
             <p className="text-[11px] text-gray-500 leading-relaxed font-medium uppercase tracking-widest mb-6">
-              Advanced technology and human moderation keep our community safe.
+              Safe and Secure
             </p>
             <button onClick={() => navigate("/profile")} className="text-purple-400 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:gap-3 transition-all">
-              Learn more about safety <ChevronRight className="w-3.5 h-3.5" />
+              Learn more <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

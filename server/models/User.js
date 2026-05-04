@@ -33,6 +33,10 @@ const UserSchema = new mongoose.Schema({
     enum: ['Male', 'Female', 'Other', 'Prefer not to say']
   },
   location: String,
+  coordinates: {
+    lat: Number,
+    lng: Number
+  },
   interests: [String],
   bio: String,
   isProfileComplete: {
@@ -122,7 +126,7 @@ const UserSchema = new mongoose.Schema({
       min: { type: Number, default: 18 },
       max: { type: Number, default: 100 }
     },
-    region: { type: String, default: 'Global' },
+    distance: { type: Number, default: 500 },
     interests: { type: [String], default: [] }
   },
   favorites: [{

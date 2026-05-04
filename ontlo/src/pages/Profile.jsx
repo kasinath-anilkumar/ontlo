@@ -206,8 +206,10 @@ const Profile = () => {
             <TabButton active={activeTab === "settings"} onClick={() => setActiveTab("settings")} icon={<Settings className="w-5 h-5 text-blue-400" />} label="Account Settings" />
             <TabButton active={activeTab === "safety"} onClick={() => setActiveTab("safety")} icon={<ShieldCheck className="w-5 h-5 text-green-400" />} label="Safety & Privacy" />
             <TabButton active={activeTab === "help"} onClick={() => setActiveTab("help")} icon={<HelpCircle className="w-5 h-5 text-orange-400" />} label="Help Center" />
+            <TabButton active={activeTab === "Terms & Conditions"} onClick={() => setActiveTab("Terms & Conditions")} icon={<ShieldCheck className="w-5 h-5 text-blue-400" />} label="Terms & Conditions" />
+            <TabButton active={activeTab === "Privacy Policy"} onClick={() => setActiveTab("Privacy Policy")} icon={<ShieldCheck className="w-5 h-5 text-blue-400" />} label="Privacy Policy" />
           </div>
-          <div className="mt-8 pt-6 border-t border-[#1e293b]/50">
+          <div className="pt-2 border-t border-[#1e293b]/50">
             <button onClick={handleLogout} className="flex items-center justify-between w-full p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-500 hover:bg-red-500/10 transition group">
               <div className="flex items-center gap-3">
                 <LogOut className="w-5 h-5" />
@@ -230,7 +232,9 @@ const Profile = () => {
                   {activeTab === 'profile' && 'Profile Settings'}
                   {activeTab === 'settings' && 'Account Settings'}
                   {activeTab === 'safety' && 'Safety & Privacy'}
-                  {activeTab === 'help' && 'Help Center'}
+                  {activeTab === 'help' && 'Help Cente  r'}
+                  {activeTab === 'Tearms & Conditions' && 'Tearms & Conditions'}
+                  {activeTab === 'Privacy Policy' && 'Privacy Policy'}
                 </h2>
               </div>
 
@@ -387,11 +391,11 @@ const Profile = () => {
                       checked={settings.stealthMode}
                       onToggle={() => handleToggleSetting('stealthMode')}
                     />
-                    <SettingItem label="Language" desc={settings.language === 'en' ? 'English (US)' : 'Other'} />
-                    <SettingItem label="Account Security" desc="Two-factor authentication" />
-                    
-                    <div className="mt-8 pt-8 border-t border-[#1e293b]/50">
-                      <button 
+                    {/* <SettingItem label="Language" desc={settings.language === 'en' ? 'English (US)' : 'Other'} /> */}
+                    {/* <SettingItem label="Account Security" desc="Two-factor authentication" /> */}
+
+                    <div className="mt-4 pt-4 border-t border-[#1e293b]/50">
+                      <button
                         onClick={async () => {
                           if (window.confirm("ARE YOU SURE? This will permanently delete your account and all associated data in compliance with the DPDP Act 2023. This action cannot be undone.")) {
                             try {
@@ -409,16 +413,16 @@ const Profile = () => {
                             }
                           }
                         }}
-                        className="w-full p-6 rounded-[32px] bg-red-500/5 border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-all flex items-center justify-between group"
+                        className="w-full p-3 rounded-md bg-red-500/5 border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-all flex items-center justify-between group"
                       >
-                        <div>
+                        <div className="text-left">
                           <h4 className="font-black uppercase tracking-tight text-sm mb-1">Delete Account</h4>
                           <p className="text-[10px] font-bold uppercase tracking-wider opacity-60">Permanently remove your data</p>
                         </div>
                         <X className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:rotate-90 transition-all" />
                       </button>
 
-                      <button 
+                      <button
                         onClick={async () => {
                           try {
                             const token = localStorage.getItem("token");
@@ -440,9 +444,9 @@ const Profile = () => {
                             alert("Failed to export data.");
                           }
                         }}
-                        className="w-full p-6 rounded-[32px] bg-purple-500/5 border border-purple-500/20 text-purple-400 hover:bg-purple-500/10 transition-all flex items-center justify-between group mt-4"
+                        className="w-full p-3 rounded-md bg-purple-500/5 border border-purple-500/20 text-purple-400 hover:bg-purple-500/10 transition-all flex items-center justify-between group mt-4"
                       >
-                        <div>
+                        <div className="text-left">
                           <h4 className="font-black uppercase tracking-tight text-sm mb-1">Export My Data</h4>
                           <p className="text-[10px] font-bold uppercase tracking-wider opacity-60">Download a copy of your personal data</p>
                         </div>
@@ -510,25 +514,25 @@ const Profile = () => {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4">
-                    <GuidelineItem 
-                      title="Harassment & Bullying" 
-                      content="Zero tolerance for stalking, persistent unwanted contact, or sexual harassment. Respect everyone's boundaries." 
+                    <GuidelineItem
+                      title="Harassment & Bullying"
+                      content="Zero tolerance for stalking, persistent unwanted contact, or sexual harassment. Respect everyone's boundaries."
                     />
-                    <GuidelineItem 
-                      title="Safety & Violence" 
-                      content="Any threats of violence, self-harm, or promotion of illegal activities will result in an immediate permanent ban." 
+                    <GuidelineItem
+                      title="Safety & Violence"
+                      content="Any threats of violence, self-harm, or promotion of illegal activities will result in an immediate permanent ban."
                     />
-                    <GuidelineItem 
-                      title="Hate Speech" 
-                      content="No discrimination based on race, religion, gender, or orientation. We are a platform for everyone." 
+                    <GuidelineItem
+                      title="Hate Speech"
+                      content="No discrimination based on race, religion, gender, or orientation. We are a platform for everyone."
                     />
-                    <GuidelineItem 
-                      title="Privacy (Doxxing)" 
-                      content="Never share another user's private information, social media, or phone number without their explicit consent." 
+                    <GuidelineItem
+                      title="Privacy (Doxxing)"
+                      content="Never share another user's private information, social media, or phone number without their explicit consent."
                     />
-                    <GuidelineItem 
-                      title="Spam & Scams" 
-                      content="No commercial solicitation, fake profiles, or fraudulent activity. Be real, be authentic." 
+                    <GuidelineItem
+                      title="Spam & Scams"
+                      content="No commercial solicitation, fake profiles, or fraudulent activity. Be real, be authentic."
                     />
                   </div>
 
@@ -562,7 +566,7 @@ const Profile = () => {
                       <span>Blocked Users</span>
                       <ChevronRight className="w-4 h-4 text-gray-600" />
                     </button>
-                    <button 
+                    <button
                       onClick={() => setShowGuidelines(true)}
                       className="w-full p-5 rounded-3xl bg-[#151923] border border-[#1e293b] text-white font-black uppercase tracking-widest text-[10px] hover:border-purple-500/50 transition flex items-center justify-between"
                     >
@@ -576,15 +580,15 @@ const Profile = () => {
               {activeTab === "help" && (
                 <div className="space-y-6 sm:space-y-8">
                   {/* Support Header Moved to Top */}
-                  <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-gradient-to-br from-purple-600/20 to-blue-600/10 border border-white/5 relative overflow-hidden">
+                  <div className="p-6 sm:p-8 rounded-md bg-gradient-to-br from-purple-600/20 to-blue-600/10 border border-white/5 relative overflow-hidden">
                     <div className="relative z-10">
-                      <h3 className="text-2xl font-black text-white mb-2 italic">Still need help?</h3>
-                      <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-6">Our 24/7 admin team is here for you</p>
+                      <h3 className="text-2xl font-black text-white mb-2 italic">Contact Us</h3>
+                      <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-6">Replay within 24 hours</p>
                       <button
                         onClick={() => setShowTicketForm(!showTicketForm)}
-                        className="px-6 py-3 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 transition shadow-lg"
+                        className="px-6 py-3 rounded-md bg-white text-black text-[10px] font-black  hover:scale-105 transition tracking-wide shadow-lg"
                       >
-                        {showTicketForm ? 'Cancel Request' : 'Write to Admin'}
+                        {showTicketForm ? 'Cancel Request' : 'write your concern'}
                       </button>
                     </div>
                     <MessageSquare className="absolute -right-4 -bottom-4 w-32 h-32 text-white/5 rotate-12" />
@@ -660,6 +664,157 @@ const Profile = () => {
                   </div>
                 </div>
               )}
+
+              {activeTab === "Terms & Conditions" && (
+                <div className="text-gray-300 space-y-4 text-sm leading-relaxed text-justify mx-2 md:mx-0">
+                  <h4 className="text-white font-black uppercase tracking-tighter mb-4">
+                    Terms & Conditions
+                  </h4>
+
+                  <p>
+                    Welcome to Ontlo. By accessing or using our platform, you agree to comply
+                    with and be bound by the following terms and conditions. If you do not
+                    agree, please do not use the service.
+                  </p>
+
+                  <h5 className="text-white font-semibold">1. Eligibility</h5>
+                  <p>
+                    You must be at least 18 years old to use Ontlo. By using the platform, you
+                    confirm that you meet this requirement.
+                  </p>
+
+                  <h5 className="text-white font-semibold">2. User Accounts</h5>
+                  <p>
+                    You are responsible for maintaining the confidentiality of your account and
+                    any activities that occur under it. Providing false or misleading
+                    information may result in account suspension or termination.
+                  </p>
+
+                  <h5 className="text-white font-semibold">3. Acceptable Use</h5>
+                  <p>
+                    You agree not to misuse the platform. This includes harassment, abusive
+                    behavior, impersonation, spamming, or any illegal activities. We reserve
+                    the right to remove content or suspend accounts that violate these rules.
+                  </p>
+
+                  <h5 className="text-white font-semibold">4. Content & Conduct</h5>
+                  <p>
+                    You are solely responsible for the content you share. Ontlo does not take
+                    responsibility for user-generated content but reserves the right to review
+                    and remove inappropriate material.
+                  </p>
+
+                  <h5 className="text-white font-semibold">5. Privacy</h5>
+                  <p>
+                    Your use of Ontlo is also governed by our Privacy Policy. We take
+                    reasonable measures to protect your data but cannot guarantee absolute
+                    security.
+                  </p>
+
+                  <h5 className="text-white font-semibold">6. Termination</h5>
+                  <p>
+                    We may suspend or terminate your account at any time if you violate these
+                    terms or engage in harmful behavior.
+                  </p>
+
+                  <h5 className="text-white font-semibold">7. Limitation of Liability</h5>
+                  <p>
+                    Ontlo is provided "as is" without warranties of any kind. We are not
+                    responsible for any damages, losses, or issues arising from the use of the
+                    platform.
+                  </p>
+
+                  <h5 className="text-white font-semibold">8. Changes to Terms</h5>
+                  <p>
+                    We may update these terms from time to time. Continued use of the platform
+                    means you accept the updated terms.
+                  </p>
+
+                  <h5 className="text-white font-semibold">9. Contact</h5>
+                  <p>
+                    If you have any questions about these Terms & Conditions, please contact us
+                    at support@ontlo.com.
+                  </p>
+                </div>
+              )}
+
+              {activeTab === "Privacy Policy" && (
+                <div className="text-gray-300 space-y-4 text-sm leading-relaxed text-justify mx-2 md-mx-0">
+                  <h4 className="text-white font-black uppercase tracking-tighter mb-4">
+                    Privacy Policy
+                  </h4>
+
+                  <p className="text-gray-500 text-xs mb-4">
+                    Last Updated: May 2026
+                  </p>
+
+                  <p>
+                    At Ontlo, your privacy is important to us. This Privacy Policy explains how
+                    we collect, use, and protect your information when you use our platform.
+                  </p>
+
+                  <h5 className="text-white font-semibold">1. Information We Collect</h5>
+                  <p>
+                    We may collect personal information such as your name, email address,
+                    profile details, photos, and activity within the app. We also collect
+                    technical data like device information, IP address, and usage behavior.
+                  </p>
+
+                  <h5 className="text-white font-semibold">2. How We Use Your Information</h5>
+                  <p>
+                    Your data is used to provide and improve our services, personalize your
+                    experience, enable connections with other users, and ensure platform
+                    safety.
+                  </p>
+
+                  <h5 className="text-white font-semibold">3. Sharing of Information</h5>
+                  <p>
+                    We do not sell your personal data. We may share limited information with
+                    trusted service providers for hosting, analytics, and security purposes.
+                  </p>
+
+                  <h5 className="text-white font-semibold">4. Cookies & Tracking</h5>
+                  <p>
+                    We use cookies and similar technologies to enhance your experience,
+                    remember preferences, and analyze usage patterns.
+                  </p>
+
+                  <h5 className="text-white font-semibold">5. Data Security</h5>
+                  <p>
+                    We implement reasonable security measures to protect your data. However,
+                    no system is completely secure, and we cannot guarantee absolute security.
+                  </p>
+
+                  <h5 className="text-white font-semibold">6. Your Rights</h5>
+                  <p>
+                    You may access, update, or delete your personal information at any time
+                    through your account settings or by contacting us.
+                  </p>
+
+                  <h5 className="text-white font-semibold">7. Account Deletion</h5>
+                  <p>
+                    If you choose to delete your account, your personal data will be removed
+                    from our active systems, except where retention is required by law.
+                  </p>
+
+                  <h5 className="text-white font-semibold">8. Changes to This Policy</h5>
+                  <p>
+                    We may update this Privacy Policy from time to time. Continued use of the
+                    platform means you accept the updated policy.
+                  </p>
+
+                  <h5 className="text-white font-semibold">9. Contact Us</h5>
+                  <p>
+                    If you have any questions about this Privacy Policy, please contact us at
+                    support@ontlo.com.
+                  </p>
+                </div>
+              )}
+
+
+
+
+
             </div>
           </div>
         ) : (
@@ -675,7 +830,7 @@ const Profile = () => {
 };
 
 const TabButton = ({ active, onClick, icon, label }) => (
-  <button onClick={onClick} className={`flex items-center justify-between p-4 sm:p-5 rounded-[20px] sm:rounded-[24px] w-full transition-all group ${active ? "bg-[#151923] shadow-xl border border-[#1e293b]/50" : "hover:bg-[#151923]/40"}`}>
+  <button onClick={onClick} className={`flex items-center justify-between p-4 sm:p-2 rounded-[20px] sm:rounded-[24px] w-full transition-all group ${active ? "bg-[#151923] shadow-xl border border-[#1e293b]/50" : "hover:bg-[#151923]/40"}`}>
     <div className="flex items-center gap-4">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${active ? 'bg-purple-600/10' : 'bg-[#0B0E14] group-hover:scale-110'}`}>{icon}</div>
       <span className={`font-black text-[10px] uppercase tracking-[0.2em] ${active ? "text-white" : "text-gray-500 group-hover:text-gray-300"}`}>{label}</span>
@@ -693,10 +848,10 @@ const EditField = ({ label, value, isEditing, onChange, type = "text", placehold
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-[#151923] border border-[#1e293b] p-4 sm:p-5 rounded-xl sm:rounded-2xl text-white font-black uppercase tracking-tight focus:outline-none focus:border-purple-500/50"
+        className="w-full bg-[#151923] border border-[#1e293b] p-3 sm:p-5 rounded-xl sm:rounded-2xl text-white font-black uppercase tracking-tight focus:outline-none focus:border-purple-500/50"
       />
     ) : (
-      <div className="bg-[#151923] border border-[#1e293b] p-4 sm:p-5 rounded-xl sm:rounded-2xl text-white font-black uppercase tracking-tight shadow-inner">{value || "Not set"}</div>
+      <div className="bg-[#151923] border border-[#1e293b] p-3 sm:p-5 rounded-xl sm:rounded-2xl text-white font-black uppercase tracking-tight shadow-inner">{value || "Not set"}</div>
     )}
   </div>
 );
@@ -704,7 +859,7 @@ const EditField = ({ label, value, isEditing, onChange, type = "text", placehold
 const SettingItem = ({ label, desc, toggle, checked, disabled, onToggle }) => (
   <div
     onClick={!disabled && onToggle ? onToggle : null}
-    className={`flex items-center justify-between p-6 rounded-[32px] bg-[#151923]/40 border border-transparent hover:border-[#1e293b] transition-all group ${!disabled && onToggle ? 'cursor-pointer' : ''}`}
+    className={`flex items-center justify-between p-5 rounded-md bg-[#151923]/40 border border-transparent hover:border-[#1e293b] transition-all group ${!disabled && onToggle ? 'cursor-pointer' : ''}`}
   >
     <div>
       <h4 className="text-white font-black uppercase tracking-tight text-sm mb-1">{label}</h4>

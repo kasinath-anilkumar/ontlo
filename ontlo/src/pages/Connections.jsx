@@ -68,10 +68,10 @@ const Connections = () => {
   };
 
   return (
-    <div className="h-full bg-transparent p-4 sm:p-6 lg:p-8 xl:p-10 overflow-y-auto w-full max-w-3xl mx-auto scrollbar-hide">
+    <div className="h-full bg-transparent overflow-y-auto w-full scrollbar-hide">
       
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 xl:-mx-10 xl:px-10 mb-6 flex items-center justify-between border-b border-white/5">
+      <div className="sticky w-full top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-2 flex items-center justify-between border-b border-white/5 px-4">
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight italic">Connections</h1>
       </div>
 
@@ -84,7 +84,7 @@ const Connections = () => {
 
       {/* Empty State */}
       {!loading && connections.length === 0 && (
-        <div className="text-center py-20 bg-[#151923]/50 rounded-[40px] border border-[#1e293b] border-dashed">
+        <div className="text-center py-20 bg-[#151923]/50 rounded-md border border-[#1e293b] border-dashed">
           <Heart className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <h3 className="text-white font-bold text-lg mb-2">No connections yet</h3>
           <p className="text-gray-400 text-sm max-w-xs mx-auto mb-6">Start video chatting to find people you click with!</p>

@@ -35,6 +35,8 @@ const registerSchema = z.object({
   interests: z.array(z.string().trim()).optional(),
   bio: z.string().trim().optional(),
   profilePic: z.union([z.string().url(), z.string()]).optional(),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
 }).refine((data) => {
   if (data.dob && data.age) {
     const dobDate = new Date(data.dob);
@@ -83,6 +85,8 @@ const completeProfileSchema = z.object({
   interests: z.array(z.string().trim()).optional(),
   bio: z.string().trim().optional(),
   profilePic: z.union([z.string().url(), z.string()]).optional(),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
 }).refine((data) => {
   if (data.dob && data.age) {
     const dobDate = new Date(data.dob);

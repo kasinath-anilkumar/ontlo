@@ -14,8 +14,20 @@ const ICEBREAKER_PROMPTS = {
   "Art": ["Who is your favorite artist?", "What medium do you like working with the most?"],
   "Fitness": ["What's your workout routine looking like these days?", "Favorite way to stay active?"],
   "Cooking": ["What is your signature dish?", "If you could only eat one cuisine forever, what is it?"],
-  "Default": ["If you had to eat one food for the rest of your life, what would it be?", "What's the best piece of advice you've ever received?", "What's something you're looking forward to this week?"]
 };
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in km
+}
 
 class Matchmaker {
   constructor() {
@@ -26,8 +38,8 @@ class Matchmaker {
     this.isMatching = false;       // Mutex lock
     this.lastMatchTime = 0;        // Throttle tracking
 
-    // Continuously poll for matches every 1 second
-    setInterval(() => this.tryMatch(), 1000);
+    // Poll for matches every 2.5 seconds (reduced for Render Free Tier)
+    setInterval(() => this.tryMatch(), 2500);
   }
 
   async getConfig() {
@@ -80,8 +92,6 @@ class Matchmaker {
     this.lastMatchTime = now;
 
     try {
-      logger.info(`[Matchmaker] tryMatch starting. Queue length: ${this.queue.length}`);
-      
       const settings = await this.getConfig();
       
       // Sort queue only if premium/boosted features are enabled to save CPU
@@ -98,9 +108,11 @@ class Matchmaker {
 
       let bestMatch = { user1Index: -1, user2Index: -1, score: -Infinity };
 
-      for (let i = 0; i < this.queue.length; i++) {
-        // Yield to event loop even more frequently for smoother server performance
-        if (i > 0 && i % 50 === 0) {
+      // Limit search to the first 50 users to prevent O(N^2) CPU spikes on free tier
+      const maxSearch = Math.min(this.queue.length, 50);
+
+      for (let i = 0; i < maxSearch; i++) {
+        if (i > 0 && i % 10 === 0) {
           await new Promise(resolve => setImmediate(resolve));
         }
 
@@ -112,7 +124,6 @@ class Matchmaker {
 
           if (u1.userId && u2.userId) {
             if (u1.userId.toString() === u2.userId.toString()) continue;
-            
             if (u1.isShadowBanned || u2.isShadowBanned) continue;
 
             const u1Blocked = u1.blockedUsers?.includes(u2.userId.toString());
@@ -125,12 +136,20 @@ class Matchmaker {
             }
 
             const isWildcard = Math.random() < 0.10;
+            let distance = null;
+
+            if (u1.coordinates && u2.coordinates) {
+              distance = getDistance(u1.coordinates.lat, u1.coordinates.lng, u2.coordinates.lat, u2.coordinates.lng);
+            }
 
             if (!isWildcard && u1.matchPreferences && u2.matchPreferences) {
               if (u1.matchPreferences.gender !== 'All' && u1.matchPreferences.gender !== u2.gender) continue;
               if (u2.matchPreferences.gender !== 'All' && u2.matchPreferences.gender !== u1.gender) continue;
-              if (u1.matchPreferences.region !== 'Global' && u1.matchPreferences.region !== u2.region) continue;
-              if (u2.matchPreferences.region !== 'Global' && u2.matchPreferences.region !== u1.region) continue;
+              
+              if (distance !== null) {
+                if (u1.matchPreferences.distance && u1.matchPreferences.distance < 500 && distance > u1.matchPreferences.distance) continue;
+                if (u2.matchPreferences.distance && u2.matchPreferences.distance < 500 && distance > u2.matchPreferences.distance) continue;
+              }
             }
 
             if (u1.matchPreferences && u2.matchPreferences) {
@@ -144,7 +163,6 @@ class Matchmaker {
               currentScore += commonInterests.length * 10;
             }
 
-            // Boost score for specific preferred interests
             if (u1.matchPreferences?.interests?.length > 0 && u2.interests) {
               const preferredMatches = u2.interests.filter(it => u1.matchPreferences.interests.includes(it));
               currentScore += preferredMatches.length * 20;
@@ -155,7 +173,11 @@ class Matchmaker {
             }
 
             if (u1.location && u2.location && u1.location === u2.location) currentScore += 15;
-            if (u1.region && u2.region && u1.region !== 'Global' && u1.region === u2.region) currentScore += 25;
+            
+            if (distance !== null) {
+              if (distance < 50) currentScore += 40;
+              else if (distance < 200) currentScore += 20;
+            }
 
             if (isWildcard) currentScore += 5;
 
@@ -163,11 +185,10 @@ class Matchmaker {
               bestMatch = { user1Index: i, user2Index: j, score: currentScore, isWildcard };
             }
 
-            // High-quality match found, break early to save cycles
-            if (currentScore >= 20) break;
+            if (currentScore >= 25) break;
           }
         }
-        if (bestMatch.user1Index !== -1 && bestMatch.score >= 20) break;
+        if (bestMatch.user1Index !== -1 && bestMatch.score >= 25) break;
       }
 
       // Allow matches with score >= 15, or >= 10 for wildcards

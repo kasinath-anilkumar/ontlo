@@ -78,7 +78,7 @@ const BottomNav = () => {
             key={item.name}
             to={item.path}
             className={({ isActive }) => `
-              relative flex flex-col items-center justify-center py-1 px-4 rounded-2xl transition-all duration-300
+              relative flex flex-col items-center justify-center py-1 px-4 rounded-2xl transition-all 
               ${isActive 
                 ? "text-white" 
                 : "text-gray-500 hover:text-gray-300"

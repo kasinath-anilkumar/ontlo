@@ -60,8 +60,8 @@ const Favorites = () => {
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight uppercase italic flex items-center gap-2">
-              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">Favorites</span>
+            <h1 className="text-lg md:text-3xl font-black text-white tracking-tight uppercase italic flex items-center gap-2">
+              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-800 to-cyan-800">Favorites</span>
             </h1>
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-1">Your top connections, one tap away</p>
           </div>
@@ -74,7 +74,7 @@ const Favorites = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 md:px-10 pb-20 z-10 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto px-6 md:px-10 pb-20 z-10 scrollbar-hide mt-8 md:mt-12">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 opacity-40">
             <Loader2 className="w-10 h-10 text-yellow-500 animate-spin" />

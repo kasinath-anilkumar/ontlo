@@ -57,7 +57,7 @@ function App() {
                     <Route path="/video" element={<Video />} />
                     <Route path="/connections" element={<Connections />} />
                     <Route path="/messages" element={<Messages />} />
-                    <Route path="/who-liked-you" element={<WhoLikedYou />} />
+                    {/* <Route path="/who-liked-you" element={<WhoLikedYou />} /> */}
                     <Route path="/favorites" element={<Favorites />} />
                     <Route path="/notifications" element={<Notifications />} />
                     <Route path="/profile" element={<Profile />} />

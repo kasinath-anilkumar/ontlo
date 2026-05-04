@@ -126,7 +126,7 @@ const Messages = () => {
             </button>
           </div>
 
-          <div className="relative mb-8">
+          <div className="relative mb-2">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-500" />
             </div>
@@ -143,7 +143,7 @@ const Messages = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 space-y-1">
+        <div className="flex-1 overflow-y-auto px-2 space-y-1 pt-4">
           {loading ? (
             <div className="space-y-4 px-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -157,7 +157,7 @@ const Messages = () => {
               ))}
             </div>
           ) : filteredConnections.length === 0 ? (
-            <div className="text-center p-12 bg-[#151923]/20 rounded-3xl mx-4 border border-[#1e293b]/50 border-dashed">
+            <div className="text-center  p-12 bg-[#151923]/20 rounded-3xl mx-4 border border-[#1e293b]/50 border-dashed">
               <MessageSquare className="w-12 h-12 text-gray-700 mx-auto mb-4 opacity-30" />
               <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">No conversations</p>
             </div>

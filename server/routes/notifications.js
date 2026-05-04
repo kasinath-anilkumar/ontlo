@@ -53,38 +53,42 @@ router.post('/read-all', auth, async (req, res) => {
 router.get('/counts', auth, async (req, res) => {
   try {
     const userId = req.user.id;
+    const mongoose = require('mongoose');
 
-    // 1. Get user's connections first to enforce resource ownership
-    const Connection = require('../models/Connection');
-    const userConnections = await Connection.find({ users: userId }).select('_id');
-    const connectionIds = userConnections.map(c => c._id);
+    // Run all count queries in parallel for maximum performance
+    const [unreadChatResults, unreadNotifications, user] = await Promise.all([
+      // 1. Count distinct connectionIds with unread messages where user is NOT the sender
+      Message.aggregate([
+        { 
+          $match: { 
+            isRead: false, 
+            sender: { $ne: new mongoose.Types.ObjectId(userId) } 
+          } 
+        },
+        { $group: { _id: "$connectionId" } },
+        { $count: "count" }
+      ]),
+      
+      // 2. Count unread general notifications
+      Notification.countDocuments({
+        user: userId,
+        isRead: false
+      }),
 
-    // 2. Unread messages within user's own connections
-    const unreadMessages = await Message.find({
-      isRead: false,
-      sender: { $ne: userId },
-      connectionId: { $in: connectionIds }
-    }).select('connectionId');
+      // 3. Get user's connection array length (only select the connections field)
+      User.findById(userId).select('connections')
+    ]);
 
-    const distinctChats = new Set(unreadMessages.map(m => m.connectionId.toString()));
-    
-    // 2. Unread general notifications
-    const unreadNotifications = await Notification.countDocuments({
-      user: userId,
-      isRead: false
-    });
-
-    // 3. Count connections
-    const user = await User.findById(userId);
-    const connectionsCount = user.connections ? user.connections.length : 0;
+    const unreadChatCount = unreadChatResults.length > 0 ? unreadChatResults[0].count : 0;
+    const connectionsCount = user?.connections ? user.connections.length : 0;
 
     res.json({
-      messages: distinctChats.size,
+      messages: unreadChatCount,
       notifications: unreadNotifications,
       connections: connectionsCount
     });
   } catch (err) {
-    console.error(err);
+    console.error('[Notification Counts Error]:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

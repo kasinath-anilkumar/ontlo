@@ -29,4 +29,7 @@ const NotificationSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+NotificationSchema.index({ user: 1, isRead: 1 }); // Optimized for countDocuments query
+NotificationSchema.index({ createdAt: -1 }); // Optimized for list view query
+
 module.exports = mongoose.model('Notification', NotificationSchema);

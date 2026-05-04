@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera, User, Sparkles, Upload, Loader2, ChevronRight, ChevronLeft, Globe, Calendar } from "lucide-react";
+import { Camera, User, Sparkles, Upload, Loader2, ChevronRight, ChevronLeft, Globe, Calendar, MapPin } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
 
@@ -12,6 +12,8 @@ const Onboarding = () => {
     dob: "",
     gender: "Male",
     location: "",
+    lat: null,
+    lng: null,
     interests: [],
     bio: "",
     profilePic: ""
@@ -26,7 +28,7 @@ const Onboarding = () => {
   useEffect(() => {
     const tempReg = localStorage.getItem("temp_reg");
     const token = localStorage.getItem("token");
-    
+
     // If we have a token but no user, we might be in the middle of onboarding for an old account
     // But since we want to create at last, we should have temp_reg
     if (!tempReg && !token) {
@@ -53,7 +55,7 @@ const Onboarding = () => {
   const handleInterestToggle = (interest) => {
     setFormData(prev => ({
       ...prev,
-      interests: prev.interests.includes(interest) 
+      interests: prev.interests.includes(interest)
         ? prev.interests.filter(i => i !== interest)
         : [...prev.interests, interest]
     }));
@@ -86,7 +88,7 @@ const Onboarding = () => {
     setLoading(true);
     try {
       const tempReg = JSON.parse(localStorage.getItem("temp_reg") || "{}");
-      
+
       // If we are updating an existing account (backwards compatibility)
       const token = localStorage.getItem("token");
       const endpoint = token ? "/api/auth/complete-profile" : "/api/auth/register";
@@ -105,10 +107,10 @@ const Onboarding = () => {
       // Save user and token
       localStorage.setItem("user", JSON.stringify(data.user));
       if (data.token) localStorage.setItem("token", data.token);
-      
+
       // Clear temp reg
       localStorage.removeItem("temp_reg");
-      
+
       setUser(data.user);
       navigate("/");
     } catch (err) {
@@ -131,7 +133,7 @@ const Onboarding = () => {
 
       <div className="w-full max-w-[480px] relative z-10 animate-in fade-in zoom-in-95 duration-700">
         <div className="bg-[#0D1117]/60 backdrop-blur-3xl border border-white/5 rounded-[40px] p-6 sm:p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] relative overflow-hidden group">
-          
+
           {/* Enhanced Progress Header */}
           <div className="flex items-center gap-3 mb-10">
             {[1, 2, 3, 4, 5].map(i => (
@@ -144,7 +146,7 @@ const Onboarding = () => {
               {step === 1 ? "Profile Picture" : step === 2 ? "Personal Details" : step === 3 ? "Origins" : "Pick Your Interests"}
             </h1>
             <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em]">
-               Onboarding Phase {step + 1} of 5
+              Onboarding Phase {step + 1} of 5
             </p>
           </div>
 
@@ -162,8 +164,8 @@ const Onboarding = () => {
                     <img src={formData.profilePic} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
                     <div className="flex flex-col items-center gap-3 opacity-20">
-                       <Camera className="w-10 h-10 text-white" />
-                       <p className="text-[8px] font-black uppercase tracking-widest text-white">No Image</p>
+                      <Camera className="w-10 h-10 text-white" />
+                      <p className="text-[8px] font-black uppercase tracking-widest text-white">No Image</p>
                     </div>
                   )}
                   {uploading && (
@@ -178,10 +180,10 @@ const Onboarding = () => {
                 </label>
               </div>
               <p className="mt-8 text-[9px] text-gray-500 font-black uppercase tracking-widest leading-relaxed text-center">
-                JPG, PNG OR WEBP<br/>MAX SIZE 5MB
+                JPG, PNG OR WEBP<br />MAX SIZE 5MB
               </p>
-              
-              <button 
+
+              <button
                 onClick={() => setStep(2)}
                 className="w-full mt-8 py-4 sm:py-5 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/5"
               >
@@ -192,100 +194,99 @@ const Onboarding = () => {
 
           {step === 2 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
-               <InputField label="Full Name" value={formData.fullName} onChange={(val) => setFormData({...formData, fullName: val})} placeholder="Enter your full name" icon={<User className="w-4 h-4" />} />
-               
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <InputField label="Date of Birth" type="date" value={formData.dob} onChange={handleDobChange} placeholder="Date of birth" icon={<Calendar className="w-4 h-4" />} />
-                  
-                  <div className="space-y-2">
-                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">Gender</label>
-                    <div className="relative group">
-                      <select 
-                        value={formData.gender}
-                        onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                        className="w-full bg-white/5 border border-white/10 text-white rounded-[24px] px-6 py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-xs font-bold appearance-none cursor-pointer"
-                      >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                        <option value="Prefer not to say">Prefer not to say</option>
-                      </select>
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                        <ChevronRight className="w-4 h-4 rotate-90" />
-                      </div>
+              <InputField label="Full Name" value={formData.fullName} onChange={(val) => setFormData({ ...formData, fullName: val })} placeholder="Enter your full name" icon={<User className="w-4 h-4" />} />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <InputField label="Date of Birth" type="date" value={formData.dob} onChange={handleDobChange} placeholder="Date of birth" icon={<Calendar className="w-4 h-4" />} />
+
+                <div className="space-y-2">
+                  <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">Gender</label>
+                  <div className="relative group">
+                    <select
+                      value={formData.gender}
+                      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 text-white rounded-[24px] px-6 py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-xs font-bold appearance-none cursor-pointer"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                      <ChevronRight className="w-4 h-4 rotate-90" />
                     </div>
                   </div>
-               </div>
+                </div>
+              </div>
 
-               {formData.dob && (
-                 <div className="px-6 py-3 rounded-2xl bg-purple-500/5 border border-purple-500/10 flex items-center justify-between">
-                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Age</span>
-                    <span className="text-sm font-black text-purple-400">{formData.age} Years</span>
-                 </div>
-               )}
-               <div className="flex gap-4 mt-8 sm:mt-10">
-                  <button onClick={() => setStep(1)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
-                  <button onClick={() => setStep(3)} disabled={!formData.fullName || !formData.dob || formData.age < 18} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Continue <ChevronRight className="w-4 h-4" /></button>
-               </div>
+              {formData.dob && (
+                <div className="px-6 py-3 rounded-2xl bg-purple-500/5 border border-purple-500/10 flex items-center justify-between">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Age</span>
+                  <span className="text-sm font-black text-purple-400">{formData.age} Years</span>
+                </div>
+              )}
+              <div className="flex gap-4 mt-8 sm:mt-10">
+                <button onClick={() => setStep(1)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+                <button onClick={() => setStep(3)} disabled={!formData.fullName || !formData.dob || formData.age < 18} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Continue <ChevronRight className="w-4 h-4" /></button>
+              </div>
             </div>
           )}
 
           {step === 3 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
-               <InputField label="Location" value={formData.location} onChange={(val) => setFormData({...formData, location: val})} placeholder="City, Country" icon={<Globe className="w-4 h-4" />} />
-               <div className="space-y-2">
-                  <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">About You (Bio)</label>
-                  <textarea 
-                    value={formData.bio}
-                    onChange={(e) => setFormData({...formData, bio: e.target.value})}
-                    placeholder="Share your story..."
-                    rows="4"
-                    className="w-full bg-white/5 border border-white/10 text-white rounded-[28px] px-6 py-5 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-sm font-medium resize-none placeholder:text-gray-700 min-h-[140px]"
-                  />
-               </div>
-               
-               <div className="flex gap-4 mt-8 sm:mt-10">
-                  <button onClick={() => setStep(2)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
-                  <button onClick={() => setStep(4)} disabled={!formData.location} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Next<ChevronRight className="w-4 h-4" /></button>
-               </div>
+              <LocationAutocomplete value={formData.location} onChange={(val, lat, lng) => setFormData({ ...formData, location: val, lat, lng })} />
+              <div className="space-y-2">
+                <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">About You (Bio)</label>
+                <textarea
+                  value={formData.bio}
+                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                  placeholder="Share your story..."
+                  rows="4"
+                  className="w-full bg-white/5 border border-white/10 text-white rounded-[28px] px-6 py-5 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-sm font-medium resize-none placeholder:text-gray-700 min-h-[140px]"
+                />
+              </div>
+
+              <div className="flex gap-4 mt-8 sm:mt-10">
+                <button onClick={() => setStep(2)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+                <button onClick={() => setStep(4)} disabled={!formData.location} className="flex-1 bg-white text-black font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3">Next<ChevronRight className="w-4 h-4" /></button>
+              </div>
             </div>
           )}
 
           {step === 4 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-               <div className="flex flex-wrap gap-2 mb-10 max-h-[220px] overflow-y-auto custom-scrollbar pr-2">
-                 {commonInterests.map((interest) => (
-                   <button
-                     key={interest}
-                     onClick={() => handleInterestToggle(interest)}
-                     className={`px-5 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all duration-300 border ${
-                       formData.interests.includes(interest)
-                         ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white border-transparent shadow-lg shadow-purple-600/20"
-                         : "bg-white/5 border-white/10 text-gray-500 hover:text-white"
-                     }`}
-                   >
-                     {interest}
-                   </button>
-                 ))}
-               </div>
-               
-               <div className="flex gap-4 mt-8">
-                  <button onClick={() => setStep(3)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
-                  <button 
-                    onClick={handleSubmit} 
-                    disabled={formData.interests.length < 3 || loading}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-purple-600/20"
+              <div className="flex flex-wrap gap-2 mb-10 max-h-[220px] overflow-y-auto custom-scrollbar pr-2">
+                {commonInterests.map((interest) => (
+                  <button
+                    key={interest}
+                    onClick={() => handleInterestToggle(interest)}
+                    className={`px-5 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all duration-300 border ${formData.interests.includes(interest)
+                        ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white border-transparent shadow-lg shadow-purple-600/20"
+                        : "bg-white/5 border-white/10 text-gray-500 hover:text-white"
+                      }`}
                   >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Complete Setup<Sparkles className="w-5 h-5 fill-current" /></>}
+                    {interest}
                   </button>
-               </div>
+                ))}
+              </div>
+
+              <div className="flex gap-4 mt-8">
+                <button onClick={() => setStep(3)} className="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={formData.interests.length < 3 || loading}
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black rounded-[20px] sm:rounded-[24px] uppercase tracking-widest text-[10px] sm:text-[11px] hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-purple-600/20"
+                >
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Complete Setup<Sparkles className="w-5 h-5 fill-current" /></>}
+                </button>
+              </div>
             </div>
           )}
 
         </div>
 
         <p className="text-center text-[8px] text-gray-800 font-black uppercase tracking-[0.4em] mt-10 leading-relaxed opacity-40">
-           Universal Identity Layer v4.0<br/>Ontlo Authentication Protocol
+          Universal Identity Layer v4.0<br />Ontlo Authentication Protocol
         </p>
       </div>
     </div>
@@ -297,8 +298,8 @@ const InputField = ({ label, value, onChange, placeholder, type = "text", icon }
     <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">{label}</label>
     <div className="relative group">
       {icon && <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-purple-400 transition-colors">{icon}</div>}
-      <input 
-        type={type} 
+      <input
+        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={`w-full bg-white/5 border border-white/10 text-white rounded-[20px] sm:rounded-[24px] ${icon ? 'pl-12 sm:pl-14' : 'px-5 sm:px-6'} py-3.5 sm:py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-xs sm:text-sm font-medium placeholder:text-gray-700`}
@@ -308,5 +309,111 @@ const InputField = ({ label, value, onChange, placeholder, type = "text", icon }
     </div>
   </div>
 );
+
+const LocationAutocomplete = ({ value, onChange }) => {
+  const [query, setQuery] = useState(value);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (!query || query.length < 3) {
+      setSuggestions([]);
+      setIsOpen(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`);
+        const data = await response.json();
+        
+        const results = data.map(item => {
+          const addr = item.address;
+          const city = addr.city || addr.town || addr.village || addr.suburb || addr.municipality;
+          const state = addr.state;
+          const country = addr.country;
+          
+          const name = city ? `${city}${state ? ', ' + state : ''}${country ? ', ' + country : ''}` : item.display_name.split(',').slice(0, 3).join(',');
+
+          return {
+            name,
+            lat: parseFloat(item.lat),
+            lon: parseFloat(item.lon)
+          };
+        });
+        
+        // Remove duplicates based on name
+        const uniqueResults = results.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i);
+        
+        setSuggestions(uniqueResults);
+        setIsOpen(true);
+      } catch (err) {
+        console.error("Error fetching locations:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 600); // 600ms debounce
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setQuery(val);
+    onChange(val, null, null); // Clear coords when typing
+  };
+
+  const handleSelect = (city) => {
+    setQuery(city.name);
+    onChange(city.name, city.lat, city.lon);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="space-y-2 relative">
+      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">Location</label>
+      <div className="relative group">
+        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-purple-400 transition-colors">
+          <Globe className="w-4 h-4" />
+        </div>
+        <input
+          type="text"
+          value={query}
+          onChange={handleInputChange}
+          onFocus={() => { if (suggestions.length > 0) setIsOpen(true); }}
+          onBlur={() => setTimeout(() => setIsOpen(false), 250)}
+          className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] sm:rounded-[24px] pl-12 sm:pl-14 pr-12 py-3.5 sm:py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-xs sm:text-sm font-medium placeholder:text-gray-700"
+          placeholder="Type your city..."
+          required
+        />
+        {isLoading && (
+          <div className="absolute right-5 top-1/2 -translate-y-1/2">
+            <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
+          </div>
+        )}
+      </div>
+      {isOpen && suggestions.length > 0 && (
+        <div className="absolute top-[100%] left-0 right-0 mt-2 bg-[#0D1117] border border-white/10 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.8)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          {suggestions.map((city, i) => (
+            <div
+              key={i}
+              onClick={() => handleSelect(city)}
+              className="px-5 py-3.5 hover:bg-white/10 cursor-pointer text-[11px] sm:text-xs font-bold text-white transition-colors border-b border-white/5 last:border-0 flex items-center gap-3"
+            >
+              <MapPin className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+              <span className="truncate">{city.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default Onboarding;

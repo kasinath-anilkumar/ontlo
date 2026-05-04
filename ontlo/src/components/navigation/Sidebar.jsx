@@ -55,7 +55,7 @@ const Sidebar = () => {
     { name: "Notifications", path: "/notifications", icon: Bell, badge: stats.notifications },
     { name: "Connections", path: "/connections", icon: Heart, badge: stats.connections },
     { name: "Messages", path: "/messages", icon: MessageSquare, badge: stats.messages },
-    { name: "Who Liked You", path: "/who-liked-you", icon: Users, badge: stats.likes },
+      // { name: "Who Liked You", path: "/who-liked-you", icon: Users, badge: stats.likes },
     { name: "Favorites", path: "/favorites", icon: Star },
     { name: "Profile & Settings", path: "/profile", icon: User },
   ];

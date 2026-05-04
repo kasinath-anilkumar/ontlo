@@ -208,6 +208,10 @@ router.post('/register', validate({ body: registerSchema }), async (req, res) =>
       dob: req.body.dob ? new Date(req.body.dob) : undefined,
       gender: req.body.gender,
       location: req.body.location,
+      coordinates: (req.body.lat && req.body.lng) ? {
+        lat: Number(req.body.lat),
+        lng: Number(req.body.lng)
+      } : undefined,
       interests: req.body.interests || [],
       bio: req.body.bio,
       profilePic: profilePicUrl
@@ -410,6 +414,9 @@ router.post('/complete-profile', auth, validate({ body: completeProfileSchema })
     }
     if (gender !== undefined) user.gender = gender;
     if (location !== undefined) user.location = String(location).trim();
+    if (req.body.lat !== undefined && req.body.lng !== undefined) {
+      user.coordinates = { lat: Number(req.body.lat), lng: Number(req.body.lng) };
+    }
     if (interests !== undefined) {
       user.interests = interests.map((interest) => String(interest).trim()).filter(Boolean);
     }

@@ -84,7 +84,7 @@ const authLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Limit each IP to 200 requests per windowMs for general API routes
+  max: 2000, // Increased from 200 to 2000 to prevent blocking legitimate polling
   message: { error: 'Too many requests, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -107,6 +107,23 @@ const cspDirectives = {
 };
 
 // Middleware
+// Profiler Middleware: Measure exactly where the 10s delay is happening
+app.use((req, res, next) => {
+  const start = Date.now();
+  const stages = [{ name: 'Init', time: start }];
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (duration > 1000) {
+      console.log(`[PROFILER] 🕒 SLOW REQUEST: ${req.method} ${req.path} took ${duration}ms`);
+      console.log(`[PROFILER] Stages: ${stages.map(s => `${s.name}: +${s.time - start}ms`).join(' -> ')}`);
+    }
+  });
+
+  req._mark = (name) => stages.push({ name, time: Date.now() });
+  next();
+});
+
 app.use(cors(corsOptions));
 app.use(helmet({
   contentSecurityPolicy: {
@@ -115,20 +132,17 @@ app.use(helmet({
   }
 }));
 
-// Optimization: Gzip compression
 app.use(compression());
-
-// Middlewares
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// Debug Middleware for Cookies (Development/Production Debug)
 app.use((req, res, next) => {
+  req._mark('BaseMiddleware');
   if (req.path.startsWith('/api/')) {
     const hasToken = !!req.cookies?.token;
     const hasRefresh = !!req.cookies?.refreshToken;
-    console.log(`[Request] ${req.method} ${req.path} | Cookies: token=${hasToken}, refresh=${hasRefresh} | Origin: ${req.headers.origin}`);
+    console.log(`[Request] ${req.method} ${req.path} | token=${hasToken}`);
   }
   next();
 });
@@ -151,6 +165,11 @@ app.use(mongoSanitize());
 app.use(xss());
 app.use(monitor.requestMonitor);
 app.use(maintenanceMiddleware);
+
+app.use((req, res, next) => {
+  req._mark('MaintenanceCheck');
+  next();
+});
 app.use((req, res, next) => {
   if (isProduction && req.headers['x-forwarded-proto'] !== 'https') {
     return res.redirect(`https://${req.get('host')}${req.url}`);
@@ -300,7 +319,9 @@ startCleanupJobs();
 startServer(PORT);
 
 // Keep-alive for Render (prevents sleep mode)
-const startKeepAlive = require('./scripts/keepAlive');
-startKeepAlive();
+if (isProduction) {
+  const startKeepAlive = require('./scripts/keepAlive');
+  startKeepAlive();
+}
 
 module.exports = { app, server };
