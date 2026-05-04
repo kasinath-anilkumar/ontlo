@@ -226,11 +226,15 @@ const VideoContainer = () => {
     pc.onicecandidate = (e) => { if (e.candidate && roomIdRef.current && socket) socket.emit("webrtc-ice-candidate", { candidate: e.candidate, roomId: roomIdRef.current }); };
     pc.ontrack = (e) => {
       if (remoteVideoRef.current) {
-        if (e.streams && e.streams[0]) {
+        if (e.streams && e.streams.length > 0) {
           remoteVideoRef.current.srcObject = e.streams[0];
         } else {
-          const inboundStream = new MediaStream([e.track]);
-          remoteVideoRef.current.srcObject = inboundStream;
+          let stream = remoteVideoRef.current.srcObject;
+          if (!stream) {
+            stream = new MediaStream();
+            remoteVideoRef.current.srcObject = stream;
+          }
+          stream.addTrack(e.track);
         }
       }
     };
@@ -269,7 +273,7 @@ const VideoContainer = () => {
       if (stream) stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
       if (role === "caller") {
-        const offer = await pc.createOffer();
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
         await pc.setLocalDescription(offer);
         socket.emit("webrtc-offer", { offer, roomId: rId });
       }
