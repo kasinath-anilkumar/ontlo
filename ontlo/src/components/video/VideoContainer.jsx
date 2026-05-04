@@ -69,7 +69,11 @@ const VideoContainer = () => {
       if (!cameraRequested && !inCall && !isMatching) return;
       try {
         const constraints = {
-          audio: true,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          },
           video: user?.lowBandwidth 
             ? { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { max: 15 } }
             : { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24 } }
@@ -207,7 +211,16 @@ const VideoContainer = () => {
       iceCandidatePoolSize: 10,
     });
     pc.onicecandidate = (e) => { if (e.candidate && roomIdRef.current && socket) socket.emit("webrtc-ice-candidate", { candidate: e.candidate, roomId: roomIdRef.current }); };
-    pc.ontrack = (e) => { if (remoteVideoRef.current && e.streams[0]) remoteVideoRef.current.srcObject = e.streams[0]; };
+    pc.ontrack = (e) => {
+      if (remoteVideoRef.current) {
+        if (e.streams && e.streams[0]) {
+          remoteVideoRef.current.srcObject = e.streams[0];
+        } else {
+          const inboundStream = new MediaStream([e.track]);
+          remoteVideoRef.current.srcObject = inboundStream;
+        }
+      }
+    };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected") {
         const videoSender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
