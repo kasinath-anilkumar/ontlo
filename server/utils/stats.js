@@ -37,25 +37,30 @@ const getUserCounts = async (userId, forceRefresh = false) => {
   const fetchPromise = (async () => {
     try {
       const oid = new mongoose.Types.ObjectId(userIdStr);
-      const [unreadNotifications, connectionCount, connIds] = await Promise.all([
-        Notification.countDocuments({ user: userId, isRead: false }),
-        Connection.countDocuments({ users: userId, status: 'active' }),
-        Connection.find({ users: userId, status: 'active' }).distinct('_id')
-      ]);
+      // 1. Get the user's active connection IDs from the Connection model
+      const userConnections = await Connection.find({ 
+        users: userId, 
+        status: { $in: ['active', 'matched'] } 
+      }).select('_id');
+      const connectionIds = userConnections.map(c => c._id);
 
-      const perChatResults =
-        connIds.length === 0
-          ? []
-          : await Message.aggregate([
-              {
-                $match: {
-                  connectionId: { $in: connIds },
-                  isRead: false,
-                  sender: { $ne: oid }
-                }
-              },
-              { $group: { _id: '$connectionId', count: { $sum: 1 } } }
-            ]);
+      const [unreadNotifications, connectionCount, perChatResults] = await Promise.all([
+        Notification.countDocuments({ user: userId, isRead: false }),
+        Connection.countDocuments({ 
+          users: userId, 
+          status: { $in: ['active', 'matched'] } 
+        }),
+        Message.aggregate([
+          { 
+            $match: { 
+              connectionId: { $in: connectionIds },
+              isRead: false, 
+              sender: { $ne: new mongoose.Types.ObjectId(userId) } 
+            } 
+          },
+          { $group: { _id: "$connectionId", count: { $sum: 1 } } }
+        ])
+      ]);
 
       const perChat = {};
       let totalUnreadMessages = 0;

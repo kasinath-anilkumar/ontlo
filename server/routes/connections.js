@@ -9,8 +9,11 @@ const { connectionIdParamSchema } = require('../validators/connection.validator'
 // Get user connections with last message
 router.get('/', auth, async (req, res) => {
   try {
-    // 1. Get connections
-    const connections = await Connection.find({ users: req.userId, status: 'active' })
+    // 1. Get connections (Include 'matched' so new chats show up)
+    const connections = await Connection.find({ 
+      users: req.userId, 
+      status: { $in: ['active', 'matched'] } 
+    })
       .populate('users', 'username profilePic onlineStatus')
       .lean();
     
@@ -84,8 +87,12 @@ router.delete('/:id', auth, validate({ params: connectionIdParamSchema }), async
 // Get only online connections
 router.get('/online', auth, async (req, res) => {
   try {
-    const connections = await Connection.find({ users: req.userId, status: 'active' })
+    const connections = await Connection.find({ 
+      users: req.userId, 
+      status: { $in: ['active', 'matched'] } 
+    })
       .populate('users', 'username profilePic onlineStatus')
+      .limit(20)
       .lean();
 
     const onlineOnes = connections

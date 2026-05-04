@@ -39,7 +39,19 @@ const Messages = () => {
 
   useEffect(() => {
     fetchConnections();
-  }, [location.state]);
+    
+    // Listen for real-time updates to refresh the list
+    if (socket) {
+      const handleUpdate = () => fetchConnections();
+      socket.on('counts-update', handleUpdate);
+      socket.on('new-notification', handleUpdate);
+      
+      return () => {
+        socket.off('counts-update', handleUpdate);
+        socket.off('new-notification', handleUpdate);
+      };
+    }
+  }, [location.state, socket]);
 
   const filteredConnections = useMemo(() => {
     return connections.filter(c => 
@@ -74,7 +86,7 @@ const Messages = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 space-y-1 pt-4">
+        <div className="flex-1 overflow-y-auto px-2 space-y-1 pt-4 smooth-render gpu-accelerated">
           {loading ? (
             <div className="space-y-4 px-2">
               {Array.from({ length: 5 }).map((_, i) => (

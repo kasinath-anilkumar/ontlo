@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProfileModal from "../components/profile/ProfileModal";
 import API_URL, { apiFetch } from "../utils/api";
+import { useSocket } from "../context/SocketContext";
 
 const Connections = () => {
   const [connections, setConnections] = useState([]);
@@ -10,13 +11,11 @@ const Connections = () => {
   const [activeMenu, setActiveMenu] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const navigate = useNavigate();
+  const { socket } = useSocket();
 
   const fetchConnections = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await apiFetch(`${API_URL}/api/connections`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      const response = await apiFetch(`${API_URL}/api/connections`);
       const data = await response.json();
       if (response.ok) {
         setConnections(data);
@@ -30,7 +29,18 @@ const Connections = () => {
 
   useEffect(() => {
     fetchConnections();
-  }, []);
+
+    if (socket) {
+      const handleUpdate = () => fetchConnections();
+      socket.on('counts-update', handleUpdate);
+      socket.on('new-match', handleUpdate); // Refresh when a new match happens
+      
+      return () => {
+        socket.off('counts-update', handleUpdate);
+        socket.off('new-match', handleUpdate);
+      };
+    }
+  }, [socket]);
 
   const removeConnection = async (id, e) => {
     e.stopPropagation();
@@ -95,7 +105,7 @@ const Connections = () => {
       )}
 
       {/* List */}
-      <div className="space-y-1">
+      <div className="space-y-1 smooth-render gpu-accelerated">
         {connections.map((conn) => (
           <div 
             key={conn.id} 
