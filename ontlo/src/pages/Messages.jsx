@@ -12,7 +12,7 @@ const Messages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
-  const { counts } = useSocket();
+  const { counts, socket } = useSocket();
 
   const fetchConnections = async () => {
     try {

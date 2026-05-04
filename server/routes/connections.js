@@ -9,12 +9,13 @@ const { connectionIdParamSchema } = require('../validators/connection.validator'
 // Get user connections with last message
 router.get('/', auth, async (req, res) => {
   try {
-    // 1. Get connections (Include 'matched' so new chats show up)
     const connections = await Connection.find({ 
       users: req.userId, 
       status: { $in: ['active', 'matched'] } 
     })
       .populate('users', 'username profilePic onlineStatus')
+      .sort({ updatedAt: -1 })
+      .limit(20)
       .lean();
     
     // 2. Fetch last messages for all connections in ONE query using aggregation
