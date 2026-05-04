@@ -1,4 +1,4 @@
-import { Settings, ShieldCheck, HelpCircle, LogOut, ChevronRight, User, Camera, Loader2, ChevronLeft, Check, X, MapPin, Calendar, Heart, MessageSquare } from "lucide-react";
+import { Settings, ShieldCheck, HelpCircle, LogOut, ChevronRight, User, Camera, Loader2, ChevronLeft, Check, X, MapPin, Calendar, Heart, MessageSquare, Globe } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
