@@ -52,31 +52,7 @@ const BottomNav = () => {
     };
   }, [socket]);
 
-  const [isVisible, setIsVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
-
-  useEffect(() => {
-    const handleScroll = (e) => {
-      // Get scroll position from the element that actually scrolled
-      const currentScrollY = e.target.scrollTop || window.scrollY;
-      
-      // Ignore very small scrolls or undefined targets
-      if (currentScrollY === undefined) return;
-
-      // Show if scrolling up, hide if scrolling down
-      if (currentScrollY > lastScrollY && currentScrollY > 50) {
-        setIsVisible(false);
-      } else {
-        setIsVisible(true);
-      }
-      
-      setLastScrollY(currentScrollY);
-    };
-
-    // Use capture: true to catch scroll events from sub-containers (like Profile/Notifications)
-    window.addEventListener("scroll", handleScroll, true);
-    return () => window.removeEventListener("scroll", handleScroll, true);
-  }, [lastScrollY]);
+  // Bottom nav is now permanently fixed based on user feedback
 
   const navItems = [
     { name: "Home", path: "/", icon: Home },
@@ -89,9 +65,8 @@ const BottomNav = () => {
   return (
     <div 
       className={`
-        bottom-nav md:hidden fixed bottom-0 left-0 w-full z-50 bg-[#0B0E14]/80 backdrop-blur-lg border-t border-white/5 pb-safe
-        transition-all duration-500 ease-in-out
-        ${isVisible ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}
+        bottom-nav md:hidden fixed bottom-0 left-0 w-full z-50 bg-[#0B0E14]/80 backdrop-blur-xl border-t border-white/5 pb-safe
+        translate-y-0 opacity-100
       `}
     >
       <div className="flex items-center justify-around py-3 px-2 relative">
