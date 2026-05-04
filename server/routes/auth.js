@@ -27,15 +27,12 @@ const generateTokens = async (user, res) => {
     }
   });
 
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const cookieOptions = {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax'
+    secure: true,
+    sameSite: 'none'
   };
 
-  console.log(`[Auth] Cookie Options (isProduction=${isProduction}):`, JSON.stringify(cookieOptions));
-  
   res.cookie('token', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15 mins
   res.cookie('refreshToken', refreshToken, { ...cookieOptions, path: '/api/auth', maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7 days
 
@@ -355,14 +352,14 @@ router.post('/refresh-token', async (req, res) => {
 
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+      secure: true, // Always true for cross-site cookies
+      sameSite: 'none' // Required for Vercel <-> Render communication
     };
     
     res.cookie('token', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
-
     res.json({ token: accessToken });
   } catch (error) {
+    console.warn('[Auth] Refresh failed:', error.message);
     res.status(403).json({ error: 'Invalid or expired refresh token' });
   }
 });
