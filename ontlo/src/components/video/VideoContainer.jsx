@@ -269,6 +269,28 @@ const VideoContainer = () => {
   const toggleCamera = () => { if (localStreamRef.current) { const t = localStreamRef.current.getVideoTracks()[0]; if (t) { t.enabled = !t.enabled; setCameraEnabled(t.enabled); } } };
   const toggleChat = () => { setShowChat(p => !p); setHasNewMessage(false); };
 
+  const reportUser = useCallback(async () => {
+    if (!roomIdRef.current || !remoteUser) return;
+    alert("User reported. The call has been ended for your safety.");
+    skipMatch();
+    try {
+      const token = localStorage.getItem("token");
+      const reportedUserId = remoteUser._id || remoteUser.id;
+      apiFetch(`${API_URL}/api/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ reportedUserId, reason: `LIVE_REPORT: Room ${roomIdRef.current}`, roomId: roomIdRef.current }),
+      });
+      apiFetch(`${API_URL}/api/users/block`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ blockedUserId: reportedUserId }),
+      });
+    } catch (error) {
+      console.error("Failed to log report/block", error);
+    }
+  }, [remoteUser, skipMatch]);
+
   const isVideoRoute = location.pathname === '/video';
   const isPiP = !isVideoRoute && (inCall || isMatching);
   const isHidden = !isVideoRoute && !inCall && !isMatching;
