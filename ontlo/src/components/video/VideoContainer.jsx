@@ -641,10 +641,9 @@ const VideoContainer = () => {
           {/* Header */}
           <div className="h-16 flex items-center justify-between px-4 sm:px-6 border-b border-[#1e293b] shrink-0 bg-[#0B0E14] z-50">
              <div className="flex items-center gap-3 sm:gap-6">
-                <div className="flex items-center gap-1">
-                   <span className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">C</span>
-                   <span className="text-lg sm:text-xl font-bold text-white">you</span>
-                </div>
+                {/* <div className="flex items-center gap-1">
+                   <span className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">Ontlo</span>
+                </div> */}
                 <div className="hidden sm:block w-px h-6 bg-[#1e293b]"></div>
                 <h1 className="text-base sm:text-lg font-bold text-white hidden sm:block">Video Chat</h1>
                 <div className="flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] sm:text-xs font-bold border border-green-500/20">
@@ -965,7 +964,7 @@ const VideoContainer = () => {
                           <Shield className="w-5 h-5 text-purple-400" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-300">Cyou ensures a safe and respectful environment for everyone. <a href="#" className="text-purple-400 font-bold ml-1">Learn more</a></p>
+                          <p className="text-sm font-medium text-gray-300">Ontlo ensures a safe and respectful environment for everyone. <a href="#" className="text-purple-400 font-bold ml-1">Learn more</a></p>
                         </div>
                       </div>
                       <div className="flex-1 bg-[#151923] rounded-3xl p-4 flex items-center justify-between border border-[#1e293b]">
@@ -1030,7 +1029,7 @@ const VideoContainer = () => {
                      <div className="p-2 bg-purple-500/20 rounded-xl mt-1"><Shield className="w-4 h-4 text-purple-400" /></div>
                      <div>
                        <p className="text-sm font-bold text-white mb-1">Be kind and respectful.</p>
-                       <p className="text-[11px] text-gray-400 leading-relaxed">Our community guidelines help keep Cyou a safe place for all.</p>
+                       <p className="text-[11px] text-gray-400 leading-relaxed">Our community guidelines help keep Ontlo a safe place for all.</p>
                      </div>
                   </div>
                   <div className="flex-1 overflow-hidden rounded-2xl relative">

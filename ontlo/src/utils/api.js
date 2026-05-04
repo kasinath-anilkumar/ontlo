@@ -59,7 +59,9 @@ export const apiFetch = async (url, options = {}) => {
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw new Error('Request Timeout: The server is taking too long to respond.');
+      const timeoutErr = new Error('Request Timeout: The server is taking too long to respond.');
+      timeoutErr.cause = err;
+      throw timeoutErr;
     }
     throw err;
   }

@@ -24,7 +24,6 @@ const PageLoader = () => (
   </div>
 );
 
-// A wrapper to protect routes
 const ProtectedRoute = ({ children, requiresProfile = true }) => {
   const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
   
@@ -33,7 +32,7 @@ const ProtectedRoute = ({ children, requiresProfile = true }) => {
   }
   
   if (requiresProfile && !storedUser.isProfileComplete) {
-    return <Navigate to="/setup-profile" replace />;
+    return <Navigate to="/onboarding" replace />;
   }
   
   return children;
@@ -48,11 +47,7 @@ function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
-            <Route path="/setup-profile" element={
-              <ProtectedRoute requiresProfile={false}>
-                <Onboarding />
-              </ProtectedRoute>
-            } />
+            <Route path="/onboarding" element={<Onboarding />} />
 
             <Route path="/*" element={
               <ProtectedRoute>

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
+// eslint-disable-next-line no-undef
 const srcDir = path.join(process.cwd(), 'src');
 
 function walkSync(currentDirPath, callback) {
