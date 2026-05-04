@@ -38,6 +38,8 @@ const VideoContainer = () => {
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [showConnectRequest, setShowConnectRequest] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(null);
+  const connectionStatusRef = useRef(null);
+  useEffect(() => { connectionStatusRef.current = connectionStatus; }, [connectionStatus]);
   const [callDuration, setCallDuration] = useState(0);
   const [showConnectButton, setShowConnectButton] = useState(false);
   const [safetyBlurTimer, setSafetyBlurTimer] = useState(0);
@@ -82,6 +84,16 @@ const VideoContainer = () => {
           localVideoRef.current.srcObject = stream;
         }
         setCameraReady(true);
+
+        // If we are already in a call (matched fast), add tracks now
+        const pc = peerConnectionRef.current;
+        if (pc && pc.signalingState !== 'closed') {
+           const senders = pc.getSenders();
+           stream.getTracks().forEach(track => {
+             const alreadyAdded = senders.find(s => s.track?.id === track.id);
+             if (!alreadyAdded) pc.addTrack(track, stream);
+           });
+        }
       } catch (err) {
         console.error("Failed to get local stream", err);
         if (err.name === 'NotAllowedError') setCameraError('Permission Denied');
@@ -211,51 +223,118 @@ const VideoContainer = () => {
     return pc;
   }, [socket, endCallLocally, user?.lowBandwidth]);
 
+  const iceQueue = useRef([]);
+
   // ── Socket Event Listeners ──
   useEffect(() => {
     if (!socket) return;
+    
     const onMatchFound = async ({ roomId: rId, role, remoteUserId: remoteId, icebreaker: prompt, isWildcard: wildcardFlag }) => {
       if (peerConnectionRef.current) endCallLocally(false);
       roomIdRef.current = rId; setInCall(true); setIsBlurred(true); setSafetyBlurTimer(3);
       setShowConnectRequest(false); setConnectionStatus(null); setChatMessages([]); setHasNewMessage(false);
       setIsMatching(false); setIcebreaker(prompt); setIsWildcard(wildcardFlag); setCuriosityBlurTimer(30);
       if (navigator.vibrate) navigator.vibrate(100);
+      
       const pc = createPeerConnection(rId); peerConnectionRef.current = pc;
+      iceQueue.current = []; // Reset queue for new match
+
       const stream = localStreamRef.current;
       if (stream) stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
       if (role === "caller") {
-        const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
         socket.emit("webrtc-offer", { offer, roomId: rId });
       }
+
       apiFetch(`${API_URL}/api/users/${remoteId}`).then(res => res.json()).then(data => {
         setRemoteUser(data);
         if (user?.interests && data?.interests) setCommonInterests(user.interests.filter(i => data.interests.includes(i)));
       }).catch(() => {});
     };
-    const onChatMessage = (msg) => { setChatMessages(prev => [...prev, { ...msg, type: "remote" }]); setHasNewMessage(true); };
-    const onPeerWantsConnection = () => { setShowConnectRequest(true); setConnectionStatus("received"); };
-    const onConnectionEstablished = () => { setConnectionStatus("accepted"); setCuriosityBlurTimer(0); setShowMatchSuccess(true); setTimeout(() => setShowMatchSuccess(false), 3000); };
+
     const onOffer = async ({ offer }) => {
-      const pc = peerConnectionRef.current; if (!pc) return;
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
-      socket.emit("webrtc-answer", { answer, roomId: roomIdRef.current });
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit("webrtc-answer", { answer, roomId: roomIdRef.current });
+        
+        // Process queued ICE candidates
+        while (iceQueue.current.length > 0) {
+          const candidate = iceQueue.current.shift();
+          await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("ICE Queue error:", e));
+        }
+      } catch (err) {
+        console.error("Failed to handle offer", err);
+      }
     };
-    const onAnswer = async ({ answer }) => { if (peerConnectionRef.current) await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer)); };
-    const onIceCandidate = async ({ candidate }) => { if (peerConnectionRef.current) await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {}); };
+
+    const onAnswer = async ({ answer }) => {
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        // Process queued ICE candidates
+        while (iceQueue.current.length > 0) {
+          const candidate = iceQueue.current.shift();
+          await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("ICE Queue error:", e));
+        }
+      } catch (err) {
+        console.error("Failed to handle answer", err);
+      }
+    };
+
+    const onIceCandidate = async ({ candidate }) => {
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
+      
+      if (pc.remoteDescription && pc.remoteDescription.type) {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+      } else {
+        iceQueue.current.push(candidate);
+      }
+    };
+
+    const onChatMessage = (msg) => { setChatMessages(prev => [...prev, { ...msg, type: "remote" }]); setHasNewMessage(true); };
+    const onPeerWantsConnection = () => { 
+      if (connectionStatusRef.current !== 'sent' && connectionStatusRef.current !== 'accepted') {
+        setShowConnectRequest(true); 
+        setConnectionStatus("received"); 
+      }
+    };
+    const onConnectionEstablished = () => { 
+      setConnectionStatus("accepted"); 
+      setShowConnectRequest(false); // Close any open request overlay
+      setCuriosityBlurTimer(0); 
+      setShowMatchSuccess(true); 
+      setTimeout(() => setShowMatchSuccess(false), 3000); 
+    };
     const onMatchEnded = () => endCallLocally(true);
     const onPeerDisconnected = () => console.log("Peer disconnected...");
 
-    socket.on("match-found", onMatchFound); socket.on("chat-message", onChatMessage);
-    socket.on("peer-wants-connection", onPeerWantsConnection); socket.on("connection-established", onConnectionEstablished);
-    socket.on("webrtc-offer", onOffer); socket.on("webrtc-answer", onAnswer);
-    socket.on("webrtc-ice-candidate", onIceCandidate); socket.on("match-ended", onMatchEnded);
+    socket.on("match-found", onMatchFound);
+    socket.on("chat-message", onChatMessage);
+    socket.on("peer-wants-connection", onPeerWantsConnection);
+    socket.on("connection-established", onConnectionEstablished);
+    socket.on("webrtc-offer", onOffer);
+    socket.on("webrtc-answer", onAnswer);
+    socket.on("webrtc-ice-candidate", onIceCandidate);
+    socket.on("match-ended", onMatchEnded);
     socket.on("peer-disconnected", onPeerDisconnected);
+
     return () => {
-      socket.off("match-found", onMatchFound); socket.off("chat-message", onChatMessage);
-      socket.off("peer-wants-connection", onPeerWantsConnection); socket.off("connection-established", onConnectionEstablished);
-      socket.off("webrtc-offer", onOffer); socket.off("webrtc-answer", onAnswer);
-      socket.off("webrtc-ice-candidate", onIceCandidate); socket.off("match-ended", onMatchEnded);
+      socket.off("match-found", onMatchFound);
+      socket.off("chat-message", onChatMessage);
+      socket.off("peer-wants-connection", onPeerWantsConnection);
+      socket.off("connection-established", onConnectionEstablished);
+      socket.off("webrtc-offer", onOffer);
+      socket.off("webrtc-answer", onAnswer);
+      socket.off("webrtc-ice-candidate", onIceCandidate);
+      socket.off("match-ended", onMatchEnded);
       socket.off("peer-disconnected", onPeerDisconnected);
     };
   }, [socket, createPeerConnection, endCallLocally, user]);
@@ -366,66 +445,62 @@ const VideoContainer = () => {
                   <div className="flex-1 relative rounded-3xl overflow-hidden bg-black shadow-2xl">
                     <video ref={remoteVideoRef} autoPlay playsInline style={{ filter: (isBlurred || peerIsPrivate) ? "blur(60px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px)` : "none" }} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 z-10" />
                     
-                    <div className="absolute top-4 left-4 right-4 flex items-start justify-between z-30">
-                       <div className="flex flex-col gap-3">
-                          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-xl px-4 py-2.5 rounded-2xl border border-white/10 shadow-2xl">
-                             <img src={remoteUser?.profilePic || 'https://api.dicebear.com/7.x/avataaars/svg'} className="w-10 h-10 rounded-full border border-white/20 object-cover" />
+                    <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-30">
+                       <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2.5 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5 shadow-xl">
+                             <img src={remoteUser?.profilePic || 'https://api.dicebear.com/7.x/avataaars/svg'} className="w-8 h-8 rounded-full border border-white/10 object-cover" />
                              <div className="flex flex-col">
-                                <div className="flex items-center gap-1.5">
-                                   <span className="text-sm font-bold text-white">{remoteUser?.fullName || 'Connecting...'}</span>
-                                   <Check className="w-3.5 h-3.5 text-blue-400 bg-white rounded-full p-0.5" />
+                                <div className="flex items-center gap-1">
+                                   <span className="text-xs font-bold text-white">{remoteUser?.fullName || 'Connecting...'}</span>
+                                   <Check className="w-3 h-3 text-blue-400 bg-white rounded-full p-0.5" />
                                 </div>
-                                <div className="flex items-center gap-1.5">
-                                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></div>
-                                   <span className="text-[10px] text-gray-300 font-bold uppercase tracking-wider">Live Now</span>
+                                <div className="flex items-center gap-1">
+                                   <div className="w-1 h-1 rounded-full bg-green-500"></div>
+                                   <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Live</span>
                                 </div>
                              </div>
                           </div>
 
                           {icebreaker && (
-                             <div className="bg-black/40 backdrop-blur-xl px-4 py-3 rounded-2xl border border-purple-500/30 max-w-[280px] shadow-2xl animate-in slide-in-from-left duration-500">
-                                <div className="flex items-start gap-3">
-                                   <div className="w-6 h-6 bg-purple-500/20 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
-                                      <span className="text-sm">💡</span>
-                                   </div>
-                                   <p className="text-[11px] font-medium text-gray-100 leading-relaxed">{icebreaker}</p>
-                                </div>
+                             <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-xl border border-purple-500/20 max-w-[220px] shadow-xl">
+                                <p className="text-[9px] font-medium text-gray-100 leading-tight">💡 {icebreaker}</p>
                              </div>
                           )}
                        </div>
 
-                       <div className="flex flex-col items-end gap-2">
-                          <div className="bg-black/40 backdrop-blur-xl px-4 py-2.5 rounded-2xl border border-white/10 text-white shadow-2xl flex flex-col items-end">
-                             <div className="flex items-center gap-2">
-                                <Timer className="w-3.5 h-3.5 text-pink-500" />
-                                <span className="text-sm font-black font-mono">{Math.floor(callDuration / 60).toString().padStart(2, '0')}:{(callDuration % 60).toString().padStart(2, '0')}</span>
+                       <div className="flex flex-col items-end gap-1.5">
+                          <div className="bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5 text-white shadow-xl flex flex-col items-end">
+                             <div className="flex items-center gap-1.5">
+                                <Timer className="w-3 h-3 text-pink-500" />
+                                <span className="text-xs font-black font-mono">{Math.floor(callDuration / 60).toString().padStart(2, '0')}:{(callDuration % 60).toString().padStart(2, '0')}</span>
                              </div>
-                             <span className="text-[8px] text-gray-400 font-black uppercase tracking-tighter mt-1">Encrypted Call</span>
                           </div>
                           {commonInterests.length > 0 && (
-                             <div className="bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-xl border border-blue-500/30 text-[10px] text-blue-200 font-bold flex items-center gap-1.5">
-                                <Music className="w-3 h-3" /> {commonInterests[0]}
+                             <div className="bg-black/30 backdrop-blur-md px-2 py-1 rounded-lg border border-blue-500/20 text-[9px] text-blue-200 font-bold flex items-center gap-1">
+                                <Music className="w-2.5 h-2.5" /> {commonInterests[0]}
                              </div>
                           )}
                        </div>
                     </div>
 
-                    <div style={{ transform: `translate(${localVideoPos.x}px, ${localVideoPos.y}px)`, transition: isDraggingState ? 'none' : 'transform 0.3s' }} className="absolute bottom-28 right-4 w-28 h-40 sm:w-48 sm:h-64 rounded-2xl overflow-hidden border-2 border-white/20 z-40 shadow-2xl cursor-grab" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
+                    <div style={{ transform: `translate(${localVideoPos.x}px, ${localVideoPos.y}px)`, transition: isDraggingState ? 'none' : 'transform 0.3s' }} className="absolute bottom-24 right-3 w-24 h-36 sm:w-48 sm:h-64 rounded-xl overflow-hidden border border-white/20 z-40 shadow-2xl cursor-grab" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
                        <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-                       <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/40 rounded-lg text-[10px] font-bold text-white">You</div>
+                       <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/40 rounded-md text-[8px] font-bold text-white uppercase">You</div>
                     </div>
 
-                    <div className="absolute bottom-6 left-4 right-4 flex items-center justify-between z-50">
-                       <div className="flex gap-3">
-                          <button onClick={toggleMic} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${micEnabled ? "bg-white/10 backdrop-blur-xl border border-white/10 text-white" : "bg-red-500 text-white"}`}><Mic className="w-5 h-5" /></button>
-                          <button onClick={toggleCamera} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${cameraEnabled ? "bg-white/10 backdrop-blur-xl border border-white/10 text-white" : "bg-red-500 text-white"}`}><Camera className="w-5 h-5" /></button>
+                    <div className="absolute bottom-4 left-3 right-3 flex items-center justify-between z-50">
+                       <div className="flex gap-2">
+                          <button onClick={toggleMic} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${micEnabled ? "bg-black/40 backdrop-blur-md border border-white/10 text-white" : "bg-red-500 text-white"}`}><Mic className="w-4 h-4" /></button>
+                          <button onClick={toggleCamera} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${cameraEnabled ? "bg-black/40 backdrop-blur-md border border-white/10 text-white" : "bg-red-500 text-white"}`}><Camera className="w-4 h-4" /></button>
                        </div>
-                       <div className="flex gap-3">
+                       <div className="flex gap-2">
                           {showConnectButton && connectionStatus !== 'accepted' && (
-                            <button onClick={connectUser} className={`px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest bg-gradient-to-r from-purple-600 to-pink-600 text-white`}>{connectionStatus === 'sent' ? 'Waiting...' : 'Connect'}</button>
+                             <button onClick={connectUser} className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-tr from-purple-600 to-pink-600 text-white shadow-lg`}>
+                                <Heart className={`w-4 h-4 ${connectionStatus === 'sent' ? 'animate-pulse' : ''}`} />
+                             </button>
                           )}
-                          <button onClick={skipMatch} className="bg-white text-black px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl">Next Match</button>
-                          <button onClick={toggleChat} className={`w-12 h-12 rounded-2xl flex items-center justify-center ${showChat ? 'bg-purple-600 text-white' : 'bg-white/10 backdrop-blur-xl border border-white/10 text-white'}`}><MessageSquare className="w-5 h-5" /></button>
+                          <button onClick={skipMatch} className="bg-white text-black px-6 h-10 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-2">Next <RefreshCw className="w-3 h-3" /></button>
+                          <button onClick={toggleChat} className={`w-10 h-10 rounded-full flex items-center justify-center ${showChat ? 'bg-purple-600 text-white' : 'bg-black/40 backdrop-blur-md border border-white/10 text-white'}`}><MessageSquare className="w-4 h-4" /></button>
                        </div>
                     </div>
 
