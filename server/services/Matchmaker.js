@@ -166,13 +166,15 @@ class Matchmaker {
             }
 
             // High-quality match found, break early to save cycles
-            if (currentScore >= 30) break;
+            if (currentScore >= 20) break;
           }
         }
-        if (bestMatch.user1Index !== -1 && bestMatch.score >= 30) break;
+        if (bestMatch.user1Index !== -1 && bestMatch.score >= 20) break;
       }
 
-      if (bestMatch.user1Index !== -1) {
+      // Allow matches with score >= 15, or >= 10 for wildcards
+      const minScore = bestMatch.isWildcard ? 10 : 15;
+      if (bestMatch.user1Index !== -1 && bestMatch.score >= minScore) {
         logger.info(`[Matchmaker] Match decided! Score: ${bestMatch.score}`);
         const user2 = this.queue.splice(bestMatch.user2Index, 1)[0];
         const user1 = this.queue.splice(bestMatch.user1Index, 1)[0];

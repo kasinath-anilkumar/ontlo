@@ -682,7 +682,7 @@ const VideoContainer = () => {
                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.05),transparent_70%)]"></div>
                        <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl z-10" />
                        <div className="relative z-20 w-full h-full flex flex-col items-center justify-center p-6">
-                          {!isMatching && !cameraError && !penaltyMessage && (
+                          {/* {!isMatching && !cameraError && !penaltyMessage && (
                             <div className="mb-12 animate-in fade-in slide-in-from-top-8 duration-1000">
                               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-6">
                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
@@ -695,7 +695,7 @@ const VideoContainer = () => {
                                 Meet interesting people from around the globe in a safe, moderated space.
                               </p>
                             </div>
-                          )}
+                          )} */}
 
                           {cameraError ? (
                             <div className="flex flex-col items-center p-10 bg-[#151923]/60 backdrop-blur-2xl border border-red-500/20 rounded-[40px] animate-in zoom-in duration-500 mx-4 text-center max-w-sm shadow-2xl">

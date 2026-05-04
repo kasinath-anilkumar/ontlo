@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const AppConfigSchema = new mongoose.Schema({
   // Matchmaking
   radius: { type: Number, default: 50 },
-  ageGap: { type: Number, default: 5 },
+  ageGap: { type: Number, default: 10 },
   boostPremium: { type: Boolean, default: true },
   
   // Safety

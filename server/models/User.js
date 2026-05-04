@@ -141,6 +141,8 @@ const UserSchema = new mongoose.Schema({
 UserSchema.index({ role: 1 });
 UserSchema.index({ isPremium: 1 });
 UserSchema.index({ onlineStatus: 1 });
+UserSchema.index({ onlineStatus: 1, role: 1 }); // Compound index for online users queries
+UserSchema.index({ interests: 1 }); // Index for interest-based matching
 
 UserSchema.virtual('isLocked').get(function() {
   return !!(this.lockUntil && this.lockUntil > Date.now());
