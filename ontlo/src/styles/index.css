@@ -107,3 +107,38 @@ select option {
   background-color: #151923;
   color: white;
 }
+
+/* --- SUPER SMOOTH UTILITIES --- */
+
+/* Smart Rendering for long lists (Inbox, Connections) */
+.smooth-render {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 80px; /* Placeholder size to prevent scroll jumping */
+}
+
+/* Force GPU Acceleration for Butter Smooth Animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity;
+}
+
+/* Prevent text flickering during transitions */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth Image Loading */
+img {
+  transition: opacity 0.3s ease-in-out;
+}
+
+img:not([src]) {
+  opacity: 0;
+}
+
+img[src] {
+  opacity: 1;
+}

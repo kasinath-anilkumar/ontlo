@@ -26,12 +26,12 @@ module.exports = (io) => {
 
   // Utility to update a specific user's frontend state
   const pushUserStats = async (userId) => {
-    const counts = await getUserCounts(userId);
+    const counts = await getUserCounts(userId, true);
     io.to(`user_${userId}`).emit('counts-update', counts);
   };
 
   const pushOnlineFriends = async (userId) => {
-    const online = await getOnlineConnections(userId);
+    const online = await getOnlineConnections(userId, true);
     io.to(`user_${userId}`).emit('online-users-update', online);
   };
 
@@ -134,15 +134,22 @@ module.exports = (io) => {
 
             const recipientId = conn.users.find(u => u && u.toString() !== socket.userId.toString());
             if (recipientId) {
-              await Notification.create({
+              const notification = await Notification.create({
                 user: recipientId,
                 type: 'message',
                 content: finalMessage.substring(0, 50),
                 fromUser: socket.userId,
                 relatedId: roomId
               });
+
+              // Push the rich notification with sender profile
+              const sender = await User.findById(socket.userId).select('username profilePic');
+              io.to(`user_${recipientId}`).emit('new-notification', {
+                ...notification._doc,
+                fromUser: sender
+              });
               
-              // PUSH instant counts update to recipient
+              // Also update their badge counts
               pushUserStats(recipientId.toString());
             }
           }

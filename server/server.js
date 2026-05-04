@@ -6,10 +6,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-const mongoSanitize = require('express-mongo-sanitize');
-const xss = require('xss-clean');
 const compression = require('compression');
-const maintenanceMiddleware = require('./middleware/maintenance');
 const { logger } = require('./utils/logger');
 const monitor = require('./utils/monitor');
 
@@ -142,9 +139,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// Lightweight request logging (No DB hits here)
+// Lightweight request logging
 app.use((req, res, next) => {
-  req._mark = (name) => {}; // Placeholder for profiler if needed
   if (req.path.startsWith('/api/')) {
     console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.path}`);
   }

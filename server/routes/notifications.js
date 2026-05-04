@@ -33,7 +33,7 @@ router.patch('/:id/read', auth, async (req, res) => {
     if (req.io) {
       (async () => {
         const { getUserCounts } = require('../utils/stats');
-        const counts = await getUserCounts(req.user.id);
+        const counts = await getUserCounts(req.user.id, true); // Force refresh
         req.io.to(`user_${req.user.id}`).emit('counts-update', counts);
       })().catch(e => console.error("BG Count Error:", e));
     }
