@@ -39,8 +39,8 @@ const VideoContainer = () => {
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [showConnectRequest, setShowConnectRequest] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(null);
-  const [connectTimer, setConnectTimer] = useState(0);
   const [callDuration, setCallDuration] = useState(0);
+  const [showConnectButton, setShowConnectButton] = useState(false);
   const [safetyBlurTimer, setSafetyBlurTimer] = useState(0);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState(null);
@@ -77,7 +77,7 @@ const VideoContainer = () => {
       try {
         const constraints = {
           audio: true,
-          video: user?.lowBandwidth 
+          video: user?.lowBandwidth
             ? { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { max: 15 } }
             : { width: { ideal: 1280 }, height: { ideal: 720 } }
         };
@@ -120,9 +120,14 @@ const VideoContainer = () => {
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     let interval;
+    let connectTimer = 0;
     if (inCall) {
       interval = setInterval(() => {
-        setConnectTimer(prev => (prev > 0 ? prev - 1 : 0));
+        connectTimer += 1;
+        // Show connect button after 10 seconds
+        if (connectTimer === 10 && !showConnectButton) {
+          setShowConnectButton(true);
+        }
         setSafetyBlurTimer(prev => {
           if (prev === 1) setIsBlurred(false);
           return prev > 0 ? prev - 1 : 0;
@@ -131,7 +136,7 @@ const VideoContainer = () => {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [inCall]);
+  }, [inCall, showConnectButton]);
 
   // ─────────────────────────────────────────────────────────────────
   // 3. Auto-hide Controls Logic
@@ -155,7 +160,7 @@ const VideoContainer = () => {
 
     const activities = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
     activities.forEach(event => window.addEventListener(event, resetTimer));
-    
+
     resetTimer(); // Start timer initially
 
     return () => {
@@ -178,17 +183,17 @@ const VideoContainer = () => {
   const handleDragMove = useCallback((e) => {
     const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
     const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-    
+
     // Boundary check
     const newX = clientX - dragStart.current.x;
     const newY = clientY - dragStart.current.y;
-    
+
     setLocalVideoPos({ x: newX, y: newY });
   }, []); // Ref based, no deps needed for stability
 
   const handleDragEnd = () => {
     setIsDraggingState(false);
-    
+
     // Snap to nearest corner (simplified)
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
@@ -248,12 +253,12 @@ const VideoContainer = () => {
     setCommonInterests([]);
     setShowConnectRequest(false);
     setConnectionStatus(null);
-    setConnectTimer(0);
     setCallDuration(0);
     setSafetyBlurTimer(0);
     setChatMessages([]);
     setHasNewMessage(false);
     setIsMatching(false);
+    setShowConnectButton(false);
 
     if (shouldAutoRejoin) {
       // Cancel any previous pending rejoin
@@ -345,7 +350,6 @@ const VideoContainer = () => {
       setSafetyBlurTimer(3);
       setShowConnectRequest(false);
       setConnectionStatus(null);
-      setConnectTimer(10);
       setChatMessages([]);
       setHasNewMessage(false);
       setIsMatching(false);
@@ -361,7 +365,7 @@ const VideoContainer = () => {
         const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
         audio.volume = 0.4;
         audio.play();
-      } catch (_) {}
+      } catch (_) { }
 
       // Fetch remote user info
       try {
@@ -371,13 +375,13 @@ const VideoContainer = () => {
           setRemoteUser(data);
           // Calculate common interests
           if (user?.interests && data?.interests) {
-            const common = user.interests.filter(interest => 
+            const common = user.interests.filter(interest =>
               data.interests.includes(interest)
             );
             setCommonInterests(common);
           }
         }
-      } catch (_) {}
+      } catch (_) { }
 
       const pc = createPeerConnection(rId);
       peerConnectionRef.current = pc;
@@ -400,7 +404,7 @@ const VideoContainer = () => {
       // Use functional update to read current showChat without dep
       setHasNewMessage(true);
     };
-    
+
     const onPrivacyToggle = ({ isPrivate: peerPrivate }) => {
       setPeerIsPrivate(peerPrivate);
     };
@@ -415,6 +419,7 @@ const VideoContainer = () => {
 
     const onConnectionEstablished = () => {
       setConnectionStatus("accepted");
+      setCuriosityBlurTimer(0); // Earned reveal: blur clears on connection
       setShowMatchSuccess(true);
       setTimeout(() => setShowMatchSuccess(false), 3000);
       console.log("Connection established!");
@@ -448,7 +453,7 @@ const VideoContainer = () => {
       if (!pc) return;
       try {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (_) {}
+      } catch (_) { }
     };
 
     const onMatchEnded = () => {
@@ -514,13 +519,13 @@ const VideoContainer = () => {
   }, [socket, endCallLocally]);
 
   const connectUser = useCallback(async () => {
-    if (connectTimer > 0 || connectionStatus === "sent" || connectionStatus === "accepted") return;
+    if (connectionStatus === "sent" || connectionStatus === "accepted") return;
     if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
     if (socket && roomIdRef.current && user) {
       socket.emit("action-connect", { roomId: roomIdRef.current, userId: user.id });
       setConnectionStatus("sent");
     }
-  }, [socket, user, connectTimer]);
+  }, [socket, user]);
 
   const acceptConnection = useCallback(() => {
     if (socket && roomIdRef.current && user) {
@@ -536,26 +541,26 @@ const VideoContainer = () => {
 
   const reportUser = useCallback(async () => {
     if (!roomIdRef.current || !remoteUser) return;
-    
+
     // 1. Instant feedback & disconnect
     alert("User reported. The call has been ended for your safety.");
-    
+
     // 2. Immediately end the call and rejoin queue
     skipMatch();
-    
+
     // 3. Log the incident for admins AND block the user
     try {
       const token = localStorage.getItem("token");
       const reportedUserId = remoteUser._id || remoteUser.id;
-      
+
       // Send report
       apiFetch(`${API_URL}/api/report`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ 
-          reportedUserId, 
-          reason: `IMMEDIATE_REPORT: User reported during live video call (Room: ${roomIdRef.current})`, 
-          roomId: roomIdRef.current 
+        body: JSON.stringify({
+          reportedUserId,
+          reason: `IMMEDIATE_REPORT: User reported during live video call (Room: ${roomIdRef.current})`,
+          roomId: roomIdRef.current
         }),
       });
 
@@ -613,14 +618,11 @@ const VideoContainer = () => {
   const isHidden = !isVideoRoute && !inCall && !isMatching;
 
   return (
-    <div 
-      className={`bg-[#0B0E14] overflow-hidden transition-all duration-500 z-40 ${
-        isHidden ? "hidden" : "flex flex-col"
-      } ${
-        isVideoRoute ? "absolute inset-0 rounded-none h-screen" : ""
-      } ${
-        isPiP ? "fixed bottom-24 right-4 w-48 h-72 sm:bottom-28 sm:right-6 sm:w-64 sm:h-96 shadow-2xl rounded-2xl z-[100] cursor-pointer ring-4 ring-purple-500/50 hover:scale-105 active:scale-95 bg-[#151923] flex-row" : ""
-      }`}
+    <div
+      className={`bg-[#0B0E14] overflow-hidden transition-all duration-500 z-40 ${isHidden ? "hidden" : "flex flex-col"
+        } ${isVideoRoute ? "absolute inset-0 rounded-none h-screen" : ""
+        } ${isPiP ? "fixed bottom-24 right-4 w-48 h-72 sm:bottom-28 sm:right-6 sm:w-64 sm:h-96 shadow-2xl rounded-2xl z-[100] cursor-pointer ring-4 ring-purple-500/50 hover:scale-105 active:scale-95 bg-[#151923] flex-row" : ""
+        }`}
       onClick={isPiP ? () => navigate('/video') : undefined}
     >
       {isPiP ? (
@@ -629,60 +631,60 @@ const VideoContainer = () => {
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            style={{ filter: (isBlurred || peerIsPrivate) ? "blur(60px) scale(1.1)" : "none" }}
+            style={{ filter: (isBlurred || peerIsPrivate) ? "blur(60px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px) scale(${1 + (curiosityBlurTimer / 60)})` : "none" }}
             className={`w-full h-full object-cover rounded-2xl transition-all duration-700 ${inCall ? "block" : "hidden"}`}
           />
           <div className="absolute bottom-2 right-2 w-12 h-16 rounded-xl overflow-hidden border-2 border-white/20 z-[60]">
-             <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1] pointer-events-none" />
+            <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1] pointer-events-none" />
           </div>
         </div>
       ) : (
         <>
           {/* Header */}
           <div className="h-16 flex items-center justify-between px-4 sm:px-6 border-b border-[#1e293b] shrink-0 bg-[#0B0E14] z-50">
-             <div className="flex items-center gap-3 sm:gap-6">
-                {/* <div className="flex items-center gap-1">
+            <div className="flex items-center gap-3 sm:gap-6">
+              {/* <div className="flex items-center gap-1">
                    <span className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">Ontlo</span>
                 </div> */}
-                <div className="hidden sm:block w-px h-6 bg-[#1e293b]"></div>
-                <h1 className="text-base sm:text-lg font-bold text-white hidden sm:block">Video Chat</h1>
-                <div className="flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] sm:text-xs font-bold border border-green-500/20">
-                   <Shield className="w-3 h-3" /> <span className="hidden sm:inline">Safe & Secure</span><span className="sm:hidden">Secure</span>
-                </div>
-             </div>
-             <div className="flex items-center gap-2 sm:gap-3">
-                <button onClick={reportUser} className="hidden sm:flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#151923] border border-[#1e293b] rounded-xl text-xs sm:text-sm font-bold text-gray-300 hover:text-white transition">
-                   <AlertTriangle className="w-4 h-4 text-red-500" /> Report
-                </button>
-                <button className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-[#151923] border border-[#1e293b] rounded-xl text-gray-400 hover:text-white transition">
-                   <MoreVertical className="w-4 h-4" />
-                </button>
-                <button onClick={() => endCallLocally(false)} className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-red-500 hover:text-white transition">
-                   <PhoneOff className="w-4 h-4" /> Leave
-                </button>
-             </div>
+              <div className="hidden sm:block w-px h-6 bg-[#1e293b]"></div>
+              <h1 className="text-base sm:text-lg font-bold text-white hidden sm:block">Video Chat</h1>
+              <div className="flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] sm:text-xs font-bold border border-green-500/20">
+                <Shield className="w-3 h-3" /> <span className="hidden sm:inline">Safe & Secure</span><span className="sm:hidden">Secure</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button onClick={reportUser} className="hidden sm:flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#151923] border border-[#1e293b] rounded-xl text-xs sm:text-sm font-bold text-gray-300 hover:text-white transition">
+                <AlertTriangle className="w-4 h-4 text-red-500" /> Report
+              </button>
+              <button className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-[#151923] border border-[#1e293b] rounded-xl text-gray-400 hover:text-white transition">
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              <button onClick={() => endCallLocally(false)} className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-red-500 hover:text-white transition">
+                <PhoneOff className="w-4 h-4" /> Leave
+              </button>
+            </div>
           </div>
 
           {/* Main Body */}
           <div className="flex flex-1 overflow-hidden p-2 sm:p-4 gap-4 bg-[#05070A]">
             <div className="flex-1 flex flex-col relative overflow-hidden bg-[#05070A]">
-               {showMatchSuccess && (
-                 <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none animate-in zoom-in-50 duration-500">
-                   <div className="bg-gradient-to-br from-purple-600/95 via-pink-600/95 to-orange-500/95 backdrop-blur-2xl px-12 py-8 rounded-[40px] border border-white/30 shadow-[0_0_150px_rgba(168,85,247,0.6)] flex flex-col items-center animate-pulse">
-                     <div className="text-5xl sm:text-7xl mb-4 drop-shadow-lg">✨</div>
-                     <h2 className="text-white text-4xl sm:text-6xl font-black uppercase tracking-[0.2em] drop-shadow-md">Match!</h2>
-                   </div>
-                 </div>
-               )}
+              {showMatchSuccess && (
+                <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none animate-in zoom-in-50 duration-500">
+                  <div className="bg-gradient-to-br from-purple-600/95 via-pink-600/95 to-orange-500/95 backdrop-blur-2xl px-12 py-8 rounded-[40px] border border-white/30 shadow-[0_0_150px_rgba(168,85,247,0.6)] flex flex-col items-center animate-pulse">
+                    <div className="text-5xl sm:text-7xl mb-4 drop-shadow-lg">✨</div>
+                    <h2 className="text-white text-4xl sm:text-6xl font-black uppercase tracking-[0.2em] drop-shadow-md">Match!</h2>
+                  </div>
+                </div>
+              )}
 
-               <div className={`flex-1 min-h-0 relative flex ${inCall ? 'flex-col lg:flex-row gap-4' : 'items-center justify-center'}`}>
-                  {!inCall && (
-                     <div className="absolute inset-0 bg-[#0B0E14] rounded-3xl overflow-hidden border border-[#1e293b]">
-                       <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1] opacity-20" />
-                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.05),transparent_70%)]"></div>
-                       <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl z-10" />
-                       <div className="relative z-20 w-full h-full flex flex-col items-center justify-center p-6">
-                          {/* {!isMatching && !cameraError && !penaltyMessage && (
+              <div className={`flex-1 min-h-0 relative flex ${inCall ? 'flex-col lg:flex-row gap-4' : 'items-center justify-center'}`}>
+                {!inCall && (
+                  <div className="absolute inset-0 bg-[#0B0E14] rounded-3xl overflow-hidden border border-[#1e293b]">
+                    <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1] opacity-20" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.05),transparent_70%)]"></div>
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl z-10" />
+                    <div className="relative z-20 w-full h-full flex flex-col items-center justify-center p-6">
+                      {/* {!isMatching && !cameraError && !penaltyMessage && (
                             <div className="mb-12 animate-in fade-in slide-in-from-top-8 duration-1000">
                               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-6">
                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
@@ -697,279 +699,320 @@ const VideoContainer = () => {
                             </div>
                           )} */}
 
-                          {cameraError ? (
-                            <div className="flex flex-col items-center p-10 bg-[#151923]/60 backdrop-blur-2xl border border-red-500/20 rounded-[40px] animate-in zoom-in duration-500 mx-4 text-center max-w-sm shadow-2xl">
-                              <div className="w-16 h-16 rounded-3xl bg-red-500/10 flex items-center justify-center mb-6">
-                                <AlertTriangle className="w-8 h-8 text-red-500" />
+                      {cameraError ? (
+                        <div className="flex flex-col items-center p-10 bg-[#151923]/60 backdrop-blur-2xl border border-red-500/20 rounded-[40px] animate-in zoom-in duration-500 mx-4 text-center max-w-sm shadow-2xl">
+                          <div className="w-16 h-16 rounded-3xl bg-red-500/10 flex items-center justify-center mb-6">
+                            <AlertTriangle className="w-8 h-8 text-red-500" />
+                          </div>
+                          <p className="text-white text-xl font-black mb-3 uppercase tracking-tight">
+                            {cameraError === 'Blocked by System' ? 'Overlay Detected' : 'Camera Blocked'}
+                          </p>
+                          <p className="text-gray-400 text-xs mb-8 leading-relaxed font-medium">
+                            {cameraError === 'Blocked by System'
+                              ? 'Another app is drawing over Ontlo. Please close any chat bubbles or screen dimmers.'
+                              : 'Please enable camera access in your browser settings to start matching.'}
+                          </p>
+                          <button onClick={() => window.location.reload()} className="w-full py-4 bg-white text-black rounded-2xl hover:bg-gray-200 transition font-black text-[11px] uppercase tracking-[0.2em] shadow-xl">
+                            Retry Connection
+                          </button>
+                        </div>
+                      ) : penaltyMessage ? (
+                        <div className="flex flex-col items-center p-10 bg-[#151923]/60 backdrop-blur-2xl border border-orange-500/20 rounded-[40px] animate-in zoom-in duration-500 mx-4 max-w-sm">
+                          <div className="w-16 h-16 rounded-3xl bg-orange-500/10 flex items-center justify-center mb-6">
+                            <Timer className="w-8 h-8 text-orange-500 animate-pulse" />
+                          </div>
+                          <p className="text-white text-xl font-black mb-3 uppercase tracking-tight">Slow Down</p>
+                          <p className="text-gray-400 text-xs mb-4 text-center font-medium leading-relaxed">{penaltyMessage}</p>
+                        </div>
+                      ) : isMatching ? (
+                        <div className="flex flex-col items-center animate-in fade-in zoom-in duration-700">
+                          <div className="relative mb-10">
+                            <div className="w-24 h-24 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center animate-pulse">
+                                <Video className="w-6 h-6 text-purple-400" />
                               </div>
-                              <p className="text-white text-xl font-black mb-3 uppercase tracking-tight">
-                                {cameraError === 'Blocked by System' ? 'Overlay Detected' : 'Camera Blocked'}
-                              </p>
-                              <p className="text-gray-400 text-xs mb-8 leading-relaxed font-medium">
-                                {cameraError === 'Blocked by System' 
-                                  ? 'Another app is drawing over Ontlo. Please close any chat bubbles or screen dimmers.' 
-                                  : 'Please enable camera access in your browser settings to start matching.'}
-                              </p>
-                              <button onClick={() => window.location.reload()} className="w-full py-4 bg-white text-black rounded-2xl hover:bg-gray-200 transition font-black text-[11px] uppercase tracking-[0.2em] shadow-xl">
-                                Retry Connection
-                              </button>
                             </div>
-                          ) : penaltyMessage ? (
-                            <div className="flex flex-col items-center p-10 bg-[#151923]/60 backdrop-blur-2xl border border-orange-500/20 rounded-[40px] animate-in zoom-in duration-500 mx-4 max-w-sm">
-                              <div className="w-16 h-16 rounded-3xl bg-orange-500/10 flex items-center justify-center mb-6">
-                                <Timer className="w-8 h-8 text-orange-500 animate-pulse" />
-                              </div>
-                              <p className="text-white text-xl font-black mb-3 uppercase tracking-tight">Slow Down</p>
-                              <p className="text-gray-400 text-xs mb-4 text-center font-medium leading-relaxed">{penaltyMessage}</p>
+                          </div>
+                          <h2 className="text-2xl md:text-3xl text-white font-black mb-2 uppercase tracking-tighter italic">Finding a match</h2>
+                          <div className="flex items-center gap-2 mb-8">
+                            <span className="text-[10px] text-purple-400 font-black uppercase tracking-[0.3em]">AI Moderator Screening</span>
+                            <div className="flex gap-1">
+                              <div className="w-1 h-1 bg-purple-500 rounded-full animate-bounce delay-100"></div>
+                              <div className="w-1 h-1 bg-purple-500 rounded-full animate-bounce delay-200"></div>
+                              <div className="w-1 h-1 bg-purple-500 rounded-full animate-bounce delay-300"></div>
                             </div>
-                          ) : isMatching ? (
-                            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-700">
-                              <div className="relative mb-10">
-                                <div className="w-24 h-24 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center animate-pulse">
-                                    <Video className="w-6 h-6 text-purple-400" />
-                                  </div>
-                                </div>
-                              </div>
-                              <h2 className="text-2xl md:text-3xl text-white font-black mb-2 uppercase tracking-tighter italic">Finding a match</h2>
-                              <div className="flex items-center gap-2 mb-8">
-                                <span className="text-[10px] text-purple-400 font-black uppercase tracking-[0.3em]">AI Moderator Screening</span>
-                                <div className="flex gap-1">
-                                   <div className="w-1 h-1 bg-purple-500 rounded-full animate-bounce delay-100"></div>
-                                   <div className="w-1 h-1 bg-purple-500 rounded-full animate-bounce delay-200"></div>
-                                   <div className="w-1 h-1 bg-purple-500 rounded-full animate-bounce delay-300"></div>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  socket?.emit("leave-queue");
-                                  setIsMatching(false);
-                                }}
-                                className="px-10 py-4 rounded-2xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition font-black text-[10px] uppercase tracking-[0.2em]"
-                              >
-                                Stop Matching
-                              </button>
+                          </div>
+                          <button
+                            onClick={() => {
+                              socket?.emit("leave-queue");
+                              setIsMatching(false);
+                            }}
+                            className="px-10 py-4 rounded-2xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition font-black text-[10px] uppercase tracking-[0.2em]"
+                          >
+                            Stop Matching
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center max-w-xl w-full animate-in fade-in zoom-in duration-1000 delay-200">
+                          <div className="mb-12 text-center">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6">
+                              <Shield className="w-4 h-4 text-purple-400" />
+                              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Safe & Secure Layer</span>
                             </div>
-                          ) : (
-                            <div className="flex flex-col items-center max-w-xl w-full animate-in fade-in zoom-in duration-1000 delay-200">
-                              <div className="mb-12 text-center">
-                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6">
-                                  <Shield className="w-4 h-4 text-purple-400" />
-                                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Safe & Secure Layer</span>
-                                </div>
-                                <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter italic mb-4">Ready to meet?</h2>
-                                <p className="text-gray-400 text-sm md:text-base font-medium max-w-md mx-auto leading-relaxed">
-                                  Connect with verified people globally in a respectful, AI-moderated environment.
-                                </p>
-                              </div>
+                            <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter italic mb-4">Ready to meet?</h2>
+                            <p className="text-gray-400 text-sm md:text-base font-medium max-w-md mx-auto leading-relaxed">
+                              Connect with verified people globally in a respectful, AI-moderated environment.
+                            </p>
+                          </div>
 
-                              <div className="flex w-full gap-3">
-                                <button
-                                  onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
-                                  className={`group relative flex-1 overflow-hidden bg-white text-black font-black py-6 px-10 rounded-3xl shadow-[0_20px_50px_rgba(168,85,247,0.2)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 ${cameraError ? "opacity-40 cursor-not-allowed" : "opacity-100"}`}
-                                >
-                                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                                  <span className="relative z-10 text-[13px] uppercase tracking-[0.3em]">
-                                    {cameraReady ? "Find a Match" : (cameraRequested && !cameraError ? "Connecting..." : "Enable Camera")}
-                                  </span>
-                                </button>
-                                
-                                <button 
-                                  onClick={() => setShowSettings(true)}
-                                  className="w-[72px] shrink-0 bg-[#151923] border border-white/10 rounded-3xl flex flex-col items-center justify-center gap-1.5 hover:bg-white/5 transition-all active:scale-95 shadow-xl shadow-black/50"
-                                >
-                                  <Settings className="w-5 h-5 text-gray-400" />
-                                  <span className="text-[8px] font-black uppercase tracking-widest text-gray-500">Prefs</span>
-                                </button>
-                              </div>
-                              
-                              <p className="mt-8 text-[9px] text-gray-600 font-black uppercase tracking-[0.4em] opacity-40">
-                                Ontlo // Secure Video Layer
-                              </p>
-                            </div>
-                          )}
-                       </div>
-                     </div>
-                  )}
-
-                  <div className={`relative flex-1 rounded-3xl overflow-hidden bg-[#151923] border border-[#1e293b] shadow-2xl ${!inCall ? 'hidden' : 'block'}`}>
-                     <video
-                       ref={remoteVideoRef}
-                       autoPlay
-                       playsInline
-                       style={{ filter: (isBlurred || peerIsPrivate) ? "blur(60px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px) scale(${1 + (curiosityBlurTimer / 60)})` : "none" }}
-                       className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
-                     />
-                     {inCall && (
-                       <>
-                         <div className="absolute top-4 left-4 flex gap-2 z-10">
-                           <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-2 rounded-2xl border border-white/10">
-                              <img src={remoteUser?.profilePic || 'https://api.dicebear.com/7.x/avataaars/svg'} className="w-8 h-8 rounded-full object-cover" />
-                              <div className="flex flex-col">
-                                 <div className="flex items-center gap-1">
-                                    <span className="text-sm font-bold text-white">{remoteUser?.fullName || remoteUser?.username || 'Connecting...'}</span>
-                                    <Check className="w-3 h-3 text-blue-400 bg-white rounded-full p-0.5" />
-                                 </div>
-                                 <div className="flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e]"></div>
-                                    <span className="text-[10px] text-gray-300 font-medium">Online</span>
-                                 </div>
-                              </div>
-                           </div>
-                         </div>
-                         <div className="absolute bottom-4 left-4 flex flex-col gap-2 z-10">
-                           <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-1.5 text-xs text-gray-200 font-medium">
-                             <MapPin className="w-3.5 h-3.5 text-purple-400" />
-                             {remoteUser?.location || 'Unknown Location'}
-                           </div>
-                           {commonInterests.length > 0 && (
-                             <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-1.5 text-xs text-gray-200 font-medium">
-                               <Music className="w-3.5 h-3.5 text-blue-400" />
-                               <span>Similar interests: </span>
-                               {commonInterests.slice(0, 2).map((int, i) => (
-                                 <span key={i} className="flex items-center gap-1">{int}</span>
-                               ))}
-                             </div>
-                           )}
-                         </div>
-                       </>
-                     )}
-                  </div>
-
-                  <div className={`relative flex-1 rounded-3xl overflow-hidden bg-[#151923] border border-[#1e293b] shadow-2xl ${!inCall ? 'hidden' : 'block'}`}>
-                     <video
-                       ref={localVideoRef}
-                       autoPlay
-                       playsInline
-                       muted
-                       className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
-                     />
-                     {!cameraEnabled && (
-                       <div className="absolute inset-0 bg-[#151923] flex items-center justify-center pointer-events-none">
-                         <User className="w-12 h-12 text-gray-500" />
-                       </div>
-                     )}
-                     {inCall && (
-                       <>
-                         <div className="absolute top-4 left-4 flex gap-2 z-10">
-                           <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-md px-3 py-2 rounded-2xl border border-white/10">
-                              <div className="flex items-center gap-1.5 text-white">
-                                <Timer className="w-3.5 h-3.5 text-gray-400" />
-                                <span className="text-sm font-bold font-mono">
-                                  {Math.floor(callDuration / 60).toString().padStart(2, '0')}:{(callDuration % 60).toString().padStart(2, '0')}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <div className="w-2.5 h-2.5 rounded-full border border-pink-500 bg-transparent flex items-center justify-center">
-                                   <div className="w-1.5 h-1.5 rounded-full bg-pink-500"></div>
-                                </div>
-                                <span className="text-[10px] text-gray-300 font-medium">Limit: 3 min</span>
-                              </div>
-                           </div>
-                           <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 flex flex-col justify-center">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-white">You</span>
-                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e]"></div>
-                              </div>
-                              <span className="text-[10px] text-gray-300 font-medium">Online</span>
-                           </div>
-                         </div>
-                         <div className="absolute top-4 right-4 z-10">
-                            <button className="w-10 h-10 bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center text-white hover:bg-black/80 transition">
-                               <Maximize2 className="w-4 h-4" />
+                          <div className="flex w-full gap-3">
+                            <button
+                              onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
+                              className={`group relative flex-1 overflow-hidden bg-white text-black font-black py-6 px-10 rounded-3xl shadow-[0_20px_50px_rgba(168,85,247,0.2)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 ${cameraError ? "opacity-40 cursor-not-allowed" : "opacity-100"}`}
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                              <span className="relative z-10 text-[13px] uppercase tracking-[0.3em]">
+                                {cameraReady ? "Find a Match" : (cameraRequested && !cameraError ? "Connecting..." : "Enable Camera")}
+                              </span>
                             </button>
-                         </div>
-                       </>
-                     )}
-                  </div>
 
-                  {inCall && showConnectRequest && (
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 animate-in zoom-in-95 duration-300 w-full max-w-[320px]">
-                       <div className="relative bg-[#151923]/95 backdrop-blur-xl border border-purple-500/40 p-6 sm:p-8 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-center flex flex-col items-center w-full">
-                         <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
-                           <Heart className="w-6 h-6 text-white fill-current animate-pulse" />
-                         </div>
-                         <h3 className="text-white font-bold text-lg mb-1 mt-4">Enjoying the conversation?</h3>
-                         <p className="text-gray-400 text-xs mb-6">Connect to continue chatting.</p>
-                         <button 
-                           onClick={acceptConnection} 
-                           className="w-full py-3 sm:py-4 bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl text-white font-bold text-sm shadow-xl shadow-purple-600/30 hover:scale-105 transition active:scale-95"
-                         >
-                           Connect
-                         </button>
-                         <button onClick={rejectConnection} className="mt-4 text-xs font-medium text-gray-500 hover:text-white transition">Dismiss</button>
-                       </div>
+                            <button
+                              onClick={() => setShowSettings(true)}
+                              className="w-[72px] shrink-0 bg-[#151923] border border-white/10 rounded-3xl flex flex-col items-center justify-center gap-1.5 hover:bg-white/5 transition-all active:scale-95 shadow-xl shadow-black/50"
+                            >
+                              <Settings className="w-5 h-5 text-gray-400" />
+                              <span className="text-[8px] font-black uppercase tracking-widest text-gray-500">Prefs</span>
+                            </button>
+                          </div>
+
+                          <p className="mt-8 text-[9px] text-gray-600 font-black uppercase tracking-[0.4em] opacity-40">
+                            Ontlo // Secure Video Layer
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className={`relative flex-1 rounded-3xl overflow-hidden bg-[#151923] border border-[#1e293b] shadow-2xl ${!inCall ? 'hidden' : 'block'}`}>
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    style={{ filter: (isBlurred || peerIsPrivate) ? "blur(60px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px) scale(${1 + (curiosityBlurTimer / 60)})` : "none" }}
+                    className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
+                  />
+                  {inCall && (
+                    <>
+                      <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+                        <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-2 rounded-2xl border border-white/10">
+                          <img src={remoteUser?.profilePic || 'https://api.dicebear.com/7.x/avataaars/svg'} className="w-8 h-8 rounded-full object-cover" />
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm font-bold text-white">{remoteUser?.fullName || remoteUser?.username || 'Connecting...'}</span>
+                              <Check className="w-3 h-3 text-blue-400 bg-white rounded-full p-0.5" />
+                              {isWildcard && <span className="text-xs font-bold text-purple-300 px-2 py-0.5 bg-purple-500/20 rounded-full border border-purple-500/40">✨ Wildcard</span>}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e]"></div>
+                              <span className="text-[10px] text-gray-300 font-medium">Online</span>
+                            </div>
+                          </div>
+                        </div>
+                        {icebreaker && (
+                          <div className="bg-black/60 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-purple-500/30 max-w-xs text-sm text-gray-200 leading-relaxed">
+                            <div className="flex items-start gap-2">
+                              <span className="text-lg mt-0.5">💡</span>
+                              <div>
+                                <div className="text-[10px] font-bold text-purple-300 uppercase tracking-wider mb-1">Conversation Starter</div>
+                                <p className="text-xs font-medium text-gray-100">{icebreaker}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="absolute bottom-4 left-4 flex flex-col gap-2 z-10">
+                        <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-1.5 text-xs text-gray-200 font-medium">
+                          <MapPin className="w-3.5 h-3.5 text-purple-400" />
+                          {remoteUser?.location || 'Unknown Location'}
+                        </div>
+                        {commonInterests.length > 0 && (
+                          <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-1.5 text-xs text-gray-200 font-medium">
+                            <Music className="w-3.5 h-3.5 text-blue-400" />
+                            <span>Similar interests: </span>
+                            {commonInterests.slice(0, 2).map((int, i) => (
+                              <span key={i} className="flex items-center gap-1">{int}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className={`relative flex-1 rounded-3xl overflow-hidden bg-[#151923] border border-[#1e293b] shadow-2xl ${!inCall ? 'hidden' : 'block'}`}>
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
+                  />
+                  {!cameraEnabled && (
+                    <div className="absolute inset-0 bg-[#151923] flex items-center justify-center pointer-events-none">
+                      <User className="w-12 h-12 text-gray-500" />
                     </div>
                   )}
-               </div>
+                  {inCall && (
+                    <>
+                      <div className="absolute top-4 left-4 flex gap-2 z-10">
+                        <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-md px-3 py-2 rounded-2xl border border-white/10">
+                          <div className="flex items-center gap-1.5 text-white">
+                            <Timer className="w-3.5 h-3.5 text-gray-400" />
+                            <span className="text-sm font-bold font-mono">
+                              {Math.floor(callDuration / 60).toString().padStart(2, '0')}:{(callDuration % 60).toString().padStart(2, '0')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2.5 h-2.5 rounded-full border border-pink-500 bg-transparent flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 rounded-full bg-pink-500"></div>
+                            </div>
+                            <span className="text-[10px] text-gray-300 font-medium">Limit: 3 min</span>
+                          </div>
+                        </div>
+                        <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 flex flex-col justify-center">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-white">You</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e]"></div>
+                          </div>
+                          <span className="text-[10px] text-gray-300 font-medium">Online</span>
+                        </div>
+                      </div>
+                      <div className="absolute top-4 right-4 z-10">
+                        <button className="w-10 h-10 bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center text-white hover:bg-black/80 transition">
+                          <Maximize2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
 
-               {inCall && (
-                 <div className="h-20 sm:h-24 shrink-0 flex items-center justify-between px-4 sm:px-8 mt-4 bg-[#151923] rounded-3xl border border-[#1e293b]">
-                   <div className="flex items-center gap-3 sm:gap-8">
-                     <button className="flex flex-col items-center gap-1 sm:gap-2 group">
-                       <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-white/10 transition">
-                         <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
-                       </div>
-                       <span className="text-[10px] text-gray-500 font-medium">Flip</span>
-                     </button>
-                     <button onClick={toggleMic} className="flex flex-col items-center gap-1 sm:gap-2 group">
-                       <div className={`w-10 h-10 sm:w-12 sm:h-12 border rounded-2xl flex items-center justify-center transition ${micEnabled ? "bg-white/5 border-white/10 text-gray-300 group-hover:bg-white/10" : "bg-red-500/20 border-red-500/50 text-red-500"}`}>
-                         <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
-                       </div>
-                       <span className="text-[10px] text-gray-500 font-medium">Mic</span>
-                     </button>
-                     <button onClick={toggleCamera} className="hidden sm:flex flex-col items-center gap-1 sm:gap-2 group">
-                       <div className={`w-10 h-10 sm:w-12 sm:h-12 border rounded-2xl flex items-center justify-center transition ${cameraEnabled ? "bg-white/5 border-white/10 text-gray-300 group-hover:bg-white/10" : "bg-red-500/20 border-red-500/50 text-red-500"}`}>
-                         <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
-                       </div>
-                       <span className="text-[10px] text-gray-500 font-medium">Camera</span>
-                     </button>
-                   </div>
+                {inCall && showConnectRequest && (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 animate-in zoom-in-95 duration-300 w-full max-w-[320px]">
+                    <div className="relative bg-[#151923]/95 backdrop-blur-xl border border-purple-500/40 p-6 sm:p-8 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-center flex flex-col items-center w-full">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                        <Heart className="w-6 h-6 text-white fill-current animate-pulse" />
+                      </div>
+                      <h3 className="text-white font-bold text-lg mb-1 mt-4">Enjoying the conversation?</h3>
+                      <p className="text-gray-400 text-xs mb-6">Connect to continue chatting.</p>
+                      <button
+                        onClick={acceptConnection}
+                        className="w-full py-3 sm:py-4 bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl text-white font-bold text-sm shadow-xl shadow-purple-600/30 hover:scale-105 transition active:scale-95"
+                      >
+                        Connect
+                      </button>
+                      <button onClick={rejectConnection} className="mt-4 text-xs font-medium text-gray-500 hover:text-white transition">Dismiss</button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                   <button 
-                     onClick={() => endCallLocally(false)}
-                     className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-red-500 hover:text-white transition"
-                     >
-                       <PhoneOff className="w-4 h-4" /> Leave
-                     </button>
-                 </div>
-               )}
+              {inCall && (
+                <div className="h-20 sm:h-24 shrink-0 flex items-center justify-between px-4 sm:px-8 mt-4 bg-[#151923] rounded-3xl border border-[#1e293b]">
+                  <div className="flex items-center gap-3 sm:gap-8">
+                    <button className="flex flex-col items-center gap-1 sm:gap-2 group">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-white/10 transition">
+                        <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-medium">Flip</span>
+                    </button>
+                    <button onClick={toggleMic} className="flex flex-col items-center gap-1 sm:gap-2 group">
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 border rounded-2xl flex items-center justify-center transition ${micEnabled ? "bg-white/5 border-white/10 text-gray-300 group-hover:bg-white/10" : "bg-red-500/20 border-red-500/50 text-red-500"}`}>
+                        <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-medium">Mic</span>
+                    </button>
+                    <button onClick={toggleCamera} className="hidden sm:flex flex-col items-center gap-1 sm:gap-2 group">
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 border rounded-2xl flex items-center justify-center transition ${cameraEnabled ? "bg-white/5 border-white/10 text-gray-300 group-hover:bg-white/10" : "bg-red-500/20 border-red-500/50 text-red-500"}`}>
+                        <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-medium">Camera</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    {showConnectButton && connectionStatus !== 'accepted' && (
+                      <button
+                        onClick={connectUser}
+                        disabled={connectionStatus === 'sent'}
+                        className={`flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-lg ${connectionStatus === 'sent' ? 'bg-gray-500/20 text-gray-500 border border-gray-500/30' : 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-purple-500/20 hover:scale-105 active:scale-95'}`}
+                      >
+                        <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${connectionStatus === 'sent' ? '' : 'fill-current'}`} />
+                        {connectionStatus === 'sent' ? 'Request Sent' : 'Connect'}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={skipMatch}
+                      className="flex items-center gap-2 px-5 sm:px-8 py-2.5 sm:py-4 bg-white text-black rounded-2xl font-black text-[10px] sm:text-[11px] uppercase tracking-[0.2em] hover:bg-gray-200 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-white/10"
+                    >
+                      <RefreshCw className="w-4 h-4" /> Next
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <button
+                      onClick={toggleChat}
+                      className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition ${showChat ? 'bg-purple-600 text-white' : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10'}`}
+                    >
+                      <X className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 ${showChat ? 'rotate-0' : 'rotate-45'}`} />
+                      {hasNewMessage && !showChat && <div className="absolute -top-1 -right-1 w-3 h-3 bg-pink-500 rounded-full border-2 border-[#151923] animate-bounce"></div>}
+                    </button>
+                    <button
+                      onClick={() => endCallLocally(false)}
+                      className="hidden sm:flex items-center gap-2 px-4 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl text-xs font-bold hover:bg-red-500 hover:text-white transition"
+                    >
+                      <PhoneOff className="w-4 h-4" /> Leave
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className={`transition-all duration-500 overflow-hidden rounded-[32px] bg-[#0B0E14] border border-[#1e293b] flex flex-col shrink-0 ${showChat && inCall ? 'w-[360px] opacity-100' : 'w-0 opacity-0 border-0'}`}>
-               <div className="h-16 flex items-center justify-between px-6 border-b border-[#1e293b] shrink-0">
-                  <div className="flex items-center gap-2">
-                     <h2 className="text-base font-bold text-white">Live Chat</h2>
-                     <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold">{chatMessages.length}</div>
+              <div className="h-16 flex items-center justify-between px-6 border-b border-[#1e293b] shrink-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-white">Live Chat</h2>
+                  <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold">{chatMessages.length}</div>
+                </div>
+                <button onClick={toggleChat} className="text-gray-500 hover:text-white transition"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="flex-1 overflow-hidden relative flex flex-col p-4 bg-[#0B0E14]">
+                <div className="mb-4 bg-purple-600/10 border border-purple-500/20 p-4 rounded-3xl flex gap-3 items-start">
+                  <div className="p-2 bg-purple-500/20 rounded-xl mt-1"><Shield className="w-4 h-4 text-purple-400" /></div>
+                  <div>
+                    <p className="text-sm font-bold text-white mb-1">Be kind and respectful.</p>
+                    <p className="text-[11px] text-gray-400 leading-relaxed">Our community guidelines help keep Ontlo a safe place for all.</p>
                   </div>
-                  <button onClick={toggleChat} className="text-gray-500 hover:text-white transition"><X className="w-5 h-5" /></button>
-               </div>
-               <div className="flex-1 overflow-hidden relative flex flex-col p-4 bg-[#0B0E14]">
-                  <div className="mb-4 bg-purple-600/10 border border-purple-500/20 p-4 rounded-3xl flex gap-3 items-start">
-                     <div className="p-2 bg-purple-500/20 rounded-xl mt-1"><Shield className="w-4 h-4 text-purple-400" /></div>
-                     <div>
-                       <p className="text-sm font-bold text-white mb-1">Be kind and respectful.</p>
-                       <p className="text-[11px] text-gray-400 leading-relaxed">Our community guidelines help keep Ontlo a safe place for all.</p>
-                     </div>
+                </div>
+                <div className="flex-1 overflow-hidden rounded-2xl relative">
+                  <ChatPanel
+                    onClose={() => { }}
+                    remoteUser={remoteUser}
+                    roomId={roomIdRef.current}
+                    persistedMessages={chatMessages}
+                    onSendMessage={(msg) => setChatMessages(prev => [...prev, msg])}
+                  />
+                  <div className="absolute bottom-0 left-0 w-full bg-[#0B0E14]/90 backdrop-blur-md p-3 text-center border-t border-[#1e293b]">
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <Lock className="w-3 h-3 text-purple-400" />
+                      <span className="text-[10px] text-gray-400">Messages are visible only during the call.</span>
+                    </div>
+                    <span className="text-[10px] text-purple-400">Connect to continue the conversation.</span>
                   </div>
-                  <div className="flex-1 overflow-hidden rounded-2xl relative">
-                     <ChatPanel
-                        onClose={() => {}} 
-                        remoteUser={remoteUser}
-                        roomId={roomIdRef.current}
-                        persistedMessages={chatMessages}
-                        onSendMessage={(msg) => setChatMessages(prev => [...prev, msg])}
-                     />
-                     <div className="absolute bottom-0 left-0 w-full bg-[#0B0E14]/90 backdrop-blur-md p-3 text-center border-t border-[#1e293b]">
-                        <div className="flex items-center justify-center gap-2 mb-1">
-                           <Lock className="w-3 h-3 text-purple-400" />
-                           <span className="text-[10px] text-gray-400">Messages are visible only during the call.</span>
-                        </div>
-                        <span className="text-[10px] text-purple-400">Connect to continue the conversation.</span>
-                     </div>
-                  </div>
-               </div>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -977,7 +1020,7 @@ const VideoContainer = () => {
       )}
 
       {showSettings && (
-        <MatchSettingsModal 
+        <MatchSettingsModal
           onClose={() => setShowSettings(false)}
           currentPreferences={matchPreferences}
           onSave={(newPrefs) => {
@@ -989,11 +1032,11 @@ const VideoContainer = () => {
         />
       )}
 
-      <UnmountCleanup 
-        socket={socket} 
-        endCallLocally={endCallLocally} 
-        roomIdRef={roomIdRef} 
-        rejoinTimerRef={rejoinTimerRef} 
+      <UnmountCleanup
+        socket={socket}
+        endCallLocally={endCallLocally}
+        roomIdRef={roomIdRef}
+        rejoinTimerRef={rejoinTimerRef}
       />
     </div>
   );
@@ -1007,7 +1050,7 @@ const UnmountCleanup = ({ socket, endCallLocally, roomIdRef, rejoinTimerRef }) =
       if (rejoinTimerRef.current) {
         clearTimeout(rejoinTimerRef.current);
       }
-      
+
       // Leave rooms and queue
       if (socket) {
         socket.emit("leave-queue");
@@ -1015,7 +1058,7 @@ const UnmountCleanup = ({ socket, endCallLocally, roomIdRef, rejoinTimerRef }) =
           socket.emit("leave-chat", { roomId: roomIdRef.current });
         }
       }
-      
+
       // Clean up WebRTC
       endCallLocally(false);
     };

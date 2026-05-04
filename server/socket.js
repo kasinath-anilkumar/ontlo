@@ -46,7 +46,7 @@ module.exports = (io) => {
         socket.userId = decoded.id;
         
         // Fetch essential user data for the matchmaker once on connection
-        const user = await User.findById(socket.userId).select('age isPremium lastBoostedAt onlineStatus blockedUsers role interests location region skipCount matchPreferences gender');
+        const user = await User.findById(socket.userId).select('age isPremium lastBoostedAt onlineStatus blockedUsers role interests location region skipCount matchPreferences gender isShadowBanned');
         if (user) {
           socket.age = user.age;
           socket.isPremium = user.isPremium;
@@ -58,6 +58,7 @@ module.exports = (io) => {
           socket.gender = user.gender;
           socket.blockedUsers = user.blockedUsers.map(id => id.toString());
           socket.skipCount = user.skipCount || 0;
+          socket.isShadowBanned = user.isShadowBanned || false;
           socket.matchPreferences = user.matchPreferences || {
             gender: 'All',
             ageRange: { min: 18, max: 100 },

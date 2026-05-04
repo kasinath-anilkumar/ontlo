@@ -113,6 +113,8 @@ class Matchmaker {
           if (u1.userId && u2.userId) {
             if (u1.userId.toString() === u2.userId.toString()) continue;
             
+            if (u1.isShadowBanned || u2.isShadowBanned) continue;
+
             const u1Blocked = u1.blockedUsers?.includes(u2.userId.toString());
             const u2Blocked = u2.blockedUsers?.includes(u1.userId.toString());
             if (u1Blocked || u2Blocked) continue;
@@ -231,16 +233,16 @@ class Matchmaker {
     if (!roomId) return;
 
     if (userId) {
-      // Set a grace period of 10 seconds for reconnection
+      // Set a grace period of 5 seconds for reconnection (as per Section 2.3 of Documentation)
       const timeoutId = setTimeout(() => {
         this.skipMatch(socketId, io, 'disconnected', userId);
         this.pendingDisconnects.delete(userId.toString());
-      }, 10000);
+      }, 5000);
       
       this.pendingDisconnects.set(userId.toString(), { timeoutId, roomId, oldSocketId: socketId });
       
       // Notify the other user
-      io.to(roomId).emit('peer-disconnected', { userId, gracePeriod: 10 });
+      io.to(roomId).emit('peer-disconnected', { userId, gracePeriod: 5 });
     } else {
       // No userId (unauthenticated), end immediately
       this.skipMatch(socketId, io);
