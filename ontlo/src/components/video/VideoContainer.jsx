@@ -1,10 +1,10 @@
-import { Shield, Mic, FastForward, PhoneOff, Heart, AlertTriangle, EyeOff, Eye, MessageSquare, Check, X, Timer, User, ChevronLeft, Settings, Star, Video, RefreshCw, Camera, Sparkles, MoreVertical, MapPin, Music, Coffee, Lock, Headphones, Users, Maximize2 } from "lucide-react";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { AlertTriangle, Camera, Check, Heart, Lock, MapPin, Maximize2, Mic, MoreVertical, Music, PhoneOff, RefreshCw, Settings, Shield, Timer, User, Video, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
+import API_URL, { apiFetch } from "../../utils/api";
 import ChatPanel from "../chat/ChatPanel";
 import MatchSettingsModal from "./MatchSettingsModal";
-import API_URL, { apiFetch } from "../../utils/api";
 
 const VideoContainer = () => {
   const { socket, user, setUser } = useSocket();
@@ -176,7 +176,6 @@ const VideoContainer = () => {
   };
 
   const handleDragMove = useCallback((e) => {
-    if (!setIsDraggingState) return;
     const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
     const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
     
@@ -256,8 +255,6 @@ const VideoContainer = () => {
     setHasNewMessage(false);
     setIsMatching(false);
 
-    cleaningUpRef.current = false;
-
     if (shouldAutoRejoin) {
       // Cancel any previous pending rejoin
       if (rejoinTimerRef.current) clearTimeout(rejoinTimerRef.current);
@@ -269,6 +266,8 @@ const VideoContainer = () => {
         }
       }, 500);
     }
+
+    cleaningUpRef.current = false;
   }, [socket, user?.id]);
 
   // ─────────────────────────────────────────────────────────────────
@@ -753,20 +752,16 @@ const VideoContainer = () => {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex flex-col items-center max-w-lg w-full animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-200">
-                              <div className="w-full bg-[#151923]/40 backdrop-blur-3xl border border-white/5 p-8 rounded-[40px] mb-8 relative overflow-hidden group hover:border-purple-500/20 transition-colors">
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                  <Shield className="w-20 h-20 text-purple-500" />
+                            <div className="flex flex-col items-center max-w-xl w-full animate-in fade-in zoom-in duration-1000 delay-200">
+                              <div className="mb-12 text-center">
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6">
+                                  <Shield className="w-4 h-4 text-purple-400" />
+                                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Safe & Secure Layer</span>
                                 </div>
-                                <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em] mb-4 text-left">Community Protocol</p>
-                                <p className="text-white text-sm md:text-base font-bold text-left leading-relaxed mb-6">
-                                  By matching, you join a vetted community. <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 italic">Respect others, stay safe, and enjoy the conversation.</span>
+                                <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter italic mb-4">Ready to meet?</h2>
+                                <p className="text-gray-400 text-sm md:text-base font-medium max-w-md mx-auto leading-relaxed">
+                                  Connect with verified people globally in a respectful, AI-moderated environment.
                                 </p>
-                                <div className="flex flex-wrap gap-3">
-                                  <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">No Nudity</div>
-                                  <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">No Harassment</div>
-                                  <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">18+ Only</div>
-                                </div>
                               </div>
 
                               <div className="flex w-full gap-3">
@@ -924,7 +919,7 @@ const VideoContainer = () => {
                        </div>
                        <span className="text-[10px] text-gray-500 font-medium">Mic</span>
                      </button>
-                     <button onClick={toggleCamera} className="flex flex-col items-center gap-1 sm:gap-2 group hidden sm:flex">
+                     <button onClick={toggleCamera} className="hidden sm:flex flex-col items-center gap-1 sm:gap-2 group">
                        <div className={`w-10 h-10 sm:w-12 sm:h-12 border rounded-2xl flex items-center justify-center transition ${cameraEnabled ? "bg-white/5 border-white/10 text-gray-300 group-hover:bg-white/10" : "bg-red-500/20 border-red-500/50 text-red-500"}`}>
                          <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
                        </div>
@@ -934,95 +929,10 @@ const VideoContainer = () => {
 
                    <button 
                      onClick={() => endCallLocally(false)}
-                     className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)] flex items-center justify-center text-white hover:scale-105 transition transform active:scale-95"
-                   >
-                     <PhoneOff className="w-6 h-6 sm:w-7 sm:h-7" />
-                   </button>
-
-                   <div className="flex items-center gap-3 sm:gap-8">
-                     <button onClick={togglePrivacy} className="flex flex-col items-center gap-1 sm:gap-2 group hidden sm:flex">
-                       <div className={`w-10 h-10 sm:w-12 sm:h-12 border rounded-2xl flex items-center justify-center transition ${isPrivate ? "bg-purple-600/20 border-purple-500/50 text-purple-400" : "bg-white/5 border-white/10 text-gray-300 group-hover:bg-white/10"}`}>
-                         {isPrivate ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
-                       </div>
-                       <span className="text-[10px] text-gray-500 font-medium">Privacy</span>
+                     className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-red-500 hover:text-white transition"
+                     >
+                       <PhoneOff className="w-4 h-4" /> Leave
                      </button>
-                     <button onClick={skipMatch} className="flex flex-col items-center gap-1 sm:gap-2 group">
-                       <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-white/10 transition">
-                         <FastForward className="w-4 h-4 sm:w-5 sm:h-5" />
-                       </div>
-                       <span className="text-[10px] text-gray-500 font-medium">End Chat</span>
-                     </button>
-                     <button onClick={toggleChat} className="flex flex-col items-center gap-1 sm:gap-2 group relative">
-                       <div className={`h-10 sm:h-12 px-3 sm:px-5 border rounded-2xl flex items-center gap-2 transition ${showChat ? 'bg-purple-600/20 border-purple-500 text-purple-400' : 'bg-white/5 border-white/10 text-gray-300 group-hover:bg-white/10'}`}>
-                         <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
-                         <span className="text-xs font-bold hidden md:inline">Live Chat</span>
-                       </div>
-                       {hasNewMessage && !showChat && (
-                          <div className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 w-4 sm:w-5 h-4 sm:h-5 bg-purple-500 text-white text-[9px] sm:text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#151923]">
-                            !
-                          </div>
-                       )}
-                     </button>
-                   </div>
-                 </div>
-               )}
-
-               {inCall && (
-                 <div className="hidden xl:flex flex-col mt-4 gap-4 shrink-0">
-                    <div className="flex gap-4">
-                      <div className="flex-1 bg-[#151923] rounded-3xl p-4 flex items-center gap-4 border border-[#1e293b]">
-                        <div className="p-2.5 bg-purple-500/10 rounded-2xl border border-purple-500/20">
-                          <Shield className="w-5 h-5 text-purple-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-300">Ontlo ensures a safe and respectful environment for everyone. <a href="#" className="text-purple-400 font-bold ml-1">Learn more</a></p>
-                        </div>
-                      </div>
-                      <div className="flex-1 bg-[#151923] rounded-3xl p-4 flex items-center justify-between border border-[#1e293b]">
-                        <div className="flex items-center gap-4">
-                          <div className="p-2.5 bg-orange-500/10 rounded-2xl border border-orange-500/20">
-                            <Sparkles className="w-5 h-5 text-orange-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-gray-300 mb-0.5">Tip: Be respectful and keep it friendly.</p>
-                            <p className="text-[11px] text-gray-500">Inappropriate behavior will lead to account action.</p>
-                          </div>
-                        </div>
-                        <button className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gray-500 hover:text-white transition">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex bg-[#151923] rounded-[32px] border border-[#1e293b] p-5 divide-x divide-[#1e293b]">
-                      <div className="flex-1 flex items-center gap-4 px-6">
-                        <div className="p-3 bg-purple-500/10 rounded-2xl"><Users className="w-5 h-5 text-purple-400" /></div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-300 mb-0.5">Video Chat Rules</h4>
-                          <p className="text-[11px] text-gray-500 leading-tight">Be respectful and follow<br/>our community guidelines.</p>
-                        </div>
-                      </div>
-                      <div className="flex-1 flex items-center gap-4 px-6">
-                        <div className="p-3 bg-pink-500/10 rounded-2xl"><Heart className="w-5 h-5 text-pink-400" /></div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-300 mb-0.5">No Pressure</h4>
-                          <p className="text-[11px] text-gray-500 leading-tight">You can skip anytime<br/>if you're not comfortable.</p>
-                        </div>
-                      </div>
-                      <div className="flex-1 flex items-center gap-4 px-6">
-                        <div className="p-3 bg-green-500/10 rounded-2xl"><Lock className="w-5 h-5 text-green-400" /></div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-300 mb-0.5">You're in Control</h4>
-                          <p className="text-[11px] text-gray-500 leading-tight">Connect only if you<br/>both are interested.</p>
-                        </div>
-                      </div>
-                      <div className="flex-1 flex items-center gap-4 px-6">
-                        <div className="p-3 bg-blue-500/10 rounded-2xl"><Headphones className="w-5 h-5 text-blue-400" /></div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-300 mb-0.5">Need Help?</h4>
-                          <p className="text-[11px] text-gray-500 leading-tight">If someone makes you uncomfortable,<br/>report them to our team.</p>
-                        </div>
-                      </div>
-                    </div>
                  </div>
                )}
             </div>
