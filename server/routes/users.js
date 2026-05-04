@@ -266,7 +266,7 @@ router.patch('/settings', auth, validate({ body: settingsSchema }), async (req, 
 router.patch('/match-preferences', auth, async (req, res) => {
   try {
     const userId = req.userId;
-    const { gender, ageRange, region } = req.body;
+    const { gender, ageRange, region, interests } = req.body;
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -277,6 +277,7 @@ router.patch('/match-preferences', auth, async (req, res) => {
       if (ageRange.max !== undefined) user.matchPreferences.ageRange.max = ageRange.max;
     }
     if (region) user.matchPreferences.region = region;
+    if (interests) user.matchPreferences.interests = interests;
 
     await user.save();
 

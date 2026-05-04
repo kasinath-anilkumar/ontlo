@@ -60,7 +60,8 @@ const VideoContainer = () => {
   const [matchPreferences, setMatchPreferences] = useState(user?.matchPreferences || {
     gender: 'All',
     ageRange: { min: 18, max: 100 },
-    region: 'Global'
+    region: 'Global',
+    interests: []
   });
 
   // ─────────────────────────────────────────────────────────────────
@@ -768,15 +769,25 @@ const VideoContainer = () => {
                                 </div>
                               </div>
 
-                              <button
-                                onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
-                                className={`group relative w-full overflow-hidden bg-white text-black font-black py-6 px-10 rounded-3xl shadow-[0_20px_50px_rgba(168,85,247,0.2)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 ${cameraError ? "opacity-40 cursor-not-allowed" : "opacity-100"}`}
-                              >
-                                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                                <span className="relative z-10 text-[13px] uppercase tracking-[0.3em]">
-                                  {cameraReady ? "Find a Match" : (cameraRequested && !cameraError ? "Connecting..." : "Enable Camera")}
-                                </span>
-                              </button>
+                              <div className="flex w-full gap-3">
+                                <button
+                                  onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
+                                  className={`group relative flex-1 overflow-hidden bg-white text-black font-black py-6 px-10 rounded-3xl shadow-[0_20px_50px_rgba(168,85,247,0.2)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 ${cameraError ? "opacity-40 cursor-not-allowed" : "opacity-100"}`}
+                                >
+                                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                                  <span className="relative z-10 text-[13px] uppercase tracking-[0.3em]">
+                                    {cameraReady ? "Find a Match" : (cameraRequested && !cameraError ? "Connecting..." : "Enable Camera")}
+                                  </span>
+                                </button>
+                                
+                                <button 
+                                  onClick={() => setShowSettings(true)}
+                                  className="w-[72px] shrink-0 bg-[#151923] border border-white/10 rounded-3xl flex flex-col items-center justify-center gap-1.5 hover:bg-white/5 transition-all active:scale-95 shadow-xl shadow-black/50"
+                                >
+                                  <Settings className="w-5 h-5 text-gray-400" />
+                                  <span className="text-[8px] font-black uppercase tracking-widest text-gray-500">Prefs</span>
+                                </button>
+                              </div>
                               
                               <p className="mt-8 text-[9px] text-gray-600 font-black uppercase tracking-[0.4em] opacity-40">
                                 Ontlo // Secure Video Layer

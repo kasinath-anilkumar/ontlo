@@ -129,7 +129,8 @@ const UserSchema = new mongoose.Schema({
       min: { type: Number, default: 18 },
       max: { type: Number, default: 100 }
     },
-    region: { type: String, default: 'Global' }
+    region: { type: String, default: 'Global' },
+    interests: { type: [String], default: [] }
   },
   favorites: [{
     type: mongoose.Schema.Types.ObjectId,

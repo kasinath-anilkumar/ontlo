@@ -25,6 +25,9 @@ class Matchmaker {
     this.pendingDisconnects = new Map(); // userId -> timeoutId
     this.isMatching = false;       // Mutex lock
     this.lastMatchTime = 0;        // Throttle tracking
+
+    // Continuously poll for matches every 1 second
+    setInterval(() => this.tryMatch(), 1000);
   }
 
   async getConfig() {
@@ -137,6 +140,16 @@ class Matchmaker {
             if (u1.interests && u2.interests) {
               const commonInterests = u1.interests.filter(it => u2.interests.includes(it));
               currentScore += commonInterests.length * 10;
+            }
+
+            // Boost score for specific preferred interests
+            if (u1.matchPreferences?.interests?.length > 0 && u2.interests) {
+              const preferredMatches = u2.interests.filter(it => u1.matchPreferences.interests.includes(it));
+              currentScore += preferredMatches.length * 20;
+            }
+            if (u2.matchPreferences?.interests?.length > 0 && u1.interests) {
+              const preferredMatches = u1.interests.filter(it => u2.matchPreferences.interests.includes(it));
+              currentScore += preferredMatches.length * 20;
             }
 
             if (u1.location && u2.location && u1.location === u2.location) currentScore += 15;

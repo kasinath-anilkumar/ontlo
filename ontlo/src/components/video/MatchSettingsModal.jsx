@@ -1,4 +1,4 @@
-import { X, Check, Globe, Users, Calendar } from "lucide-react";
+import { X, Check, Globe, Users, Calendar, Heart } from "lucide-react";
 import { useState } from "react";
 import API_URL, { apiFetch } from "../../utils/api";
 import { useSocket } from "../../context/SocketContext";
@@ -135,6 +135,35 @@ const MatchSettingsModal = ({ onClose, currentPreferences, onSave }) => {
               <option value="Africa">Africa</option>
               <option value="Oceania">Oceania</option>
             </select>
+          </div>
+
+          {/* Interests */}
+          <div className="space-y-4 pb-4">
+            <div className="flex items-center gap-2 text-green-400">
+              <Heart size={16} />
+              <span className="text-xs font-black uppercase tracking-widest">Preferred Interests</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {["Travel", "Music", "Gaming", "Art", "Movies", "Tech", "Cooking", "Fitness", "Photography", "Reading"].map((interest) => (
+                <button
+                  key={interest}
+                  onClick={() => {
+                    const currentInterests = preferences.interests || [];
+                    const newInterests = currentInterests.includes(interest)
+                      ? currentInterests.filter(i => i !== interest)
+                      : [...currentInterests, interest];
+                    setPreferences({ ...preferences, interests: newInterests });
+                  }}
+                  className={`px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                    preferences.interests?.includes(interest)
+                      ? "bg-green-600 border-green-500 text-white shadow-lg shadow-green-600/20"
+                      : "bg-white/5 border-white/5 text-gray-500 hover:bg-white/10"
+                  }`}
+                >
+                  {interest}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
