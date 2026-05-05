@@ -4,9 +4,9 @@ import Skeleton from "../components/ui/Skeleton";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useSocket } from "../context/SocketContext";
-import banner1 from "../assets/banner1.png";
-import banner2 from "../assets/banner2.png";
-import logo from "../assets/ontlo_Logo.png";
+import banner1 from "../assets/banner1.webp";
+import banner2 from "../assets/banner2.webp";
+import logo from "../assets/ontlo_Logo.webp";
 
 const Home = () => {
   const navigate = useNavigate();

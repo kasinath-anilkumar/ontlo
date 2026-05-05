@@ -122,9 +122,9 @@ const Auth = () => {
       
       {/* Dynamic Background Elements - Shared */}
       <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-pink-600/10 rounded-full blur-[120px] animate-pulse delay-1000"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.03),transparent_70%)]"></div>
+        <div className="hidden md:block absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[120px] md:animate-pulse"></div>
+        <div className="hidden md:block absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-pink-600/10 rounded-full blur-[120px] md:animate-pulse delay-1000"></div>
+        <div className="hidden md:block absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.03),transparent_70%)]"></div>
       </div>
 
       {/* LEFT SECTION - Branding (Desktop Only) */}
@@ -166,8 +166,8 @@ const Auth = () => {
            <img src={logo} alt="Logo" className="w-10 h-10 drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]" />
         </div>
 
-        <div className="w-full max-w-[420px] animate-in fade-in zoom-in-95 duration-700">
-          <div className="bg-[#0D1117]/60 backdrop-blur-3xl border border-white/5 rounded-[40px] p-8 sm:p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] relative overflow-hidden group">
+        <div className="w-full max-w-[420px] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 duration-700">
+          <div className="bg-[#0D1117]/60 md:backdrop-blur-3xl backdrop-blur-xl border border-white/5 rounded-[40px] p-8 sm:p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] relative overflow-hidden group">
             
             {/* Subtle glow effect on hover */}
             <div className="absolute -inset-2 bg-gradient-to-r from-purple-600/0 via-purple-600/5 to-pink-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none"></div>
