@@ -30,8 +30,10 @@ const refreshKeywords = async () => {
 
 // Initial load
 refreshKeywords();
-setInterval(refreshKeywords, 60000);
-
+let moderationInterval;
+if (process.env.NODE_ENV !== 'test') {
+  moderationInterval = setInterval(refreshKeywords, 60000);
+}
 /**
  * AI-Based Text Moderation
  * @param {string} text - Content to moderate

@@ -45,7 +45,9 @@ class Matchmaker {
     this.lastMatchTime = 0;        // Throttle tracking
 
     // Poll for matches every 2.5 seconds (reduced for Render Free Tier)
-    setInterval(() => this.tryMatch(), 2500);
+    if (process.env.NODE_ENV !== 'test') {
+      setInterval(() => this.tryMatch(), 2500);
+    }
   }
 
   async getConfig() {
@@ -376,7 +378,12 @@ class Matchmaker {
         
         let existing = await Connection.findOne({ users: { $all: sortedUsers } });
         if (!existing) {
-          const newConnection = new Connection({ users: sortedUsers });
+          // Fetch user details to embed
+          const users = await User.find({ _id: { $in: sortedUsers } }).select('_id username profilePic onlineStatus').lean();
+          const newConnection = new Connection({ 
+            users: sortedUsers,
+            userDetails: users 
+          });
           await newConnection.save();
         }
         io.to(match.user1).emit('connection-established');

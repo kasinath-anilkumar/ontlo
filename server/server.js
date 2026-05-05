@@ -28,9 +28,8 @@ const requiredEnvVars = [
 ];
 const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
 
-if (isProduction && missingEnvVars.length > 0) {
-  console.error(`Missing required production environment variables: ${missingEnvVars.join(', ')}`);
-  process.exit(1);
+if (missingEnvVars.length > 0) {
+  console.warn(`⚠️ Missing env vars: ${missingEnvVars.join(', ')}`);
 }
 
 const allowedOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '')
@@ -174,49 +173,35 @@ let PORT = parseInt(process.env.PORT) || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ontlo';
 
 // Robust Startup Function
-const startServer = async (port) => {
+const startServer = async () => {
   try {
+    // 🔥 START SERVER FIRST (IMPORTANT)
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server is live on port ${PORT}`);
+      console.log(`📡 WebSocket Signaling active`);
+    });
+
+    // 🔥 CONNECT DB AFTER SERVER STARTS
     console.log('[DB] Connecting to MongoDB...');
+    
     await mongoose.connect(MONGO_URI, {
       connectTimeoutMS: 20000,
       serverSelectionTimeoutMS: 20000,
-      maxPoolSize: 10, // Increased slightly to handle concurrent bursts on free tier
+      maxPoolSize: 10,
       minPoolSize: 2,
-      retryWrites: true, 
+      retryWrites: true,
       retryReads: true,
       socketTimeoutMS: 45000,
-      waitQueueTimeoutMS: 15000 // Allow more time to wait for a connection
+      waitQueueTimeoutMS: 15000
     });
+
     logger.info('✅ MongoDB Connected');
 
-    // Simple Request Logger for Debugging
-    app.use((req, res, next) => {
-      console.log(`[REQ] ${req.method} ${req.path}`);
-      next();
-    });
-
-    server.listen(port, '0.0.0.0')
-      .on('listening', () => {
-        console.log(`🚀 Server is live on port ${port}`);
-        console.log(`📡 WebSocket Signaling active`);
-      })
-      .on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-          console.warn(`⚠️  Port ${port} is occupied. Retrying on ${port + 1}...`);
-          startServer(port + 1);
-        } else {
-          console.error('❌ Server failed to start:', err);
-          process.exit(1);
-        }
-      });
-
   } catch (err) {
-    console.error('❌ Database connection failed:', err.message);
-    if (isProduction) {
-      process.exit(1);
-    }
-    console.log('🔄 Attempting to start server in offline mode...');
-    server.listen(port);
+    console.error('❌ MongoDB connection failed:', err.message);
+
+    // ❗ DO NOT EXIT — keep server alive
+    console.log('⚠️ Server running without DB (temporary)');
   }
 };
 
@@ -263,9 +248,11 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Start the engine
 const startCleanupJobs = require('./scripts/cleanup');
-startCleanupJobs();
+if (process.env.NODE_ENV !== 'test') {
+  startCleanupJobs();
+}
 
-startServer(PORT);
+startServer();
 
 // Keep-alive for Render (prevents sleep mode)
 if (isProduction) {

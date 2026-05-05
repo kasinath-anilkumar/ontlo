@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
+
 const Message = require('../models/Message');
 const Connection = require('../models/Connection');
+
 const auth = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const { connectionIdParamSchema } = require('../validators/message.validator');
 
 
+// 🔒 Check connection membership
 const requireConnectionMember = async (req, res, next) => {
   try {
     const connection = await Connection.findOne({
@@ -27,7 +30,54 @@ const requireConnectionMember = async (req, res, next) => {
   }
 };
 
-// Get message history for a connection
+
+/////////////////////////////////////////////////////
+// 🔥 SEND MESSAGE (THIS IS THE IMPORTANT PART)
+/////////////////////////////////////////////////////
+
+router.post('/:connectionId', auth, validate({ params: connectionIdParamSchema }), requireConnectionMember, async (req, res) => {
+  try {
+    const { text, imageUrl } = req.body;
+
+    if ((!text || !text.trim()) && !imageUrl) {
+      return res.status(400).json({ error: 'Message text or image required' });
+    }
+
+    // 1️⃣ Create message
+    const message = await Message.create({
+      connectionId: req.params.connectionId,
+      sender: req.userId,
+      text: text ? text.trim() : undefined,
+      imageUrl,
+      timestamp: new Date()
+    });
+
+    // 2️⃣ 🔥 UPDATE CONNECTION LAST MESSAGE
+    await Connection.findByIdAndUpdate(req.params.connectionId, {
+      lastMessage: {
+        text: message.text || (message.imageUrl ? '📷 Image' : ''),
+        createdAt: message.timestamp
+      },
+      updatedAt: new Date()
+    });
+
+    res.json({
+      id: message._id,
+      text: message.text,
+      timestamp: message.timestamp
+    });
+
+  } catch (error) {
+    console.error('[SEND MESSAGE ERROR]:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+/////////////////////////////////////////////////////
+// 📩 GET MESSAGE HISTORY
+/////////////////////////////////////////////////////
+
 router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema }), requireConnectionMember, async (req, res) => {
   try {
     const messages = await Message.find({ connectionId: req.params.connectionId })
@@ -35,7 +85,6 @@ router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema })
       .limit(100)
       .lean();
     
-    // Format for frontend
     const formatted = messages.map(m => ({
       id: m._id.toString(),
       text: m.text,
@@ -46,22 +95,33 @@ router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema })
     }));
 
     res.json(formatted);
+
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Mark messages as read
+
+/////////////////////////////////////////////////////
+// ✅ MARK AS READ
+/////////////////////////////////////////////////////
+
 router.post('/:connectionId/read', auth, validate({ params: connectionIdParamSchema }), requireConnectionMember, async (req, res) => {
   try {
     await Message.updateMany(
-      { connectionId: req.params.connectionId, sender: { $ne: req.userId } },
+      {
+        connectionId: req.params.connectionId,
+        sender: { $ne: req.userId }
+      },
       { isRead: true }
     );
+
     res.json({ success: true });
+
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 module.exports = router;

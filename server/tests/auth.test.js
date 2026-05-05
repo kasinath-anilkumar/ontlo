@@ -19,7 +19,7 @@ describe('Auth Endpoints', () => {
       .send({
         ...testUser,
         fullName: 'Test User',
-        age: 25,
+        age: 27,
         dob: '1999-01-01',
         gender: 'Other',
         interests: ['Coding', 'Testing', 'AI']
@@ -35,7 +35,7 @@ describe('Auth Endpoints', () => {
       .send({
         ...testUser,
         fullName: 'Test User',
-        age: 25,
+        age: 27,
         dob: '1999-01-01',
         gender: 'Other',
         interests: ['Coding']

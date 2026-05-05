@@ -1,35 +1,28 @@
+// socket.js
+
 const matchmaker = require('./services/Matchmaker');
 const User = require('./models/User');
 const Message = require('./models/Message');
 const Connection = require('./models/Connection');
-const jwt = require('jsonwebtoken');
-const { moderateText } = require('./utils/moderation');
-const AppConfig = require('./models/AppConfig');
 const Notification = require('./models/Notification');
+
+const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('./config/jwt');
-const { getUserCounts, getOnlineConnections } = require('./utils/stats');
+const { moderateText } = require('./utils/moderation');
+const { getUserCounts } = require('./utils/stats');
 const { attachMatchmakingProfile } = require('./utils/socketMatchProfile');
 
 module.exports = (io) => {
   const onlineUsers = new Set();
   let lastOnlineCountEmit = 0;
-  let maintenanceMode = false;
 
-  const checkMaintenance = async () => {
-    try {
-      const config = await AppConfig.findOne();
-      maintenanceMode = config?.maintenanceMode || false;
-    } catch (err) {
-      maintenanceMode = false;
-    }
-  };
-  setInterval(checkMaintenance, 30000);
-  checkMaintenance();
+  /////////////////////////////////////////////////////
+  // 🔥 HELPERS
+  /////////////////////////////////////////////////////
 
-  // Utility to update a specific user's frontend state
   const pushUserStats = async (userId) => {
     try {
-      const counts = await getUserCounts(userId, false); // Use cache
+      const counts = await getUserCounts(userId, false);
       io.to(`user_${userId}`).emit('counts-update', counts);
     } catch (err) {
       console.error('pushUserStats error:', err);
@@ -40,57 +33,50 @@ module.exports = (io) => {
     io.to(`user_${userId}`).emit('counts-delta', delta);
   };
 
-  const pushOnlineFriends = async (userId) => {
+  const notifyFriendsOnline = async (userId) => {
     try {
-      const online = await getOnlineConnections(userId, false); // Use cache
-      io.to(`user_${userId}`).emit('online-users-update', online);
-    } catch (err) {
-      console.error('pushOnlineFriends error:', err);
-    }
-  };
-
-  // When someone connects/disconnects, we need to update all their friends
-  const notifyFriendsOfStatus = async (userId) => {
-    try {
-      const connections = await Connection.find({ users: userId, status: 'active' })
+      const connections = await Connection.find({ users: userId })
         .select('users')
         .lean();
-      const friendIds = [
-        ...new Set(
-          connections
-            .map((conn) => {
-              const fid = conn.users.find((u) => u.toString() !== userId.toString());
-              return fid ? fid.toString() : null;
-            })
-            .filter(Boolean)
-        )
-      ];
-      
-      // Update the user who just connected/disconnected immediately
-      await pushOnlineFriends(userId);
 
-      // Notify friends. On free tier, we don't want to trigger N full recalculations immediately.
-      // We could just emit a status event, but for now let's just use the cached results.
-      await Promise.all(friendIds.map((fid) => pushOnlineFriends(fid)));
+      const friendIds = connections
+        .map(c => c.users.find(u => u.toString() !== userId.toString()))
+        .filter(Boolean);
+
+      friendIds.forEach(fid => {
+        io.to(`user_${fid}`).emit('online-status-change', {
+          userId,
+          isOnline: onlineUsers.has(userId.toString())
+        });
+      });
+
     } catch (err) {
-      console.error('Error notifying friends of status:', err);
+      console.error('notifyFriendsOnline error:', err);
     }
   };
+
+  /////////////////////////////////////////////////////
+  // 🔥 SOCKET CONNECTION
+  /////////////////////////////////////////////////////
 
   io.on('connection', async (socket) => {
     let token = socket.handshake.auth?.token;
-    
+
     if (!token && socket.handshake.headers.cookie) {
       const cookies = socket.handshake.headers.cookie.split(';').reduce((res, c) => {
         const [key, val] = c.trim().split('=').map(decodeURIComponent);
         try {
           return Object.assign(res, { [key]: JSON.parse(val) });
-        } catch (e) {
+        } catch {
           return Object.assign(res, { [key]: val });
         }
       }, {});
       token = cookies.token;
     }
+
+    /////////////////////////////////////////////////////
+    // 🔐 AUTH
+    /////////////////////////////////////////////////////
 
     if (token) {
       try {
@@ -98,16 +84,19 @@ module.exports = (io) => {
         socket.userId = decoded.id;
 
         const user = await attachMatchmakingProfile(socket);
+        socket.user = user; // 🔥 store for reuse
+
         if (user) {
           socket.join(`user_${socket.userId}`);
 
           if (user.role === 'user') {
-            onlineUsers.add(socket.userId.toString());
-            await User.findByIdAndUpdate(socket.userId, { onlineStatus: true });
+            const userIdStr = socket.userId.toString();
 
-            pushUserStats(socket.userId);
-            pushOnlineFriends(socket.userId);
-            notifyFriendsOfStatus(socket.userId);
+            // 🔥 MEMORY ONLY (NO DB WRITE)
+            onlineUsers.add(userIdStr);
+
+            pushUserStats(userIdStr);
+            notifyFriendsOnline(userIdStr);
 
             const now = Date.now();
             if (now - lastOnlineCountEmit > 5000) {
@@ -118,94 +107,22 @@ module.exports = (io) => {
 
           matchmaker.handleReconnect(socket, io);
         }
+
       } catch (err) {
-        console.error("Socket Auth Error:", err.message);
+        console.error('Socket Auth Error:', err.message);
       }
     }
 
-    socket.on('join-queue', async () => {
-      if (!socket.userId) {
-        return socket.emit('error', { message: 'Not authenticated.' });
-      }
-      await attachMatchmakingProfile(socket);
-      if (
-        maintenanceMode &&
-        !['admin', 'superadmin', 'moderator'].includes(socket.role)
-      ) {
-        return socket.emit('error', { message: 'System is under maintenance.' });
-      }
-      matchmaker.joinQueue(socket);
-    });
-
-    socket.on('leave-queue', () => {
-      matchmaker.leaveQueue(socket.id);
-    });
-
-    // WebRTC signaling relay (required for offer/answer/ICE to reach the peer)
-    const relayIfInRoom = (roomId, event, payload) => {
-      const match = matchmaker.activeMatches.get(roomId);
-      if (!match) {
-        console.warn(`[Signaling] Blocked ${event} - Room ${roomId} not found in active matches.`);
-        return;
-      }
-      
-      // Find the other socket ID in the match
-      const otherSocketId = match.user1 === socket.id ? match.user2 : match.user1;
-      if (otherSocketId) {
-        io.to(otherSocketId).emit(event, payload);
-      } else {
-        console.warn(`[Signaling] Could not find peer for ${socket.id} in room ${roomId}`);
-      }
-    };
-
-    socket.on('webrtc-offer', ({ offer, roomId }) => {
-      if (!offer) return;
-      relayIfInRoom(roomId, 'webrtc-offer', { offer });
-    });
-
-    socket.on('webrtc-answer', ({ answer, roomId }) => {
-      if (!answer) return;
-      relayIfInRoom(roomId, 'webrtc-answer', { answer });
-    });
-
-    socket.on('webrtc-ice-candidate', ({ candidate, roomId }) => {
-      if (!candidate) return;
-      relayIfInRoom(roomId, 'webrtc-ice-candidate', { candidate });
-    });
-
-    socket.on('action-skip', () => {
-      matchmaker.skipMatch(socket.id, io, 'skipped', socket.userId);
-    });
-
-    socket.on('join-chat', ({ roomId }) => {
-      if (!roomId || typeof roomId !== 'string') return;
-      socket.join(roomId);
-    });
-
-    socket.on('leave-chat', ({ roomId }) => {
-      if (!roomId || typeof roomId !== 'string') return;
-      socket.leave(roomId);
-    });
-
-    socket.on('typing', ({ roomId, username }) => {
-      relayIfInRoom(roomId, 'typing', { username });
-    });
-
-    socket.on('stop-typing', ({ roomId }) => {
-      relayIfInRoom(roomId, 'stop-typing', {});
-    });
-
-    socket.on('messages-read', ({ connectionId }) => {
-      if (!connectionId) return;
-      relayIfInRoom(connectionId, 'messages-read', { connectionId });
-    });
+    /////////////////////////////////////////////////////
+    // 💬 CHAT MESSAGE
+    /////////////////////////////////////////////////////
 
     socket.on('chat-message', async ({ message, imageUrl, roomId }) => {
       if (!socket.rooms.has(roomId)) return;
 
-      const timestamp = new Date().toISOString();
       const moderation = moderateText(message);
       const finalMessage = moderation.text;
+      const timestamp = new Date();
 
       socket.to(roomId).emit('chat-message', {
         sender: socket.id,
@@ -214,98 +131,83 @@ module.exports = (io) => {
         timestamp
       });
 
-      // Persistent Storage
-      if (roomId.length === 24) {
-        try {
-          const conn = await Connection.findById(roomId).select('users').lean();
-          if (conn && conn.users.some((u) => u.toString() === socket.userId.toString())) {
-            const newMessage = new Message({
-              connectionId: roomId,
-              sender: socket.userId,
-              text: finalMessage,
-              imageUrl,
-              timestamp
-            });
-            await newMessage.save();
+      // 🔥 SAVE MESSAGE + UPDATE CONNECTION
+      try {
+        const conn = await Connection.findById(roomId).select('users').lean();
+        if (!conn) return;
 
-            const recipientId = conn.users.find(u => u && u.toString() !== socket.userId.toString());
-            if (recipientId) {
-              const notification = await Notification.create({
-                user: recipientId,
-                type: 'message',
-                content: finalMessage.substring(0, 50),
-                fromUser: socket.userId,
-                relatedId: roomId
-              });
+        const newMessage = await Message.create({
+          connectionId: roomId,
+          sender: socket.userId,
+          text: finalMessage,
+          imageUrl,
+          timestamp
+        });
 
-              // Push the rich notification with sender profile
-              const sender = await User.findById(socket.userId).select('username profilePic');
-              const notifPayload =
-                typeof notification.toObject === 'function'
-                  ? notification.toObject()
-                  : { ...notification };
-              io.to(`user_${recipientId}`).emit('new-notification', {
-                ...notifPayload,
-                fromUser: sender
-              });
-              
-              // Send an incremental count update instead of recomputing everything
-              emitCountsDelta(recipientId.toString(), {
-                messages: 1,
-                notifications: 1,
-                perChat: { [roomId]: 1 }
-              });
-            }
-          }
-        } catch (err) {
-          console.error("Message persistence error:", err);
-        }
-      }
-    });
+        // 🔥 UPDATE LAST MESSAGE (IMPORTANT)
+        await Connection.findByIdAndUpdate(roomId, {
+          lastMessage: {
+            text: finalMessage,
+            createdAt: timestamp
+          },
+          updatedAt: timestamp
+        });
 
-    socket.on('action-connect', async ({ roomId }) => {
-      if (!socket.userId) return;
-      
-      const match = matchmaker.activeMatches.get(roomId);
-      if (match) {
-        const otherSocketId = match.user1 === socket.id ? match.user2 : match.user1;
-        if (otherSocketId) io.to(otherSocketId).emit('peer-wants-connection');
-      }
-      
-      const users = await matchmaker.registerConnection(roomId, socket.id, socket.userId, io);
-      if (users) {
-        for (const uId of users) {
-          const otherUserId = users.find(id => id.toString() !== uId.toString());
-          
-          // Notify the frontend to refresh lists (Dashboard/Connections)
-          io.to(`user_${uId}`).emit('new-match', { 
-            roomId, 
-            otherUserId 
-          });
+        const recipientId = conn.users.find(
+          u => u.toString() !== socket.userId.toString()
+        );
 
+        if (recipientId) {
+          // 🔥 ZERO JOIN NOTIFICATION
           await Notification.create({
-            user: uId,
-            type: 'match',
-            content: "New connection! ✨",
-            fromUser: otherUserId,
+            user: recipientId,
+            type: 'message',
+            content: finalMessage.substring(0, 50),
+
+            fromUser: {
+              _id: socket.user._id,
+              username: socket.user.username,
+              profilePic: socket.user.profilePic
+            },
+
             relatedId: roomId
           });
-          pushUserStats(uId.toString());
+
+          // 🔥 PUSH REALTIME
+          io.to(`user_${recipientId}`).emit('new-notification', {
+            type: 'message',
+            content: finalMessage.substring(0, 50),
+            fromUser: socket.user,
+            relatedId: roomId
+          });
+
+          emitCountsDelta(recipientId.toString(), {
+            messages: 1,
+            notifications: 1,
+            perChat: { [roomId]: 1 }
+          });
         }
+
+      } catch (err) {
+        console.error('Message error:', err);
       }
     });
+
+    /////////////////////////////////////////////////////
+    // 🔌 DISCONNECT
+    /////////////////////////////////////////////////////
 
     socket.on('disconnect', async () => {
       try {
-        matchmaker.handleDisconnect(socket, io);
         if (socket.userId) {
           const userIdStr = socket.userId.toString();
-          const userSockets = await io.in(`user_${userIdStr}`).fetchSockets();
-          if (userSockets.length === 0) {
-            onlineUsers.delete(userIdStr);
-            await User.findByIdAndUpdate(socket.userId, { onlineStatus: false });
 
-            notifyFriendsOfStatus(socket.userId);
+          const sockets = await io.in(`user_${userIdStr}`).fetchSockets();
+
+          if (sockets.length === 0) {
+            onlineUsers.delete(userIdStr);
+
+            notifyFriendsOnline(userIdStr);
 
             const now = Date.now();
             if (now - lastOnlineCountEmit > 5000) {
@@ -314,8 +216,11 @@ module.exports = (io) => {
             }
           }
         }
+
+        matchmaker.handleDisconnect(socket, io);
+
       } catch (err) {
-        console.error('Socket disconnect error:', err);
+        console.error('Disconnect error:', err);
       }
     });
   });
