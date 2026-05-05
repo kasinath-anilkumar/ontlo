@@ -125,8 +125,8 @@ module.exports = (io) => {
       const timestamp = new Date();
 
       socket.to(roomId).emit('chat-message', {
-        sender: socket.id,
-        message: finalMessage,
+        sender: socket.userId, // Use userId instead of socketId for consistency
+        text: finalMessage,
         imageUrl,
         createdAt: timestamp
       });

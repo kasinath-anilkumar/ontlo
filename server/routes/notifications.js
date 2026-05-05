@@ -33,6 +33,7 @@ router.get('/', auth, async (req, res) => {
     const start = Date.now();
 
     const notifications = await Notification.find({ user: req.userId })
+      .populate('fromUser._id', 'username profilePic') // Fallback for live data
       .sort({ createdAt: -1 })
       .limit(30)
       .lean();
@@ -43,8 +44,18 @@ router.get('/', auth, async (req, res) => {
       console.log(`[NOTIFY] Fetch took ${duration}ms, count: ${notifications.length}`);
     }
 
-    // IMPORTANT: fromUser already contains username + profilePic
-    res.json(notifications);
+    // Map to ensure frontend gets a flat object structure if populated
+    const formatted = notifications.map(n => {
+      if (n.fromUser && n.fromUser._id && typeof n.fromUser._id === 'object') {
+        // Data was populated
+        n.fromUser.username = n.fromUser._id.username || n.fromUser.username;
+        n.fromUser.profilePic = n.fromUser._id.profilePic || n.fromUser.profilePic;
+        n.fromUser._id = n.fromUser._id._id;
+      }
+      return n;
+    });
+
+    res.json(formatted);
 
   } catch (err) {
     console.error('[NOTIFY ERROR]:', err);

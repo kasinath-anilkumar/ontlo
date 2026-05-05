@@ -170,7 +170,11 @@ router.post('/ping/:targetUserId', auth, async (req, res) => {
       user: targetUserId,
       type: 'system',
       content: `${sender.fullName || sender.username} waved at you! 👋`,
-      fromUser: senderId,
+      fromUser: {
+        _id: sender._id,
+        username: sender.username,
+        profilePic: sender.profilePic
+      },
       relatedId: existingConnection._id.toString()
     });
 

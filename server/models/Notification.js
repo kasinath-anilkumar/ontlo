@@ -23,7 +23,8 @@ const NotificationSchema = new mongoose.Schema({
   // 🔥 EMBEDDED USER DATA (NO JOIN NEEDED)
   fromUser: {
     _id: {
-      type: mongoose.Schema.Types.ObjectId
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     },
     username: {
       type: String

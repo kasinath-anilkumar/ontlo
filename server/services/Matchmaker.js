@@ -376,12 +376,14 @@ class Matchmaker {
       try {
         const sortedUsers = [match.user1Id.toString(), match.user2Id.toString()].sort();
         
-        let existing = await Connection.findOne({ users: { $all: sortedUsers } });
+        const userObjectIds = sortedUsers.map(id => new mongoose.Types.ObjectId(id));
+        
+        let existing = await Connection.findOne({ users: { $all: userObjectIds } });
         if (!existing) {
           // Fetch user details to embed
-          const users = await User.find({ _id: { $in: sortedUsers } }).select('_id username profilePic onlineStatus').lean();
+          const users = await User.find({ _id: { $in: userObjectIds } }).select('_id username profilePic onlineStatus').lean();
           const newConnection = new Connection({ 
-            users: sortedUsers,
+            users: userObjectIds,
             userDetails: users 
           });
           await newConnection.save();

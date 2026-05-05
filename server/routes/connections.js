@@ -25,20 +25,24 @@ router.get('/', auth, async (req, res) => {
     const userIdStr = req.userId.toString();
 
     const formatted = connections.map((c) => {
-      // Fallback to populated users if userDetails is empty (legacy connections)
-      const usersList = (c.userDetails && c.userDetails.length > 0) ? c.userDetails : c.users;
-      const otherUser = usersList?.find(
-        (u) => u && u._id.toString() !== userIdStr
+      // Prioritize populated 'users' as it's the live source of truth
+      // Fallback to 'userDetails' if population failed for some reason
+      const usersList = (c.users && c.users.length > 0 && typeof c.users[0] === 'object') 
+        ? c.users 
+        : (c.userDetails || []);
+
+      const otherUser = usersList.find(
+        (u) => u && u._id && u._id.toString() !== userIdStr
       );
 
       return {
         id: c._id,
-        user: otherUser || null,
+        user: otherUser && otherUser.username ? otherUser : null,
         status: c.status,
         createdAt: c.createdAt,
         lastMessage: c.lastMessage || null
       };
-    }).filter(c => c.user !== null); // 🔥 filter out ghost connections
+    }).filter(c => c.user !== null); // Hide invalid connections where user data is missing
 
     res.json(formatted);
 
