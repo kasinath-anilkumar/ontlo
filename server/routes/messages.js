@@ -68,7 +68,8 @@ router.post('/:connectionId', auth, validate({ params: connectionIdParamSchema }
 
     res.json({
       id: message._id,
-      text: message.text,
+      text: message.text || "",
+      imageUrl: message.imageUrl || null,
       createdAt: message.createdAt
     });
 
@@ -86,7 +87,7 @@ router.post('/:connectionId', auth, validate({ params: connectionIdParamSchema }
 router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema }), requireConnectionMember, async (req, res) => {
   try {
     const messages = await Message.find({ connectionId: req.params.connectionId })
-      .select('_id text sender createdAt isRead') // ✅ fixed
+      .select('_id text imageUrl sender createdAt isRead') // ✅ fixed
       .sort({ createdAt: 1 }) // ✅ fixed
       .limit(100)
       .lean();
@@ -95,7 +96,8 @@ router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema })
 
     const formatted = messages.map(m => ({
       id: m._id.toString(),
-      text: m.text,
+      text: m.text || "",
+      imageUrl: m.imageUrl || null,
       sender: m.sender.toString() === userIdStr ? 'You' : 'Remote',
       createdAt: m.createdAt,
       type: m.sender.toString() === userIdStr ? 'self' : 'remote',
