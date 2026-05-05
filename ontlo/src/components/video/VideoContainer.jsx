@@ -195,7 +195,7 @@ const VideoContainer = () => {
     setInCall(false); setShowChat(false); setRemoteUser(null); setIsBlurred(false);
     setIsPrivate(false); setPeerIsPrivate(false); setCommonInterests([]);
     setShowConnectRequest(false); setConnectionStatus(null); setCallDuration(0);
-    setChatMessages([]); setHasNewMessage(false); setIsMatching(false); setShowConnectButton(false);
+    setChatMessages([]); setHasNewMessage(false); setIsMatching(false); 
     if (shouldAutoRejoin) {
       if (rejoinTimerRef.current) clearTimeout(rejoinTimerRef.current);
       rejoinTimerRef.current = setTimeout(() => {
