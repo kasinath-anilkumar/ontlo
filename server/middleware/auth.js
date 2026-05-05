@@ -16,6 +16,8 @@ const auth = (rolesOrReq, res, next) => {
 };
 
 const handleAuth = async (req, res, next, roles) => {
+  const startTime = Date.now();
+  
   // First try to get token from HTTP-only cookie, then fallback to Authorization header
   let token = req.cookies?.token;
   if (!token) {
@@ -30,12 +32,20 @@ const handleAuth = async (req, res, next, roles) => {
   }
 
   try {
+    const jwtStart = Date.now();
     const decoded = jwt.verify(token, JWT_SECRET);
+    const jwtTime = Date.now() - jwtStart;
+    if (jwtTime > 50) console.log(`[AUTH] JWT verify took ${jwtTime}ms`);
+    
     req.userId = decoded.id;
     req.user = decoded; 
 
     if (roles && roles.length > 0) {
+      const userStart = Date.now();
       const user = await User.findById(decoded.id);
+      const userTime = Date.now() - userStart;
+      console.log(`[AUTH] User lookup took ${userTime}ms`);
+      
       if (!user) return res.status(401).json({ error: 'User not found' });
       if (!roles.includes(user.role)) {
         return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
@@ -46,8 +56,15 @@ const handleAuth = async (req, res, next, roles) => {
       req.user = user; 
     }
 
+    const totalTime = Date.now() - startTime;
+    if (totalTime > 100) {
+      console.log(`[AUTH] Total auth time: ${totalTime}ms for ${req.path}`);
+    }
+    
     next();
   } catch (err) {
+    const totalTime = Date.now() - startTime;
+    console.error(`[AUTH ERROR] ${req.path} failed after ${totalTime}ms:`, err.message);
     res.status(401).json({ error: 'Token is not valid' });
   }
 };

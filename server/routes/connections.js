@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Connection = require('../models/Connection');
 const auth = require('../middleware/auth');
@@ -6,19 +7,27 @@ const Message = require('../models/Message');
 const validate = require('../middleware/validate');
 const { connectionIdParamSchema } = require('../validators/connection.validator');
 
-// Get user connections with last message
+// Get user connections with last message (optimized with aggregation)
 router.get('/', auth, async (req, res) => {
   try {
-    const connections = await Connection.find({ 
-      users: req.userId, 
-      status: { $in: ['active', 'matched'] } 
-    })
-      .populate('users', 'username profilePic onlineStatus')
-      .sort({ updatedAt: -1 })
-      .limit(20)
-      .lean();
-    
-    // 2. Fetch last messages for all connections in ONE query using aggregation
+    const connections = await Connection.aggregate([
+      { $match: { users: mongoose.Types.ObjectId(req.userId), status: { $in: ['active', 'matched'] } } },
+      { $sort: { updatedAt: -1 } },
+      { $limit: 20 },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'users',
+          foreignField: '_id',
+          as: 'users',
+          pipeline: [
+            { $project: { username: 1, profilePic: 1, onlineStatus: 1 } }
+          ]
+        }
+      }
+    ]);
+
+    // 2. Fetch last messages for all connections in ONE query
     const connectionIds = connections.map(c => c._id);
     const lastMessages =
       connectionIds.length === 0

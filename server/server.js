@@ -178,8 +178,14 @@ const startServer = async (port) => {
   try {
     console.log('[DB] Connecting to MongoDB...');
     await mongoose.connect(MONGO_URI, {
-      connectTimeoutMS: 10000, // 10 second timeout
-      serverSelectionTimeoutMS: 10000
+      connectTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 10000,
+      maxPoolSize: 5, // Lower for free tier to avoid connection exhaustion
+      minPoolSize: 1,
+      retryWrites: false, // Disable for free tier to reduce overhead
+      retryReads: false,
+      socketTimeoutMS: 45000, // 45 second socket timeout
+      waitQueueTimeoutMS: 10000 // 10 second wait for connection from pool
     });
     logger.info('✅ MongoDB Connected');
 

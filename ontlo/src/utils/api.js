@@ -38,7 +38,7 @@ export const apiFetch = async (url, options = {}) => {
       const isAuthRequest = url.includes('/login') || url.includes('/register') || url.includes('/setup') || url.includes('/refresh-token');
       
       if (response.status === 401 && !isAuthRequest) {
-        console.warn('[Auth] Token expired, attempting silent refresh...');
+        console.warn('[Auth] Token expired, attempting silent refresh...', { url, tokenExists: !!token });
         
         // Synchronize multiple refresh attempts
         if (!refreshPromise) {
@@ -53,7 +53,11 @@ export const apiFetch = async (url, options = {}) => {
                 return data.token;
               }
             }
+            console.error('[Auth] Refresh response not OK:', res.status, res.statusText);
             throw new Error('Refresh failed');
+          }).catch(err => {
+            console.error('[Auth] Refresh error:', err);
+            throw err;
           }).finally(() => {
             refreshPromise = null;
           });
@@ -65,6 +69,7 @@ export const apiFetch = async (url, options = {}) => {
           response = await fetch(url, config);
         } catch (err) {
           // Refresh failed, clear session
+          console.error('[Auth] Token refresh failed, logging out', err);
           localStorage.removeItem('user');
           localStorage.removeItem('token');
           window.dispatchEvent(new Event('auth-expired'));
