@@ -44,3 +44,41 @@ router.get('/', auth, async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// 🔥 DELETE connection
+router.delete(
+  '/:id',
+  auth,
+  validate({ params: connectionIdParamSchema }),
+  async (req, res) => {
+    try {
+      const connection = await Connection.findOne({
+        _id: req.params.id,
+        users: req.userId
+      });
+
+      if (!connection) {
+        return res.status(404).json({ error: 'Connection not found' });
+      }
+
+      await Connection.deleteOne({ _id: req.params.id });
+      res.json({ message: 'Connection removed' });
+    } catch (error) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  }
+);
+
+// 🔥 ONLINE connections
+router.get('/online', auth, async (req, res) => {
+  try {
+    const { getOnlineConnections } = require('../utils/stats');
+    const onlineOnes = await getOnlineConnections(req.userId);
+    res.json(onlineOnes);
+  } catch (error) {
+    console.error('[Online Connections Error]:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+module.exports = router;

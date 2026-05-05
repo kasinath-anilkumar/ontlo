@@ -126,9 +126,9 @@ module.exports = (io) => {
 
       socket.to(roomId).emit('chat-message', {
         sender: socket.id,
-        text: finalMessage,
+        message: finalMessage,
         imageUrl,
-        timestamp
+        createdAt: timestamp
       });
 
       // 🔥 SAVE MESSAGE + UPDATE CONNECTION
@@ -140,8 +140,7 @@ module.exports = (io) => {
           connectionId: roomId,
           sender: socket.userId,
           text: finalMessage,
-          imageUrl,
-          timestamp
+          imageUrl
         });
 
         // 🔥 UPDATE LAST MESSAGE (IMPORTANT)

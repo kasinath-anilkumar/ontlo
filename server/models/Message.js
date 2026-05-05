@@ -14,7 +14,7 @@ const MessageSchema = new mongoose.Schema({
     required: true
   },
 
-  // 🔥 OPTIONAL: embed sender info (same idea as notifications)
+  // 🔥 OPTIONAL (keep — good for avoiding joins)
   senderInfo: {
     _id: mongoose.Schema.Types.ObjectId,
     username: String,
@@ -32,11 +32,6 @@ const MessageSchema = new mongoose.Schema({
     type: String
   },
 
-  timestamp: {
-    type: Date,
-    default: Date.now
-  },
-
   isRead: {
     type: Boolean,
     default: false
@@ -45,9 +40,9 @@ const MessageSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-// 🔥 INDEXES (optimized for your queries)
-MessageSchema.index({ connectionId: 1, timestamp: 1 });     // chat history
-MessageSchema.index({ connectionId: 1, isRead: 1 });        // unread in chat
-MessageSchema.index({ sender: 1 });                         // sender lookup
+// 🔥 INDEXES (MATCH YOUR QUERIES)
+MessageSchema.index({ connectionId: 1, createdAt: 1 });  // chat history
+MessageSchema.index({ connectionId: 1, isRead: 1 });     // unread
+MessageSchema.index({ sender: 1 });
 
 module.exports = mongoose.model('Message', MessageSchema);

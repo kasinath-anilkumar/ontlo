@@ -12,19 +12,23 @@ const { connectionIdParamSchema } = require('../validators/message.validator');
 // 🔒 Check connection membership
 const requireConnectionMember = async (req, res, next) => {
   try {
-    const connection = await Connection.findOne({
-      _id: req.params.connectionId,
-      users: req.userId
-    })
-      .select('_id')
-      .lean();
+    if (!req.connection) {
+      const connection = await Connection.findOne({
+        _id: req.params.connectionId,
+        users: req.userId
+      })
+        .select('_id users')
+        .lean();
 
-    if (!connection) {
-      return res.status(404).json({ error: 'Connection not found' });
+      if (!connection) {
+        return res.status(404).json({ error: 'Connection not found' });
+      }
+
+      req.connection = connection;
     }
 
-    req.connection = connection;
     next();
+
   } catch (error) {
     res.status(400).json({ error: 'Invalid connection id' });
   }
@@ -32,7 +36,7 @@ const requireConnectionMember = async (req, res, next) => {
 
 
 /////////////////////////////////////////////////////
-// 🔥 SEND MESSAGE (THIS IS THE IMPORTANT PART)
+// 🔥 SEND MESSAGE
 /////////////////////////////////////////////////////
 
 router.post('/:connectionId', auth, validate({ params: connectionIdParamSchema }), requireConnectionMember, async (req, res) => {
@@ -43,28 +47,29 @@ router.post('/:connectionId', auth, validate({ params: connectionIdParamSchema }
       return res.status(400).json({ error: 'Message text or image required' });
     }
 
-    // 1️⃣ Create message
+    const now = new Date();
+
+    // 1️⃣ Create message (NO timestamp field)
     const message = await Message.create({
       connectionId: req.params.connectionId,
       sender: req.userId,
       text: text ? text.trim() : undefined,
-      imageUrl,
-      timestamp: new Date()
+      imageUrl
     });
 
-    // 2️⃣ 🔥 UPDATE CONNECTION LAST MESSAGE
-    await Connection.findByIdAndUpdate(req.params.connectionId, {
+    // 2️⃣ Update connection (non-blocking)
+    Connection.findByIdAndUpdate(req.params.connectionId, {
       lastMessage: {
         text: message.text || (message.imageUrl ? '📷 Image' : ''),
-        createdAt: message.timestamp
+        createdAt: message.createdAt
       },
-      updatedAt: new Date()
-    });
+      updatedAt: now
+    }).catch(err => console.error('lastMessage update failed:', err));
 
     res.json({
       id: message._id,
       text: message.text,
-      timestamp: message.timestamp
+      createdAt: message.createdAt
     });
 
   } catch (error) {
@@ -81,16 +86,19 @@ router.post('/:connectionId', auth, validate({ params: connectionIdParamSchema }
 router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema }), requireConnectionMember, async (req, res) => {
   try {
     const messages = await Message.find({ connectionId: req.params.connectionId })
-      .sort({ timestamp: 1 })
+      .select('_id text sender createdAt isRead') // ✅ fixed
+      .sort({ createdAt: 1 }) // ✅ fixed
       .limit(100)
       .lean();
-    
+
+    const userIdStr = req.userId.toString();
+
     const formatted = messages.map(m => ({
       id: m._id.toString(),
       text: m.text,
-      sender: m.sender.toString() === req.userId ? 'You' : 'Remote',
-      timestamp: m.timestamp,
-      type: m.sender.toString() === req.userId ? 'self' : 'remote',
+      sender: m.sender.toString() === userIdStr ? 'You' : 'Remote',
+      createdAt: m.createdAt,
+      type: m.sender.toString() === userIdStr ? 'self' : 'remote',
       isRead: m.isRead
     }));
 
@@ -111,7 +119,8 @@ router.post('/:connectionId/read', auth, validate({ params: connectionIdParamSch
     await Message.updateMany(
       {
         connectionId: req.params.connectionId,
-        sender: { $ne: req.userId }
+        sender: { $ne: req.userId },
+        isRead: false
       },
       { isRead: true }
     );
