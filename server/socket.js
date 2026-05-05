@@ -32,6 +32,10 @@ module.exports = (io) => {
     io.to(`user_${userId}`).emit('counts-update', counts);
   };
 
+  const emitCountsDelta = (userId, delta) => {
+    io.to(`user_${userId}`).emit('counts-delta', delta);
+  };
+
   const pushOnlineFriends = async (userId) => {
     const online = await getOnlineConnections(userId, true);
     io.to(`user_${userId}`).emit('online-users-update', online);
@@ -232,8 +236,12 @@ module.exports = (io) => {
                 fromUser: sender
               });
               
-              // Also update their badge counts
-              pushUserStats(recipientId.toString());
+              // Send an incremental count update instead of recomputing everything
+              emitCountsDelta(recipientId.toString(), {
+                messages: 1,
+                notifications: 1,
+                perChat: { [roomId]: 1 }
+              });
             }
           }
         } catch (err) {

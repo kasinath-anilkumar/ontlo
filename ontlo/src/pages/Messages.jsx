@@ -1,9 +1,9 @@
-import { Search, Edit, Loader2, MessageSquare, Heart, ChevronLeft, Plus, User } from "lucide-react";
-import Skeleton from "../components/ui/Skeleton";
-import { useEffect, useState, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useSocket } from "../context/SocketContext";
+import { MessageSquare, Plus, Search, User } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import ChatPanel from "../components/chat/ChatPanel";
+import Skeleton from "../components/ui/Skeleton";
+import { useSocket } from "../context/SocketContext";
 
 const Messages = () => {
   const [connections, setConnections] = useState([]);
@@ -40,17 +40,14 @@ const Messages = () => {
   useEffect(() => {
     fetchConnections();
     
-    // Listen for real-time updates to refresh the list
-    if (socket) {
-      const handleUpdate = () => fetchConnections();
-      socket.on('counts-update', handleUpdate);
-      socket.on('new-notification', handleUpdate);
-      
-      return () => {
-        socket.off('counts-update', handleUpdate);
-        socket.off('new-notification', handleUpdate);
-      };
-    }
+    if (!socket) return;
+    // Only refresh the connection list when a real new match arrives.
+    const handleNewMatch = () => fetchConnections();
+    socket.on('new-match', handleNewMatch);
+
+    return () => {
+      socket.off('new-match', handleNewMatch);
+    };
   }, [location.state, socket]);
 
   const filteredConnections = useMemo(() => {

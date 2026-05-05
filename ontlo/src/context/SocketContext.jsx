@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { Bell, MessageSquare, X } from 'lucide-react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import API_URL, { apiFetch } from '../utils/api';
-import { X, MessageSquare, Bell } from 'lucide-react';
 
 const SocketContext = createContext();
 
@@ -103,6 +103,23 @@ export const SocketProvider = ({ children }) => {
 
     // Global Listeners
     newSocket.on('counts-update', (data) => setCounts(data));
+    newSocket.on('counts-delta', (delta) => {
+      setCounts((prev) => {
+        const perChat = { ...prev.perChat };
+        if (delta.perChat) {
+          Object.entries(delta.perChat).forEach(([connectionId, value]) => {
+            perChat[connectionId] = (perChat[connectionId] || 0) + value;
+          });
+        }
+
+        return {
+          messages: prev.messages + (delta.messages || 0),
+          notifications: prev.notifications + (delta.notifications || 0),
+          connections: prev.connections + (delta.connections || 0),
+          perChat
+        };
+      });
+    });
     newSocket.on('online-users-update', (data) => setOnlineUsers(data));
     
     // Rich Toast Notification Listener
