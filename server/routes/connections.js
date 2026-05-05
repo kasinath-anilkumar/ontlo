@@ -26,10 +26,9 @@ router.get('/', auth, async (req, res) => {
 
     const formatted = connections.map((c) => {
       // Prioritize populated 'users' as it's the live source of truth
-      // Fallback to 'userDetails' if population failed for some reason
-      const usersList = (c.users && c.users.length > 0 && typeof c.users[0] === 'object') 
-        ? c.users 
-        : (c.userDetails || []);
+      // Check for .username to ensure it's actually populated and not just an array of IDs
+      const isPopulated = c.users && c.users.length > 0 && c.users[0].username;
+      const usersList = isPopulated ? c.users : (c.userDetails || []);
 
       const otherUser = usersList.find(
         (u) => u && u._id && u._id.toString() !== userIdStr
