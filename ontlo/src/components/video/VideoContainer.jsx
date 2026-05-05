@@ -221,6 +221,7 @@ const VideoContainer = () => {
         { urls: "stun:stun2.l.google.com:19302" },
         { urls: "stun:stun3.l.google.com:19302" },
         { urls: "stun:stun4.l.google.com:19302" },
+        { urls: "stun:stun.services.mozilla.com" },
         { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
         { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
         { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
@@ -304,7 +305,7 @@ const VideoContainer = () => {
       setIsMatching(false); 
       setIcebreaker(prompt); 
       setIsWildcard(wildcardFlag); 
-      setCuriosityBlurTimer(30);
+      setCuriosityBlurTimer(0);
       if (navigator.vibrate) navigator.vibrate(100);
 
       const pc = createPeerConnection(rId); peerConnectionRef.current = pc;
@@ -316,15 +317,19 @@ const VideoContainer = () => {
         return;
       }
 
-      // Caller: attach local A/V then offer. Receiver: attach only after setRemote(offer) in onOffer (correct Unified Plan order).
+      // Caller: attach local A/V then offer after a short buffer to ensure receiver is in room.
       if (role === 'caller') {
-        attachLocalTracks(pc, stream);
-        const offer = await pc.createOffer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: true
-        });
-        await pc.setLocalDescription(offer);
-        socket.emit('webrtc-offer', { offer: pc.localDescription, roomId: rId });
+        setTimeout(async () => {
+          if (!peerConnectionRef.current) return;
+          attachLocalTracks(peerConnectionRef.current, stream);
+          const offer = await peerConnectionRef.current.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true
+          });
+          await peerConnectionRef.current.setLocalDescription(offer);
+          socket.emit('webrtc-offer', { offer: peerConnectionRef.current.localDescription, roomId: rId });
+          console.log('[WebRTC] Offer sent to room:', rId);
+        }, 500);
       }
 
       apiFetch(`${API_URL}/api/users/${remoteId}`).then(res => {
@@ -339,23 +344,26 @@ const VideoContainer = () => {
     };
 
     const onOffer = async ({ offer }) => {
+      console.log('[WebRTC] Offer received from peer');
       const pc = peerConnectionRef.current;
-      if (!pc) return;
+      if (!pc) {
+        console.warn('[WebRTC] Offer received but PeerConnection not ready. Queueing...');
+        // We'll wait a bit and try again
+        setTimeout(() => onOffer({ offer }), 1000);
+        return;
+      }
       try {
         const stream = (await waitForLocalStream()) || localStreamRef.current;
         if (!stream) {
           console.error('[WebRTC] Receiver has no local media — cannot answer');
           return;
         }
-        // Apply remote SDP first, then send local A/V so the answer includes our tracks (bidirectional).
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         attachLocalTracks(pc, stream);
-        const answer = await pc.createAnswer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: true
-        });
+        const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit('webrtc-answer', { answer: pc.localDescription, roomId: roomIdRef.current });
+        console.log('[WebRTC] Answer sent to peer');
 
         while (iceQueue.current.length > 0) {
           const candidate = iceQueue.current.shift();
@@ -367,10 +375,12 @@ const VideoContainer = () => {
     };
 
     const onAnswer = async ({ answer }) => {
+      console.log('[WebRTC] Answer received from peer');
       const pc = peerConnectionRef.current;
       if (!pc) return;
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        console.log('[WebRTC] Remote description set (Answer)');
         // Process queued ICE candidates
         while (iceQueue.current.length > 0) {
           const candidate = iceQueue.current.shift();

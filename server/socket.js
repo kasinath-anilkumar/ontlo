@@ -126,8 +126,19 @@ module.exports = (io) => {
 
     // WebRTC signaling relay (required for offer/answer/ICE to reach the peer)
     const relayIfInRoom = (roomId, event, payload) => {
-      if (!roomId || typeof roomId !== 'string' || !socket.rooms?.has(roomId)) return;
-      socket.to(roomId).emit(event, payload);
+      const match = matchmaker.activeMatches.get(roomId);
+      if (!match) {
+        console.warn(`[Signaling] Blocked ${event} - Room ${roomId} not found in active matches.`);
+        return;
+      }
+      
+      // Find the other socket ID in the match
+      const otherSocketId = match.user1 === socket.id ? match.user2 : match.user1;
+      if (otherSocketId) {
+        io.to(otherSocketId).emit(event, payload);
+      } else {
+        console.warn(`[Signaling] Could not find peer for ${socket.id} in room ${roomId}`);
+      }
     };
 
     socket.on('webrtc-offer', ({ offer, roomId }) => {
