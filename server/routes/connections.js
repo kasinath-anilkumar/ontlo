@@ -11,7 +11,7 @@ const { connectionIdParamSchema } = require('../validators/connection.validator'
 router.get('/', auth, async (req, res) => {
   try {
     const connections = await Connection.aggregate([
-      { $match: { users: mongoose.Types.ObjectId(req.userId), status: { $in: ['active', 'matched'] } } },
+      { $match: { users: new mongoose.Types.ObjectId(req.userId), status: { $in: ['active', 'matched'] } } },
       { $sort: { updatedAt: -1 } },
       { $limit: 20 },
       {

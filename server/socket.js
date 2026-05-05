@@ -28,8 +28,12 @@ module.exports = (io) => {
 
   // Utility to update a specific user's frontend state
   const pushUserStats = async (userId) => {
-    const counts = await getUserCounts(userId, true);
-    io.to(`user_${userId}`).emit('counts-update', counts);
+    try {
+      const counts = await getUserCounts(userId, false); // Use cache
+      io.to(`user_${userId}`).emit('counts-update', counts);
+    } catch (err) {
+      console.error('pushUserStats error:', err);
+    }
   };
 
   const emitCountsDelta = (userId, delta) => {
@@ -37,8 +41,12 @@ module.exports = (io) => {
   };
 
   const pushOnlineFriends = async (userId) => {
-    const online = await getOnlineConnections(userId, true);
-    io.to(`user_${userId}`).emit('online-users-update', online);
+    try {
+      const online = await getOnlineConnections(userId, false); // Use cache
+      io.to(`user_${userId}`).emit('online-users-update', online);
+    } catch (err) {
+      console.error('pushOnlineFriends error:', err);
+    }
   };
 
   // When someone connects/disconnects, we need to update all their friends
@@ -57,7 +65,12 @@ module.exports = (io) => {
             .filter(Boolean)
         )
       ];
-      // Run in parallel — sequential awaits were N round-trips and felt very slow on free tier.
+      
+      // Update the user who just connected/disconnected immediately
+      await pushOnlineFriends(userId);
+
+      // Notify friends. On free tier, we don't want to trigger N full recalculations immediately.
+      // We could just emit a status event, but for now let's just use the cached results.
       await Promise.all(friendIds.map((fid) => pushOnlineFriends(fid)));
     } catch (err) {
       console.error('Error notifying friends of status:', err);
@@ -283,22 +296,26 @@ module.exports = (io) => {
     });
 
     socket.on('disconnect', async () => {
-      matchmaker.handleDisconnect(socket, io);
-      if (socket.userId) {
-        const userIdStr = socket.userId.toString();
-        const userSockets = await io.in(`user_${userIdStr}`).fetchSockets();
-        if (userSockets.length === 0) {
-          onlineUsers.delete(userIdStr);
-          await User.findByIdAndUpdate(socket.userId, { onlineStatus: false });
+      try {
+        matchmaker.handleDisconnect(socket, io);
+        if (socket.userId) {
+          const userIdStr = socket.userId.toString();
+          const userSockets = await io.in(`user_${userIdStr}`).fetchSockets();
+          if (userSockets.length === 0) {
+            onlineUsers.delete(userIdStr);
+            await User.findByIdAndUpdate(socket.userId, { onlineStatus: false });
 
-          notifyFriendsOfStatus(socket.userId);
+            notifyFriendsOfStatus(socket.userId);
 
-          const now = Date.now();
-          if (now - lastOnlineCountEmit > 5000) {
-            lastOnlineCountEmit = now;
-            io.emit('online-count', { count: onlineUsers.size });
+            const now = Date.now();
+            if (now - lastOnlineCountEmit > 5000) {
+              lastOnlineCountEmit = now;
+              io.emit('online-count', { count: onlineUsers.size });
+            }
           }
         }
+      } catch (err) {
+        console.error('Socket disconnect error:', err);
       }
     });
   });

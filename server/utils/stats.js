@@ -9,7 +9,7 @@ const countCache = new Map();
 const onlineCache = new Map();
 const pendingCounts = new Map();
 const pendingOnline = new Map();
-const CACHE_TTL = 5000; // 5 seconds cache
+const CACHE_TTL = 15000; // 15 seconds cache
 
 /**
  * Calculates unread counts and connection stats for a user
@@ -37,15 +37,19 @@ const getUserCounts = async (userId, forceRefresh = false) => {
   const fetchPromise = (async () => {
     try {
       const oid = new mongoose.Types.ObjectId(userIdStr);
-      // 1. Get the user's active connection IDs from the Connection model
-      const connectionIds = await Connection.distinct('_id', {
-        users: userId,
-        status: { $in: ['active', 'matched'] }
-      });
+      
+      // 1. Get the user's active connection IDs
+      // Using .find().select().lean() is often faster than .distinct on free tier if the result set is small
+      const connections = await Connection.find(
+        { users: oid, status: { $in: ['active', 'matched'] } },
+        { _id: 1 }
+      ).lean();
+      
+      const connectionIds = connections.map(c => c._id);
       const connectionCount = connectionIds.length;
 
       const [unreadNotifications, perChatResults] = await Promise.all([
-        Notification.countDocuments({ user: userId, isRead: false }),
+        Notification.countDocuments({ user: oid, isRead: false }),
         connectionIds.length === 0
           ? Promise.resolve([])
           : Message.aggregate([
@@ -57,7 +61,7 @@ const getUserCounts = async (userId, forceRefresh = false) => {
                 }
               },
               { $group: { _id: "$connectionId", count: { $sum: 1 } } }
-            ])
+            ]).hint({ connectionId: 1, isRead: 1 }) // Hint to use existing index
       ]);
 
       const perChat = {};
@@ -82,7 +86,7 @@ const getUserCounts = async (userId, forceRefresh = false) => {
       });
 
       const duration = Date.now() - startTime;
-      if (duration > 50) {
+      if (duration > 100) {
         console.log(`[Profiler] getUserCounts for ${userIdStr.slice(-4)} took ${duration}ms ${forceRefresh ? '(Forced)' : ''}`);
       }
 
@@ -124,7 +128,8 @@ const getOnlineConnections = async (userId, forceRefresh = false) => {
   // 3. Execute Query
   const fetchPromise = (async () => {
     try {
-      const connections = await Connection.find({ users: userId, status: 'active' })
+      const oid = new mongoose.Types.ObjectId(userIdStr);
+      const connections = await Connection.find({ users: oid, status: 'active' })
         .populate('users', 'username profilePic onlineStatus')
         .lean();
       
@@ -142,7 +147,7 @@ const getOnlineConnections = async (userId, forceRefresh = false) => {
       });
 
       const duration = Date.now() - startTime;
-      if (duration > 50) {
+      if (duration > 100) {
         console.log(`[Profiler] getOnlineFriends for ${userIdStr.slice(-4)} took ${duration}ms ${forceRefresh ? '(Forced)' : ''}`);
       }
 
