@@ -197,6 +197,16 @@ const startServer = async () => {
 
     logger.info('✅ MongoDB Connected');
 
+    // 🔥 ENSURE INDEXES (Critical for preventing 40s hangs)
+    const modelsToSync = ['User', 'Connection', 'Message', 'Notification'];
+    for (const m of modelsToSync) {
+      try {
+        await mongoose.model(m).createIndexes();
+      } catch (e) {
+        console.warn(`[DB] Index sync for ${m} skipped:`, e.message);
+      }
+    }
+
   } catch (err) {
     console.error('❌ MongoDB connection failed:', err.message);
 

@@ -35,8 +35,10 @@ router.get('/', auth, async (req, res) => {
     const start = Date.now();
 
     const notifications = await Notification.find({ user: req.userId })
+      .hint({ user: 1, createdAt: -1 }) // 🔥 FORCE INDEX
       .sort({ createdAt: -1 })
       .limit(30)
+      .maxTimeMS(5000) // 🛡️ CRITICAL: Don't let it hang the server for 40s
       .lean();
 
     // 1. Normalize all notifications (handle legacy string fromUser)

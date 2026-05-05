@@ -16,10 +16,12 @@ router.get('/', auth, async (req, res) => {
       users: req.userId,
       status: 'active'
     })
-      .select('users userDetails lastMessage createdAt updatedAt status') // 🔥 include users
+      .select('users userDetails lastMessage createdAt updatedAt status')
       .populate('users', 'username profilePic onlineStatus')
       .sort({ updatedAt: -1 })
       .limit(20)
+      .hint({ users: 1, updatedAt: -1 }) // 🔥 FORCE INDEX
+      .maxTimeMS(5000) // 🛡️ PROTECT SERVER
       .lean();
 
     const userIdStr = req.userId.toString();
@@ -27,7 +29,7 @@ router.get('/', auth, async (req, res) => {
     const formatted = connections.map((c) => {
       // Prioritize populated 'users' as it's the live source of truth
       // Check for .username to ensure it's actually populated and not just an array of IDs
-      const isPopulated = c.users && c.users.length > 0 && c.users[0].username;
+      const isPopulated = c.users && c.users.length > 0 && c.users[0]?.username;
       const usersList = isPopulated ? c.users : (c.userDetails || []);
 
       const otherUser = usersList.find(

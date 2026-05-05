@@ -90,6 +90,8 @@ router.get('/:connectionId', auth, validate({ params: connectionIdParamSchema })
       .select('_id text imageUrl sender createdAt isRead') // ✅ fixed
       .sort({ createdAt: 1 }) // ✅ fixed
       .limit(100)
+      .hint({ connectionId: 1, createdAt: 1 }) // 🔥 FORCE INDEX
+      .maxTimeMS(3000) // 🛡️ FAST TIMEOUT FOR CHAT
       .lean();
 
     const userIdStr = req.userId.toString();
