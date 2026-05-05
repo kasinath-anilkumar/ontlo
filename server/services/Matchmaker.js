@@ -145,7 +145,8 @@ class Matchmaker {
               }
             }
 
-            const isWildcard = Math.random() < 0.10;
+            // Increased to 100% for testing to ensure you match!
+            const isWildcard = true;
             let distance = null;
 
             if (u1.coordinates && u2.coordinates) {
