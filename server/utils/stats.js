@@ -9,7 +9,7 @@ const countCache = new Map();
 const onlineCache = new Map();
 const pendingCounts = new Map();
 const pendingOnline = new Map();
-const CACHE_TTL = 2000; // 2 seconds cache
+const CACHE_TTL = 5000; // 5 seconds cache
 
 /**
  * Calculates unread counts and connection stats for a user

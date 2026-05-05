@@ -13,7 +13,8 @@ const ConnectionSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Ensure unique pairs
+// Optimize connection list and matchmaking queries
+ConnectionSchema.index({ users: 1, status: 1 });
 ConnectionSchema.index({ users: 1 }, { unique: true });
 
 module.exports = mongoose.model('Connection', ConnectionSchema);

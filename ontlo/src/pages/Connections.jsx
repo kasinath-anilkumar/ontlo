@@ -32,11 +32,9 @@ const Connections = () => {
 
     if (socket) {
       const handleUpdate = () => fetchConnections();
-      socket.on('counts-update', handleUpdate);
       socket.on('new-match', handleUpdate); // Refresh when a new match happens
       
       return () => {
-        socket.off('counts-update', handleUpdate);
         socket.off('new-match', handleUpdate);
       };
     }

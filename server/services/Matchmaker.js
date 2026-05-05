@@ -354,20 +354,23 @@ class Matchmaker {
 
     // Use userId for comparison as it's more stable than socketId
     if (match.user1Id && match.user1Id.toString() === userId.toString()) {
-      this.userToMatch.delete(match.user1);
-      match.user1 = socketId;
-      this.userToMatch.set(socketId, roomId);
+      if (match.user1 !== socketId) {
+        this.userToMatch.delete(match.user1);
+        match.user1 = socketId;
+        this.userToMatch.set(socketId, roomId);
+      }
       match.user1Connected = true;
     } else if (match.user2Id && match.user2Id.toString() === userId.toString()) {
-      this.userToMatch.delete(match.user2);
-      match.user2 = socketId;
-      this.userToMatch.set(socketId, roomId);
+      if (match.user2 !== socketId) {
+        this.userToMatch.delete(match.user2);
+        match.user2 = socketId;
+        this.userToMatch.set(socketId, roomId);
+      }
       match.user2Connected = true;
     }
 
     if (match.user1Connected && match.user2Connected) {
       try {
-        // Sort IDs to ensure consistent [A, B] order regardless of who connected first
         const sortedUsers = [match.user1Id.toString(), match.user2Id.toString()].sort();
         
         let existing = await Connection.findOne({ users: { $all: sortedUsers } });
@@ -377,7 +380,9 @@ class Matchmaker {
         }
         io.to(roomId).emit('connection-established');
         return sortedUsers;
-      } catch (err) { console.error(err); }
+      } catch (err) { 
+        console.error('[Matchmaker Register Connection Error]:', err); 
+      }
     }
     return null;
   }

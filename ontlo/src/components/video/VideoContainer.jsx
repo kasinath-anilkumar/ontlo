@@ -34,6 +34,8 @@ const VideoContainer = () => {
   const [peerIsPrivate, setPeerIsPrivate] = useState(false);
   const [remoteUser, setRemoteUser] = useState(null);
   const [showChat, setShowChat] = useState(false);
+  const showChatRef = useRef(false);
+  useEffect(() => { showChatRef.current = showChat; }, [showChat]);
   const [chatMessages, setChatMessages] = useState([]);
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [showConnectRequest, setShowConnectRequest] = useState(false);
@@ -41,7 +43,6 @@ const VideoContainer = () => {
   const connectionStatusRef = useRef(null);
   useEffect(() => { connectionStatusRef.current = connectionStatus; }, [connectionStatus]);
   const [callDuration, setCallDuration] = useState(0);
-  const [showConnectButton, setShowConnectButton] = useState(false);
   const [safetyBlurTimer, setSafetyBlurTimer] = useState(0);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState(null);
@@ -133,18 +134,15 @@ const VideoContainer = () => {
       interval = setInterval(() => {
         connectTimer += 1;
         setCallDuration(prev => prev + 1);
-        if (connectTimer === 10 && !showConnectButton) setShowConnectButton(true);
         setSafetyBlurTimer(prev => {
           if (prev === 1) setIsBlurred(false);
           return prev > 0 ? prev - 1 : 0;
         });
         setCuriosityBlurTimer(prev => (prev > 0 ? prev - 1 : 0));
       }, 1000);
-    } else {
-      setCallDuration(0);
     }
     return () => clearInterval(interval);
-  }, [inCall, showConnectButton]);
+  }, [inCall]);
 
   // ── Draggable Local Video Logic ──
   const handleDragStart = (e) => {
@@ -285,9 +283,21 @@ const VideoContainer = () => {
 
     const onMatchFound = async ({ roomId: rId, role, remoteUserId: remoteId, icebreaker: prompt, isWildcard: wildcardFlag }) => {
       if (peerConnectionRef.current) endCallLocally(false);
-      roomIdRef.current = rId; setInCall(true); setIsBlurred(true); setSafetyBlurTimer(3);
-      setShowConnectRequest(false); setConnectionStatus(null); setChatMessages([]); setHasNewMessage(false);
-      setIsMatching(false); setIcebreaker(prompt); setIsWildcard(wildcardFlag); setCuriosityBlurTimer(30);
+      roomIdRef.current = rId; 
+      
+      // IMMEDIATE SAFETY BLUR
+      setInCall(true); 
+      setIsBlurred(true); 
+      setSafetyBlurTimer(3); 
+      
+      setShowConnectRequest(false); 
+      setConnectionStatus(null); 
+      setChatMessages([]); 
+      setHasNewMessage(false);
+      setIsMatching(false); 
+      setIcebreaker(prompt); 
+      setIsWildcard(wildcardFlag); 
+      setCuriosityBlurTimer(30);
       if (navigator.vibrate) navigator.vibrate(100);
 
       const pc = createPeerConnection(rId); peerConnectionRef.current = pc;
@@ -375,7 +385,10 @@ const VideoContainer = () => {
       }
     };
 
-    const onChatMessage = (msg) => { setChatMessages(prev => [...prev, { ...msg, type: "remote" }]); setHasNewMessage(true); };
+    const onChatMessage = (msg) => { 
+      setChatMessages(prev => [...prev, { ...msg, type: "remote" }]); 
+      if (!showChatRef.current) setHasNewMessage(true); 
+    };
     const onPeerWantsConnection = () => {
       if (connectionStatusRef.current !== 'sent' && connectionStatusRef.current !== 'accepted') {
         setShowConnectRequest(true);
@@ -523,8 +536,31 @@ const VideoContainer = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex-1 relative rounded-3xl overflow-hidden bg-black shadow-2xl">
-                    <video ref={remoteVideoRef} autoPlay playsInline style={{ filter: (isBlurred || peerIsPrivate) ? "blur(60px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px)` : "none" }} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 z-10" />
+                  <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#05070A] shadow-2xl group">
+                    <video 
+                      ref={remoteVideoRef} 
+                      autoPlay 
+                      playsInline 
+                      style={{ filter: (isBlurred || peerIsPrivate || safetyBlurTimer > 0) ? "blur(80px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px)` : "none" }} 
+                      className="absolute inset-0 w-full h-full object-cover transition-all duration-[2000ms] ease-in-out z-10" 
+                    />
+
+                    {/* Safety Blur UI Overlay */}
+                    {safetyBlurTimer > 0 && (
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md px-8 text-center animate-in fade-in zoom-in duration-700">
+                        <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-8 border border-white/10 relative">
+                          <div className="absolute inset-0 bg-purple-500/20 rounded-full animate-ping" />
+                          <Shield className="w-10 h-10 text-white relative z-10" />
+                        </div>
+                        <h2 className="text-white text-2xl font-black uppercase tracking-tighter mb-3 italic">Safety Verification</h2>
+                        <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.3em] max-w-[280px] leading-relaxed mb-6">
+                          Ensuring a safe environment for everyone. Full visibility will return in:
+                        </p>
+                        <div className="px-8 py-3 bg-white/5 border border-white/10 rounded-2xl">
+                          <span className="text-white text-3xl font-black italic tracking-widest">{safetyBlurTimer}s</span>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-30">
                       <div className="flex flex-col gap-2">
@@ -575,13 +611,37 @@ const VideoContainer = () => {
                         <button onClick={toggleCamera} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${cameraEnabled ? "bg-black/40 backdrop-blur-md border border-white/10 text-white" : "bg-red-500 text-white"}`}><Camera className="w-4 h-4" /></button>
                       </div>
                       <div className="flex gap-2">
-                        {showConnectButton && connectionStatus !== 'accepted' && (
-                          <button onClick={connectUser} className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-tr from-purple-600 to-pink-600 text-white shadow-lg`}>
-                            <Heart className={`w-4 h-4 ${connectionStatus === 'sent' ? 'animate-pulse' : ''}`} />
+                        {connectionStatus !== 'accepted' && (
+                          <button 
+                            onClick={callDuration >= 10 ? connectUser : null} 
+                            disabled={callDuration < 10}
+                            className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                              callDuration < 10 
+                                ? 'bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed' 
+                                : 'bg-gradient-to-tr from-purple-600 to-pink-600 text-white shadow-lg hover:scale-110 active:scale-95'
+                            }`}
+                          >
+                            {callDuration < 10 ? (
+                              <>
+                                <Lock className="w-3.5 h-3.5" />
+                                <span className="absolute -bottom-1 -right-1 bg-black text-[7px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white/10">
+                                  {10 - callDuration}
+                                </span>
+                              </>
+                            ) : (
+                              <Heart className={`w-4 h-4 ${connectionStatus === 'sent' ? 'animate-pulse' : ''}`} />
+                            )}
                           </button>
                         )}
                         <button onClick={skipMatch} className="bg-white text-black px-6 h-10 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-2">Next <RefreshCw className="w-3 h-3" /></button>
-                        <button onClick={toggleChat} className={`w-10 h-10 rounded-full flex items-center justify-center ${showChat ? 'bg-purple-600 text-white' : 'bg-black/40 backdrop-blur-md border border-white/10 text-white'}`}><MessageSquare className="w-4 h-4" /></button>
+                        <button onClick={toggleChat} className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all ${showChat ? 'bg-purple-600 text-white' : 'bg-black/40 backdrop-blur-md border border-white/10 text-white hover:bg-white/10'}`}>
+                          <MessageSquare className="w-4 h-4" />
+                          {hasNewMessage && !showChat && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-[#0B0E14] animate-bounce shadow-[0_0_10px_rgba(239,68,68,0.5)] flex items-center justify-center">
+                              <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+                            </span>
+                          )}
+                        </button>
                       </div>
                     </div>
 
@@ -600,16 +660,9 @@ const VideoContainer = () => {
               </div>
 
               <div className={`absolute top-0 bottom-0 right-0 z-[110] transition-all duration-500 overflow-hidden bg-[#0B0E14] border-l border-[#1e293b] flex flex-col ${showChat ? 'w-full sm:w-[380px] translate-x-0' : 'w-0 translate-x-full'}`}>
-                <div className="h-20 flex items-center justify-between px-6 border-b border-[#1e293b] shrink-0">
-                  <div className="flex items-center gap-3">
-                    <MessageSquare className="w-5 h-5 text-purple-500" />
-                    <h2 className="text-base font-black text-white uppercase tracking-tighter">Live Chat</h2>
-                  </div>
-                  <button onClick={toggleChat} className="w-10 h-10 flex items-center justify-center bg-white/5 rounded-xl text-gray-500"><X className="w-5 h-5" /></button>
-                </div>
-                <div className="flex-1 overflow-hidden relative flex flex-col p-4">
-                  <div className="flex-1 overflow-hidden rounded-3xl relative bg-[#05070A] border border-[#1e293b]">
-                    <ChatPanel onClose={() => { }} remoteUser={remoteUser} roomId={roomIdRef.current} persistedMessages={chatMessages} onSendMessage={(msg) => setChatMessages(prev => [...prev, msg])} />
+                <div className="flex-1 overflow-hidden relative flex flex-col">
+                  <div className="flex-1 overflow-hidden relative bg-[#0B0E14]">
+                    <ChatPanel onClose={toggleChat} remoteUser={remoteUser} roomId={roomIdRef.current} persistedMessages={chatMessages} onSendMessage={(msg) => setChatMessages(prev => [...prev, msg])} />
                   </div>
                 </div>
               </div>

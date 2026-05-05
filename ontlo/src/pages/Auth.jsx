@@ -210,6 +210,7 @@ const Auth = () => {
                     type="text" 
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
                     className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] pl-12 pr-5 py-3.5 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all font-bold text-xs placeholder:text-gray-700"
                     placeholder="e.g. cyber_punk"
                     required
@@ -230,6 +231,7 @@ const Auth = () => {
                     type={showPassword ? "text" : "password"} 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    autoComplete={isLogin ? "current-password" : "new-password"}
                     className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] pl-12 pr-12 py-3.5 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all font-bold text-xs placeholder:text-gray-700"
                     placeholder="••••••••"
                     required

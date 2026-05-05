@@ -85,26 +85,14 @@ router.delete('/:id', auth, validate({ params: connectionIdParamSchema }), async
   }
 });
 
-// Get only online connections
+// Get only online connections (Optimized with caching)
 router.get('/online', auth, async (req, res) => {
   try {
-    const connections = await Connection.find({ 
-      users: req.userId, 
-      status: { $in: ['active', 'matched'] } 
-    })
-      .populate('users', 'username profilePic onlineStatus')
-      .limit(20)
-      .lean();
-
-    const onlineOnes = connections
-      .map(c => {
-        const otherUser = c.users.find(u => u && u._id.toString() !== req.userId);
-        return otherUser && otherUser.onlineStatus ? { id: c._id, user: otherUser } : null;
-      })
-      .filter(u => u);
-
+    const { getOnlineConnections } = require('../utils/stats');
+    const onlineOnes = await getOnlineConnections(req.userId);
     res.json(onlineOnes);
   } catch (error) {
+    console.error('[Online Connections Error]:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });

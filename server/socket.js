@@ -238,6 +238,13 @@ module.exports = (io) => {
       if (users) {
         for (const uId of users) {
           const otherUserId = users.find(id => id.toString() !== uId.toString());
+          
+          // Notify the frontend to refresh lists (Dashboard/Connections)
+          io.to(`user_${uId}`).emit('new-match', { 
+            roomId, 
+            otherUserId 
+          });
+
           await Notification.create({
             user: uId,
             type: 'match',

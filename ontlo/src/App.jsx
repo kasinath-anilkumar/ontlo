@@ -26,13 +26,21 @@ const PageLoader = () => (
 );
 
 const ProtectedRoute = ({ children, requiresProfile = true }) => {
-  const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+  const { user, isInitialLoad } = useSocket();
   
-  if (!storedUser) {
+  if (isInitialLoad) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-[#0B0E14]">
+        <div className="w-10 h-10 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+  
+  if (!user) {
     return <Navigate to="/auth" replace />;
   }
   
-  if (requiresProfile && !storedUser.isProfileComplete) {
+  if (requiresProfile && !user.isProfileComplete) {
     return <Navigate to="/onboarding" replace />;
   }
   

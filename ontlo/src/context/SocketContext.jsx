@@ -39,10 +39,8 @@ export const SocketProvider = ({ children }) => {
     
     const initAppData = async () => {
       const token = localStorage.getItem('token');
-      if (!token) {
-        setUser(null);
-        return;
-      }
+      // If no token, we still try once to see if we have a session cookie
+      // The ProtectedRoute will wait for this check to finish.
 
       isFetchingRef.current = true;
       try {
