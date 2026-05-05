@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { SocketProvider } from "./context/SocketContext";
+import { SocketProvider, useSocket } from "./context/SocketContext";
 import { Loader2 } from "lucide-react";
 import { lazyWithRetry as lazy } from "./utils/lazyRetry";
 
