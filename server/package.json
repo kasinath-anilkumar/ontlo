@@ -31,7 +31,6 @@
     "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
     "socket.io": "^4.8.3",
-    "uuid": "^9.0.1",
     "winston": "^3.19.0",
     "xss-clean": "^0.1.4",
     "zod": "^4.4.2"

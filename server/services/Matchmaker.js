@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const User = require('../models/User');
 const { checkUserBehavior } = require('../utils/abuseDetector');
 const cacheUtil = require('../utils/cache');
@@ -206,7 +206,7 @@ class Matchmaker {
         logger.info(`[Matchmaker] Match decided! Score: ${bestMatch.score}`);
         const user2 = this.queue.splice(bestMatch.user2Index, 1)[0];
         const user1 = this.queue.splice(bestMatch.user1Index, 1)[0];
-        const roomId = uuidv4();
+        const roomId = crypto.randomUUID();
         
         let commonInterests = [];
         if (user1.interests && user2.interests) {
