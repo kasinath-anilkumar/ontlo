@@ -4,6 +4,7 @@ export const API_URL = import.meta.env.VITE_API_URL ||
     : window.location.origin);
 
 const pendingRequests = new Map();
+let refreshPromise = null;
 
 export const apiFetch = async (url, options = {}) => {
   // 1. Deduplicate concurrent identical requests
@@ -38,20 +39,31 @@ export const apiFetch = async (url, options = {}) => {
       
       if (response.status === 401 && !isAuthRequest) {
         console.warn('[Auth] Token expired, attempting silent refresh...');
-        const refreshRes = await fetch(`${API_URL}/api/auth/refresh-token`, {
-          method: 'POST',
-          credentials: 'include'
-        });
+        
+        // Synchronize multiple refresh attempts
+        if (!refreshPromise) {
+          refreshPromise = fetch(`${API_URL}/api/auth/refresh-token`, {
+            method: 'POST',
+            credentials: 'include'
+          }).then(async res => {
+            if (res.ok) {
+              const data = await res.json();
+              if (data.token) {
+                localStorage.setItem("token", data.token);
+                return data.token;
+              }
+            }
+            throw new Error('Refresh failed');
+          }).finally(() => {
+            refreshPromise = null;
+          });
+        }
 
-        if (refreshRes.ok) {
-          const data = await refreshRes.json();
-          if (data.token) {
-            localStorage.setItem("token", data.token);
-            config.headers['Authorization'] = `Bearer ${data.token}`;
-            // Retry the original request with the new token
-            response = await fetch(url, config);
-          }
-        } else {
+        try {
+          const newToken = await refreshPromise;
+          config.headers['Authorization'] = `Bearer ${newToken}`;
+          response = await fetch(url, config);
+        } catch (err) {
           // Refresh failed, clear session
           localStorage.removeItem('user');
           localStorage.removeItem('token');

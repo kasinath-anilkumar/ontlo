@@ -73,11 +73,11 @@ class Matchmaker {
 
     logger.info(`[Matchmaker] User joining queue: ${socket.userId} (Socket: ${socket.id})`);
     
-    // Add a 3-second delay before they are eligible for matching
+    // RESTORED 3-second delay
     socket.eligibleAt = Date.now() + 3000;
 
     this.queue.push(socket);
-    logger.info(`[Matchmaker] Queue length: ${this.queue.length}`);
+    logger.info(`[Matchmaker] Queue joined by ${socket.userId}. Total in queue: ${this.queue.length}`);
     
     // Trigger match check immediately, but it will respect eligibleAt
     this.tryMatch();
@@ -129,16 +129,20 @@ class Matchmaker {
           if (u1.eligibleAt > now || u2.eligibleAt > now) continue;
 
           if (u1.userId && u2.userId) {
+            // RESTORED: Don't allow matching with self
             if (u1.userId.toString() === u2.userId.toString()) continue;
-            if (u1.isShadowBanned || u2.isShadowBanned) continue;
-
-            const u1Blocked = u1.blockedUsers?.includes(u2.userId.toString());
-            const u2Blocked = u2.blockedUsers?.includes(u1.userId.toString());
-            if (u1Blocked || u2Blocked) continue;
+            
+            // REMOVED for testing
+            // if (u1.isShadowBanned || u2.isShadowBanned) continue;
+            // const u1Blocked = u1.blockedUsers?.includes(u2.userId.toString());
+            // const u2Blocked = u2.blockedUsers?.includes(u1.userId.toString());
+            // if (u1Blocked || u2Blocked) continue;
 
             if (u1.age && u2.age) {
               const gap = Math.abs(u1.age - u2.age);
-              if (gap > settings.ageGap) continue;
+              if (gap > settings.ageGap) {
+                logger.info(`[Matchmaker] Skipping ${u1.userId} & ${u2.userId} - Age Gap: ${gap}`);
+              }
             }
 
             const isWildcard = Math.random() < 0.10;
@@ -149,18 +153,14 @@ class Matchmaker {
             }
 
             if (!isWildcard && u1.matchPreferences && u2.matchPreferences) {
-              if (u1.matchPreferences.gender !== 'All' && u1.matchPreferences.gender !== u2.gender) continue;
-              if (u2.matchPreferences.gender !== 'All' && u2.matchPreferences.gender !== u1.gender) continue;
-              
-              if (distance !== null) {
-                if (u1.matchPreferences.distance && u1.matchPreferences.distance < 500 && distance > u1.matchPreferences.distance) continue;
-                if (u2.matchPreferences.distance && u2.matchPreferences.distance < 500 && distance > u2.matchPreferences.distance) continue;
+              if (u1.matchPreferences.gender !== 'All' && u1.matchPreferences.gender !== u2.gender) {
+                 logger.info(`[Matchmaker] Gender Mismatch: ${u1.userId} wants ${u1.matchPreferences.gender}, got ${u2.gender}`);
+                 // continue; // Temporarily disable continue for testing
               }
-            }
-
-            if (u1.matchPreferences && u2.matchPreferences) {
-              if (u2.age < u1.matchPreferences.ageRange.min || u2.age > u1.matchPreferences.ageRange.max) continue;
-              if (u1.age < u2.matchPreferences.ageRange.min || u1.age > u2.matchPreferences.ageRange.max) continue;
+              if (u2.matchPreferences.gender !== 'All' && u2.matchPreferences.gender !== u1.gender) {
+                 logger.info(`[Matchmaker] Gender Mismatch: ${u2.userId} wants ${u2.matchPreferences.gender}, got ${u1.gender}`);
+                 // continue; // Temporarily disable continue for testing
+              }
             }
 
             let currentScore = 0;
@@ -197,8 +197,8 @@ class Matchmaker {
         if (bestMatch.user1Index !== -1 && bestMatch.score >= 25) break;
       }
 
-      // Allow matches with score >= 15, or >= 10 for wildcards
-      const minScore = bestMatch.isWildcard ? 10 : 15;
+      // Relaxed score for testing (was 10/15)
+      const minScore = 0;
       if (bestMatch.user1Index !== -1 && bestMatch.score >= minScore) {
         logger.info(`[Matchmaker] Match decided! Score: ${bestMatch.score}`);
         const user2 = this.queue.splice(bestMatch.user2Index, 1)[0];

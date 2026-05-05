@@ -288,6 +288,7 @@ const VideoContainer = () => {
     };
 
     const onMatchFound = async ({ roomId: rId, role, remoteUserId: remoteId, icebreaker: prompt, isWildcard: wildcardFlag }) => {
+      console.log('[MatchFound] Match event received!', { rId, role, remoteId });
       if (peerConnectionRef.current) endCallLocally(false);
       roomIdRef.current = rId; 
       

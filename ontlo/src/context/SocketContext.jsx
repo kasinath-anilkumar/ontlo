@@ -44,24 +44,26 @@ export const SocketProvider = ({ children }) => {
 
       isFetchingRef.current = true;
       try {
-        const [meRes, countsRes, onlineRes] = await Promise.all([
-          apiFetch(`${API_URL}/api/auth/me`),
-          apiFetch(`${API_URL}/api/notifications/counts`),
-          apiFetch(`${API_URL}/api/connections/online`)
-        ]);
-
-        const [meData, countsData, onlineData] = await Promise.all([
-          meRes.ok ? meRes.json() : null,
-          countsRes.ok ? countsRes.json() : null,
-          onlineRes.ok ? onlineRes.json() : null
-        ]);
-
-        if (meData) {
+        const meRes = await apiFetch(`${API_URL}/api/auth/me`);
+        
+        if (meRes.ok) {
+          const meData = await meRes.json();
           setUser(meData);
           localStorage.setItem('user', JSON.stringify(meData));
+
+          // Only fetch secondary data if authenticated
+          const [countsRes, onlineRes] = await Promise.all([
+            apiFetch(`${API_URL}/api/notifications/counts`),
+            apiFetch(`${API_URL}/api/connections/online`)
+          ]);
+
+          if (countsRes.ok) setCounts(await countsRes.json());
+          if (onlineRes.ok) setOnlineUsers(await onlineRes.json());
+        } else if (meRes.status === 401) {
+          setUser(null);
+          localStorage.removeItem('user');
+          localStorage.removeItem('token');
         }
-        if (countsData) setCounts(countsData);
-        if (onlineData) setOnlineUsers(onlineData);
       } catch (err) {
         console.error("Initial app data fetch failed", err);
       } finally {
@@ -71,6 +73,18 @@ export const SocketProvider = ({ children }) => {
     };
 
     initAppData();
+
+    const handleAuthExpired = () => {
+      setUser(null);
+      setSocket(prev => {
+        if (prev) prev.disconnect();
+        return null;
+      });
+    };
+    window.addEventListener('auth-expired', handleAuthExpired);
+    return () => {
+      window.removeEventListener('auth-expired', handleAuthExpired);
+    };
   }, []);
 
   // 2. Real-time Socket Updates
