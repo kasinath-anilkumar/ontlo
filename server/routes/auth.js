@@ -267,7 +267,8 @@ router.post('/login', validate({ body: loginSchema }), async (req, res) => {
     const user = await User.findOne({ username });
     if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
-    // Check if account is locked
+    // Account locking disabled for early development
+/*
     if (user.isLocked) {
       await logActivity({
         userId: user._id,
@@ -279,13 +280,14 @@ router.post('/login', validate({ body: loginSchema }), async (req, res) => {
         error: 'Account is temporarily locked due to repeated failed login attempts. Please try again later.' 
       });
     }
+*/
 
     const isMatch = await bcrypt.compare(password, user.password);
     
     if (!isMatch) {
-      const monitor = require('../utils/monitor');
-      monitor.trackFailedLogin();
-      await user.incLoginAttempts();
+      // const monitor = require('../utils/monitor');
+      // monitor.trackFailedLogin();
+      // await user.incLoginAttempts();
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 

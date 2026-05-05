@@ -36,7 +36,8 @@ const adminAuth = (roles = ['admin', 'superadmin']) => {
         return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
       }
 
-      // IP Restriction Check
+      // IP Restriction Check - DISABLED
+      /*
       const config = await AppConfig.findOne();
       if (config && config.allowedAdminIPs && config.allowedAdminIPs.length > 0) {
         const clientIp = req.ip || req.connection.remoteAddress;
@@ -49,6 +50,7 @@ const adminAuth = (roles = ['admin', 'superadmin']) => {
           return res.status(403).json({ error: 'Forbidden: Access restricted to authorized IP ranges' });
         }
       }
+      */
 
       req.user = user;
       next();

@@ -39,27 +39,9 @@ const allowedOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '')
   .filter(Boolean);
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-
-    const isAllowed = allowedOrigins.length === 0 || 
-                     allowedOrigins.includes(origin) ||
-                     origin.endsWith('.vercel.app') || 
-                     origin.endsWith('.onrender.com') ||
-                     origin.includes('localhost') ||
-                     origin.includes('127.0.0.1');
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      // Instead of an error, just return false so cors middleware handles it
-      callback(null, false);
-    }
-  },
+  origin: true, // Allow all origins
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
-  preflightContinue: false,
   optionsSuccessStatus: 204
 };
 
@@ -69,23 +51,8 @@ const io = new Server(server, {
   pingTimeout: 60000,
 });
 
-// Security: Rate Limiting
-const rateLimit = require('express-rate-limit');
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per windowMs
-  message: { error: 'Too many login attempts, please try again after 15 minutes' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 2000, // Increased from 200 to 2000 to prevent blocking legitimate polling
-  message: { error: 'Too many requests, please try again after 15 minutes' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Security: Rate Limiting disabled for early development as requested
+// const rateLimit = require('express-rate-limit');
 
 const cspDirectives = {
   defaultSrc: "'self'",
@@ -123,17 +90,12 @@ app.use((req, res, next) => {
 
 app.use(cors(corsOptions));
 
-// Only use security headers in production, disable compression as it's too heavy for free tier
-if (isProduction) {
-  app.use(helmet({
-    contentSecurityPolicy: {
-      useDefaults: false,
-      directives: cspDirectives
-    }
-  }));
-} else {
-  app.use(helmet({ contentSecurityPolicy: false }));
-}
+// Only use security headers in production, but keep it relaxed
+app.use(helmet({
+  contentSecurityPolicy: false, // Disabled CSP as it blocks various browsers/devices
+  crossOriginResourcePolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -149,22 +111,24 @@ app.use((req, res, next) => {
 
 app.use(monitor.requestMonitor);
 
+/* 
 app.use((req, res, next) => {
   if (isProduction && req.headers['x-forwarded-proto'] !== 'https') {
     return res.redirect(`https://${req.get('host')}${req.url}`);
   }
   next();
 });
+*/
 
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-// Apply rate limits
-app.use('/api/', apiLimiter); // General rate limit for all API routes
-app.use('/api/auth/login', authLimiter); // Stricter rate limit for login
-app.use('/api/auth/register', authLimiter); // Stricter rate limit for registration
+// Apply rate limits - DISABLED
+// app.use('/api/', apiLimiter); 
+// app.use('/api/auth/login', authLimiter);
+// app.use('/api/auth/register', authLimiter);
 
 // Routes
 app.get('/', (req, res) => res.send('Ontlo API is running...'));
