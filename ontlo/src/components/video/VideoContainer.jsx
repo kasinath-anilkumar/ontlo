@@ -180,6 +180,12 @@ const VideoContainer = () => {
     };
   }, [isDraggingState, handleDragMove, handleDragEnd]);
 
+  const startMatching = useCallback(() => {
+    if (!socket || !user) return;
+    setIsMatching(true);
+    socket.emit("join-queue", { userId: user?.id || user?._id });
+  }, [socket, user]);
+
   // ── Cleanup Logic ──
   const endCallLocally = useCallback((shouldAutoRejoin = true) => {
     if (cleaningUpRef.current) return;
@@ -429,7 +435,6 @@ const VideoContainer = () => {
   }, [socket, createPeerConnection, endCallLocally, user]);
 
   // ── Actions ──
-  const startMatching = () => { if (socket && cameraReady) { setIsMatching(true); socket.emit("join-queue", { userId: user?.id }); } };
   const skipMatch = () => { if (navigator.vibrate) navigator.vibrate(50); endCallLocally(true); };
   const connectUser = () => { if (socket && roomIdRef.current && user) { socket.emit("action-connect", { roomId: roomIdRef.current, userId: user.id }); setConnectionStatus("sent"); } };
   const acceptConnection = () => { if (socket && roomIdRef.current && user) { socket.emit("action-connect", { roomId: roomIdRef.current, userId: user.id }); setShowConnectRequest(false); setConnectionStatus("accepted"); } };
