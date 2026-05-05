@@ -37,7 +37,15 @@ router.get('/', auth, async (req, res) => {
       .limit(30)
       .lean();
 
-    // 🔥 MANUAL POPULATE (Safest & Fastest Fallback)
+    // 1. Normalize all notifications (handle legacy string fromUser)
+    notifications.forEach(n => {
+      if (n.fromUser && (typeof n.fromUser === 'string' || mongoose.Types.ObjectId.isValid(n.fromUser))) {
+        const id = n.fromUser;
+        n.fromUser = { _id: id, username: 'User', profilePic: '' };
+      }
+    });
+
+    // 2. Identify missing profile data
     const missingUserIds = notifications
       .filter(n => n.fromUser && n.fromUser._id && !n.fromUser.profilePic)
       .map(n => n.fromUser._id);
@@ -52,12 +60,13 @@ router.get('/', auth, async (req, res) => {
       });
     }
 
+    // 3. Merge data
     const formatted = notifications.map(n => {
       if (n.fromUser && n.fromUser._id) {
-        const userId = n.fromUser._id.toString();
-        if (userMap[userId]) {
-          n.fromUser.username = userMap[userId].username;
-          n.fromUser.profilePic = userMap[userId].profilePic;
+        const userIdStr = n.fromUser._id.toString();
+        if (userMap[userIdStr]) {
+          n.fromUser.username = userMap[userIdStr].username || n.fromUser.username;
+          n.fromUser.profilePic = userMap[userIdStr].profilePic || n.fromUser.profilePic;
         }
       }
       return n;
