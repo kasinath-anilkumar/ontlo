@@ -38,7 +38,21 @@ const allowedOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '')
   .filter(Boolean);
 
 const corsOptions = {
-  origin: true, // Allow all origins
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = allowedOrigins.some(ao => origin.includes(ao)) || 
+                      origin.includes('vercel.app') || 
+                      origin.includes('localhost') || 
+                      origin.includes('127.0.0.1');
+                      
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Fallback to allow all for now to "lower security" as requested
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
   optionsSuccessStatus: 204

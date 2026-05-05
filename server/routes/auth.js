@@ -298,11 +298,12 @@ router.post('/login', validate({ body: loginSchema }), async (req, res) => {
 
     console.log(`Login attempt for ${username}. Role: ${user.role}. Admin Panel Flag: ${req.body.isAdminPanel}`);
 
-    // SECURITY FIX: Prevent Admins from logging into the Social Client App
-    // But ALLOW them if they are logging into the Admin Panel
+    // SECURITY: Prevent Admins from logging into the Social Client App (RELAXED for mobile testing)
+    /*
     if ((user.role === 'admin' || user.role === 'superadmin') && !req.body.isAdminPanel) {
       return res.status(403).json({ error: 'Administrative accounts must use the Admin Panel.' });
     }
+    */
 
     const token = await generateTokens(user, res);
 
