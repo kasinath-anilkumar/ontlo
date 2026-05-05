@@ -33,27 +33,40 @@ router.get('/', auth, async (req, res) => {
     const start = Date.now();
 
     const notifications = await Notification.find({ user: req.userId })
-      .populate('fromUser._id', 'username profilePic') // Fallback for live data
       .sort({ createdAt: -1 })
       .limit(30)
       .lean();
 
-    const duration = Date.now() - start;
+    // 🔥 MANUAL POPULATE (Safest & Fastest Fallback)
+    const missingUserIds = notifications
+      .filter(n => n.fromUser && n.fromUser._id && !n.fromUser.profilePic)
+      .map(n => n.fromUser._id);
 
-    if (duration > 100) {
-      console.log(`[NOTIFY] Fetch took ${duration}ms, count: ${notifications.length}`);
+    let userMap = {};
+    if (missingUserIds.length > 0) {
+      const users = await User.find({ _id: { $in: missingUserIds } })
+        .select('username profilePic')
+        .lean();
+      users.forEach(u => {
+        userMap[u._id.toString()] = u;
+      });
     }
 
-    // Map to ensure frontend gets a flat object structure if populated
     const formatted = notifications.map(n => {
-      if (n.fromUser && n.fromUser._id && typeof n.fromUser._id === 'object') {
-        // Data was populated
-        n.fromUser.username = n.fromUser._id.username || n.fromUser.username;
-        n.fromUser.profilePic = n.fromUser._id.profilePic || n.fromUser.profilePic;
-        n.fromUser._id = n.fromUser._id._id;
+      if (n.fromUser && n.fromUser._id) {
+        const userId = n.fromUser._id.toString();
+        if (userMap[userId]) {
+          n.fromUser.username = userMap[userId].username;
+          n.fromUser.profilePic = userMap[userId].profilePic;
+        }
       }
       return n;
     });
+
+    const duration = Date.now() - start;
+    if (duration > 500) {
+      console.warn(`[NOTIFY SLOW] Fetch took ${duration}ms`);
+    }
 
     res.json(formatted);
 
