@@ -379,7 +379,8 @@ class Matchmaker {
           const newConnection = new Connection({ users: sortedUsers });
           await newConnection.save();
         }
-        io.to(roomId).emit('connection-established');
+        io.to(match.user1).emit('connection-established');
+        io.to(match.user2).emit('connection-established');
         return sortedUsers;
       } catch (err) { 
         console.error('[Matchmaker Register Connection Error]:', err); 

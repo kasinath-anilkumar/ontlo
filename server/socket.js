@@ -244,7 +244,13 @@ module.exports = (io) => {
 
     socket.on('action-connect', async ({ roomId }) => {
       if (!socket.userId) return;
-      socket.to(roomId).emit('peer-wants-connection');
+      
+      const match = matchmaker.activeMatches.get(roomId);
+      if (match) {
+        const otherSocketId = match.user1 === socket.id ? match.user2 : match.user1;
+        if (otherSocketId) io.to(otherSocketId).emit('peer-wants-connection');
+      }
+      
       const users = await matchmaker.registerConnection(roomId, socket.id, socket.userId, io);
       if (users) {
         for (const uId of users) {
