@@ -16,7 +16,8 @@ router.get('/', auth, async (req, res) => {
       users: req.userId,
       status: 'active'
     })
-      .select('userDetails lastMessage createdAt updatedAt status') // 🔥 important
+      .select('users userDetails lastMessage createdAt updatedAt status') // 🔥 include users
+      .populate('users', 'username profilePic onlineStatus')
       .sort({ updatedAt: -1 })
       .limit(20)
       .lean();
@@ -24,7 +25,9 @@ router.get('/', auth, async (req, res) => {
     const userIdStr = req.userId.toString();
 
     const formatted = connections.map((c) => {
-      const otherUser = c.userDetails?.find(
+      // Fallback to populated users if userDetails is empty (legacy connections)
+      const usersList = (c.userDetails && c.userDetails.length > 0) ? c.userDetails : c.users;
+      const otherUser = usersList?.find(
         (u) => u && u._id.toString() !== userIdStr
       );
 
@@ -35,7 +38,7 @@ router.get('/', auth, async (req, res) => {
         createdAt: c.createdAt,
         lastMessage: c.lastMessage || null
       };
-    });
+    }).filter(c => c.user !== null); // 🔥 filter out ghost connections
 
     res.json(formatted);
 
