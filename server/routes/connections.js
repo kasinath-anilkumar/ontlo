@@ -9,23 +9,23 @@ const validate = require('../middleware/validate');
 const { connectionIdParamSchema } = require('../validators/connection.validator');
 
 
-// 🔥 GET connections (ZERO JOIN VERSION)
+// 🔥 GET connections (FINAL OPTIMIZED)
 router.get('/', auth, async (req, res) => {
   try {
     const connections = await Connection.find({
       users: req.userId,
-      status: { $in: ['active', 'matched'] }
+      status: 'active'
     })
+      .select('userDetails lastMessage createdAt updatedAt status') // 🔥 important
       .sort({ updatedAt: -1 })
       .limit(20)
-      .populate('users', 'username profilePic onlineStatus')
       .lean();
 
+    const userIdStr = req.userId.toString();
+
     const formatted = connections.map((c) => {
-      // Use populated live users array (more reliable for onlineStatus and existing connections)
-      const usersList = c.users || c.userDetails || [];
-      const otherUser = usersList.find(
-        (u) => u && u._id.toString() !== req.userId
+      const otherUser = c.userDetails?.find(
+        (u) => u && u._id.toString() !== userIdStr
       );
 
       return {
@@ -44,47 +44,3 @@ router.get('/', auth, async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
-
-
-// 🔥 DELETE connection
-router.delete(
-  '/:id',
-  auth,
-  validate({ params: connectionIdParamSchema }),
-  async (req, res) => {
-    try {
-      const connection = await Connection.findOne({
-        _id: req.params.id,
-        users: req.userId
-      });
-
-      if (!connection) {
-        return res.status(404).json({ error: 'Connection not found' });
-      }
-
-      await Connection.deleteOne({ _id: req.params.id });
-
-      res.json({ message: 'Connection removed' });
-
-    } catch (error) {
-      res.status(500).json({ error: 'Server error' });
-    }
-  }
-);
-
-
-// 🔥 ONLINE connections (keep your optimized logic)
-router.get('/online', auth, async (req, res) => {
-  try {
-    const { getOnlineConnections } = require('../utils/stats');
-    const onlineOnes = await getOnlineConnections(req.userId);
-
-    res.json(onlineOnes);
-
-  } catch (error) {
-    console.error('[Online Connections Error]:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-module.exports = router;

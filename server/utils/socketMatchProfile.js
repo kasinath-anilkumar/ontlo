@@ -7,7 +7,7 @@ async function attachMatchmakingProfile(socket) {
   if (!socket.userId) return null;
   const user = await User.findById(socket.userId)
     .select(
-      'role age gender interests location matchPreferences coordinates blockedUsers isShadowBanned isPremium lastBoostedAt onlineStatus'
+      'username profilePic role age gender interests location matchPreferences coordinates blockedUsers isShadowBanned isPremium lastBoostedAt onlineStatus'
     )
     .lean();
   if (!user) return null;
