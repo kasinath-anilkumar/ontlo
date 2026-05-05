@@ -5,6 +5,8 @@ const router = express.Router();
 
 const auth = require('../middleware/auth');
 const Notification = require('../models/Notification');
+const User = require('../models/User');
+const mongoose = require('mongoose');
 
 // Health check
 router.get('/health/check', (req, res) => {
