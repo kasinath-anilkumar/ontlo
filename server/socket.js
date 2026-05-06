@@ -961,12 +961,57 @@ module.exports = (io) => {
             });
 
             if (existingLike) {
-              // It's a match! The acceptance logic in interactions.js will handle the full creation,
-              // but for the live UI, we can signal success.
-              io.to(roomId).emit('connection-established');
+              // It's a mutual match! Create the formal connection.
+              const Connection = require('./models/Connection');
+              const User = require('./models/User');
+
+              const sortedIds = [socket.userId.toString(), targetUserId.toString()].sort();
+              const pairKey = sortedIds.join('_');
+
+              const existingConn = await Connection.findOne({ pairKey });
+
+              if (!existingConn) {
+                const targetUserFull = await User.findById(targetUserId).select('username profilePic onlineStatus').lean();
+                const currentUserFull = await User.findById(socket.userId).select('username profilePic onlineStatus').lean();
+
+                if (targetUserFull && currentUserFull) {
+                  await Connection.create({
+                    users: [socket.userId, targetUserId],
+                    pairKey,
+                    userDetails: [
+                      {
+                        _id: currentUserFull._id,
+                        username: currentUserFull.username,
+                        profilePic: currentUserFull.profilePic,
+                        onlineStatus: currentUserFull.onlineStatus
+                      },
+                      {
+                        _id: targetUserFull._id,
+                        username: targetUserFull.username,
+                        profilePic: targetUserFull.profilePic,
+                        onlineStatus: targetUserFull.onlineStatus
+                      }
+                    ]
+                  });
+
+                  // Cleanup likes
+                  await Like.deleteMany({
+                    $or: [
+                      { fromUser: socket.userId, toUser: targetUserId },
+                      { fromUser: targetUserId, toUser: socket.userId }
+                    ]
+                  });
+
+                  // Notify both clients of the new active connection
+                  io.to(roomId).emit('connection-established');
+                  io.to(`user_${targetUserId}`).emit('counts-delta', { connections: 1 });
+                  io.to(`user_${socket.userId}`).emit('counts-delta', { connections: 1 });
+                  return; // Stop here, no need to create another Like
+                }
+              }
             }
 
-            // Create/Update the like record
+            // If not mutual yet, create/update the like record
             await Like.findOneAndUpdate(
               { fromUser: socket.userId, toUser: targetUserId },
               { isRead: false },

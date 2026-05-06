@@ -56,6 +56,20 @@ const Messages = () => {
     );
   }, [connections, searchQuery]);
 
+  const acceptConnection = async (userId) => {
+    try {
+      const { apiFetch, API_URL } = await import("../utils/api");
+      const response = await apiFetch(`${API_URL}/api/interactions/accept/${userId}`, {
+        method: "POST"
+      });
+      if (response.ok) {
+        fetchConnections();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="absolute inset-0 flex bg-transparent overflow-hidden">
       <div className="absolute top-0 left-0 w-64 h-64 bg-purple-600/5 blur-[100px] pointer-events-none"></div>
@@ -105,8 +119,8 @@ const Messages = () => {
             filteredConnections.map((conn) => (
               <div 
                 key={conn.id} 
-                onClick={() => setSelectedConnection(conn)}
-                className={`p-4 mx-2 rounded-2xl cursor-pointer transition-all flex items-center justify-between group ${selectedConnection?.id === conn.id ? 'bg-[#151923] shadow-lg border border-[#1e293b]/50' : 'hover:bg-[#151923]/40'}`}
+                onClick={() => conn.status !== 'pending' && setSelectedConnection(conn)}
+                className={`p-4 mx-2 rounded-2xl transition-all flex items-center justify-between group ${selectedConnection?.id === conn.id ? 'bg-[#151923] shadow-lg border border-[#1e293b]/50' : (conn.status === 'pending' ? 'bg-purple-500/5 cursor-default' : 'hover:bg-[#151923]/40 cursor-pointer')}`}
               >
                 <div className="flex items-center gap-4">
                   <div className="relative">
@@ -129,11 +143,18 @@ const Messages = () => {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  {counts.perChat?.[conn.id] > 0 && selectedConnection?.id !== conn.id && (
+                  {conn.status === 'pending' ? (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); acceptConnection(conn.user._id); }}
+                      className="px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+                    >
+                      Accept
+                    </button>
+                  ) : counts.perChat?.[conn.id] > 0 && selectedConnection?.id !== conn.id ? (
                     <span className="bg-pink-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-pink-500/20 animate-pulse">
                       {counts.perChat[conn.id]}
                     </span>
-                  )}
+                  ) : null}
                 </div>
               </div>
             ))
