@@ -324,7 +324,54 @@ class Matchmaker {
             continue;
           }
 
+          // ======================================================
+          // WILDCARD MATCHING (10% PROBABILITY)
+          // Bypasses Region/Gender filters (Doc Section 17.1.1)
+          // ======================================================
+
+          const isWildcard =
+            Math.random() < 0.1;
+
           let score = 0;
+
+          if (isWildcard) {
+
+            score += 100; // Force match
+
+          } else {
+
+            // Same location
+            if (
+              u1.location &&
+              u2.location &&
+              u1.location === u2.location
+            ) {
+
+              score += 15;
+            }
+
+            // Distance
+            const distance =
+              this.getDistance(
+
+                u1.coordinates?.[1],
+                u1.coordinates?.[0],
+
+                u2.coordinates?.[1],
+                u2.coordinates?.[0]
+              );
+
+            if (distance < 50) {
+
+              score += 40;
+
+            } else if (
+              distance < 200
+            ) {
+
+              score += 20;
+            }
+          }
 
           // Interests
           const commonInterests =
@@ -337,38 +384,6 @@ class Matchmaker {
 
           score +=
             commonInterests.length * 10;
-
-          // Same location
-          if (
-            u1.location &&
-            u2.location &&
-            u1.location === u2.location
-          ) {
-
-            score += 15;
-          }
-
-          // Distance
-          const distance =
-            this.getDistance(
-
-              u1.coordinates?.[1],
-              u1.coordinates?.[0],
-
-              u2.coordinates?.[1],
-              u2.coordinates?.[0]
-            );
-
-          if (distance < 50) {
-
-            score += 40;
-
-          } else if (
-            distance < 200
-          ) {
-
-            score += 20;
-          }
 
           // Age gap
           if (
@@ -487,12 +502,34 @@ class Matchmaker {
       user1.join(roomId);
       user2.join(roomId);
 
+      // ======================================================
+      // CONTEXTUAL ICEBREAKERS (Doc Section 17.3)
+      // ======================================================
+
+      const commonInterests = (user1.interests || []).filter(
+        interest => (user2.interests || []).includes(interest)
+      );
+
+      let icebreaker = "Say hi and start the conversation!";
+
+      if (commonInterests.length > 0) {
+
+        const topic =
+          commonInterests[
+            Math.floor(Math.random() * commonInterests.length)
+          ];
+
+        icebreaker =
+          `You both like ${topic}! What's your favorite thing about it?`;
+      }
+
       // Emit
       user1.emit(
         'match-found',
         {
           roomId,
           role: 'caller',
+          icebreaker,
           remoteUserId:
             user2.userId
         }
@@ -503,6 +540,7 @@ class Matchmaker {
         {
           roomId,
           role: 'receiver',
+          icebreaker,
           remoteUserId:
             user1.userId
         }

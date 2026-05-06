@@ -757,6 +757,115 @@ module.exports = (io) => {
 
 
         // ======================================================
+        // MATCHMAKING QUEUE
+        // ======================================================
+
+        socket.on(
+          'join-queue',
+
+          () => {
+
+            matchmaker.joinQueue(
+              socket
+            );
+          }
+        );
+
+        socket.on(
+          'leave-queue',
+
+          () => {
+
+            matchmaker.leaveQueue(
+              socket.id
+            );
+          }
+        );
+
+
+
+        // ======================================================
+        // SKIP MATCH
+        // ======================================================
+
+        socket.on(
+          'skip-match',
+
+          () => {
+
+            matchmaker.skipMatch(
+              socket.id,
+              io
+            );
+          }
+        );
+
+
+
+        // ======================================================
+        // WEBRTC SIGNALING
+        // ======================================================
+
+        socket.on(
+          'webrtc-offer',
+
+          ({
+            roomId,
+            offer
+          }) => {
+
+            socket
+              .to(roomId)
+              .emit(
+                'webrtc-offer',
+                {
+                  offer
+                }
+              );
+          }
+        );
+
+        socket.on(
+          'webrtc-answer',
+
+          ({
+            roomId,
+            answer
+          }) => {
+
+            socket
+              .to(roomId)
+              .emit(
+                'webrtc-answer',
+                {
+                  answer
+                }
+              );
+          }
+        );
+
+        socket.on(
+          'webrtc-ice-candidate',
+
+          ({
+            roomId,
+            candidate
+          }) => {
+
+            socket
+              .to(roomId)
+              .emit(
+                'webrtc-ice-candidate',
+                {
+                  candidate
+                }
+              );
+          }
+        );
+
+
+
+        // ======================================================
         // MESSAGE READ
         // ======================================================
 

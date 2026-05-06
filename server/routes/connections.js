@@ -235,4 +235,88 @@ router.get('/online', auth, async (req, res) => {
 
 
 
+// ======================================================
+// PING / WAVE (Doc Section 17.4)
+// ======================================================
+
+router.post(
+  '/:id/ping',
+  auth,
+  validate({
+    params: connectionIdParamSchema
+  }),
+  async (req, res) => {
+
+    try {
+
+      const connection = await Connection.findOne({
+        _id: req.params.id,
+        users: req.userId,
+        status: 'active'
+      }).lean();
+
+      if (!connection) {
+        return res.status(404).json({
+          error: 'Connection not found'
+        });
+      }
+
+      const recipientId = connection.users.find(
+        (u) => u.toString() !== req.userId.toString()
+      );
+
+      const sender = await User.findById(req.userId)
+        .select('username profilePic')
+        .lean();
+
+      // Create Notification
+      const Notification = require('../models/Notification');
+      await Notification.create({
+        user: recipientId,
+        type: 'ping',
+        content: `${sender.username} waved at you! 👋`,
+        fromUser: {
+          _id: sender._id,
+          username: sender.username,
+          profilePic: sender.profilePic
+        },
+        relatedId: connection._id
+      });
+
+      // Socket Event
+      if (req.io) {
+        req.io
+          .to(`user_${recipientId}`)
+          .emit('new-notification', {
+            type: 'ping',
+            content: `${sender.username} waved at you! 👋`,
+            fromUser: {
+              _id: sender._id,
+              username: sender.username,
+              profilePic: sender.profilePic
+            },
+            connectionId: connection._id
+          });
+      }
+
+      res.json({
+        message: 'Ping sent successfully'
+      });
+
+    } catch (error) {
+
+      console.error(
+        '[PING ERROR]:',
+        error
+      );
+
+      res.status(500).json({
+        error: 'Server error'
+      });
+    }
+  }
+);
+
+
+
 module.exports = router;

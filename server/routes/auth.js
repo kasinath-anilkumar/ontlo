@@ -16,6 +16,9 @@ const validate =
 const auth =
   require('../middleware/auth');
 
+const rateLimit =
+  require('express-rate-limit');
+
 const {
   JWT_SECRET,
   JWT_REFRESH_SECRET
@@ -47,6 +50,34 @@ const ACCESS_EXPIRES =
 
 const REFRESH_EXPIRES =
   '7d';
+
+
+
+// ======================================================
+// RATE LIMITERS
+// ======================================================
+
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: {
+    error:
+      'Too many login attempts, please try again later'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const registerRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: {
+    error:
+      'Too many registrations from this IP'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 
 
@@ -130,7 +161,10 @@ const generateTokens =
           refreshTokens: {
 
             $each: [
-              refreshToken
+              {
+                token:
+                  refreshToken
+              }
             ],
 
             $slice: -10
@@ -591,6 +625,8 @@ router.post(
 router.post(
   '/register',
 
+  registerRateLimit,
+
   validate({
     body:
       registerSchema
@@ -880,6 +916,8 @@ router.post(
 router.post(
   '/login',
 
+  loginRateLimit,
+
   validate({
     body:
       loginSchema
@@ -958,6 +996,15 @@ router.post(
       // PASSWORD
       // ======================================================
 
+      if (user.isLocked) {
+
+        return res.status(403).json({
+
+          error:
+            'Account is temporarily locked. Please try again later.'
+        });
+      }
+
       const match =
         await bcrypt.compare(
 
@@ -968,11 +1015,38 @@ router.post(
 
       if (!match) {
 
+        await user.incLoginAttempts();
+
         return res.status(401).json({
 
           error:
             'Invalid credentials'
         });
+      }
+
+      // ======================================================
+      // RESET ATTEMPTS
+      // ======================================================
+
+      if (
+        user.loginAttempts > 0 ||
+        user.lockUntil
+      ) {
+
+        await User.updateOne(
+          {
+            _id: user._id
+          },
+          {
+            $set: {
+              loginAttempts: 0
+            },
+
+            $unset: {
+              lockUntil: 1
+            }
+          }
+        );
       }
 
       // ======================================================
