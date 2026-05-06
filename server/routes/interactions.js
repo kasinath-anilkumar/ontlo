@@ -376,20 +376,24 @@ router.post(
             'new-like',
 
             {
-
               fromUser: {
-
-                _id:
-                  currentUser?._id,
-
-                username:
-                  currentUser?.username,
-
-                profilePic:
-                  currentUser?.profilePic
+                _id: currentUser?._id,
+                username: currentUser?.username,
+                profilePic: currentUser?.profilePic
               }
             }
           );
+
+        // 🔥 Standard notification event for toasts
+        req.io.to(`user_${targetUserId}`).emit('new-notification', {
+          type: 'like',
+          content: `${currentUser?.username || 'Someone'} sent you a connection request`,
+          fromUser: {
+            _id: currentUser?._id,
+            username: currentUser?.username,
+            profilePic: currentUser?.profilePic
+          }
+        });
 
         req.io
           .to(
@@ -400,10 +404,7 @@ router.post(
             'counts-delta',
 
             {
-
-              notifications: 1,
-
-              likes: 1
+              connections: 1
             }
           );
       }
@@ -566,6 +567,17 @@ router.post(
 
           req.io.to(`user_${targetUserId}`).emit('new-match', {
             user: {
+              _id: currentUserFull._id,
+              username: currentUserFull.username,
+              profilePic: currentUserFull.profilePic
+            }
+          });
+
+          // 🔥 Standard notification event for toasts
+          req.io.to(`user_${targetUserId}`).emit('new-notification', {
+            type: 'match',
+            content: `Connection request accepted! You matched with ${currentUserFull.username}!`,
+            fromUser: {
               _id: currentUserFull._id,
               username: currentUserFull.username,
               profilePic: currentUserFull.profilePic

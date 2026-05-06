@@ -57,6 +57,20 @@ const Connections = () => {
     setActiveMenu(null);
   };
 
+  const acceptConnection = async (id, e) => {
+    e.stopPropagation();
+    try {
+      const response = await apiFetch(`${API_URL}/api/interactions/accept/${id}`, {
+        method: "POST"
+      });
+      if (response.ok) {
+        fetchConnections();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const blockUser = async (userId, connectionId, e) => {
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to block this user? They will be removed from your connections.")) return;
@@ -107,8 +121,8 @@ const Connections = () => {
         {connections.map((conn) => (
           <div 
             key={conn.id} 
-            onClick={() => navigate("/messages", { state: { selectId: conn.id } })}
-            className="p-4 mx-2 rounded-2xl hover:bg-[#151923] cursor-pointer transition flex items-center justify-between group border border-transparent hover:border-[#1e293b]/30"
+            onClick={() => conn.status !== 'pending' && navigate("/messages", { state: { selectId: conn.id } })}
+            className={`p-4 mx-2 rounded-2xl hover:bg-[#151923] transition flex items-center justify-between group border border-transparent hover:border-[#1e293b]/30 ${conn.status === 'pending' ? 'bg-purple-500/5' : 'cursor-pointer'}`}
           >
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -125,19 +139,35 @@ const Connections = () => {
               </div>
               <div>
                 <h3 className="text-white font-black uppercase tracking-tight mb-0.5">{conn.user.username}</h3>
-                <span className={`text-[10px] font-bold uppercase tracking-widest ${conn.user.onlineStatus ? 'text-green-500' : 'text-gray-500'}`}>
-                  {conn.user.onlineStatus ? "Online now" : "Offline"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-bold uppercase tracking-widest ${conn.user.onlineStatus ? 'text-green-500' : 'text-gray-500'}`}>
+                    {conn.user.onlineStatus ? "Online now" : "Offline"}
+                  </span>
+                  {conn.status === 'pending' && (
+                    <span className="px-1.5 py-0.5 rounded bg-pink-500/10 text-pink-500 text-[8px] font-black uppercase tracking-tighter border border-pink-500/20">
+                      Request
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <button 
-                onClick={(e) => { e.stopPropagation(); navigate("/messages", { state: { selectId: conn.id } }); }}
-                className="p-3 rounded-full bg-[#151923] text-purple-400 hover:scale-110 transition-transform shadow-lg border border-[#1e293b]/50"
-              >
-                 <MessageSquare className="w-5 h-5" />
-              </button>
+              {conn.status === 'pending' ? (
+                <button 
+                  onClick={(e) => acceptConnection(conn.user._id, e)}
+                  className="px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-purple-500/20 active:scale-95"
+                >
+                  Accept
+                </button>
+              ) : (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); navigate("/messages", { state: { selectId: conn.id } }); }}
+                  className="p-3 rounded-full bg-[#151923] text-purple-400 hover:scale-110 transition-transform shadow-lg border border-[#1e293b]/50"
+                >
+                   <MessageSquare className="w-5 h-5" />
+                </button>
+              )}
               
               <div className="relative">
                 <button 

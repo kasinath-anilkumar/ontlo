@@ -123,8 +123,8 @@ const Messages = () => {
                   </div>
                   <div className="overflow-hidden">
                     <h3 className="text-white font-black mb-0.5 truncate uppercase tracking-tight">{conn.user.username}</h3>
-                    <p className={`text-xs truncate w-40 ${selectedConnection?.id === conn.id ? 'text-purple-400 font-bold' : 'text-gray-500 font-medium'}`}>
-                      {conn.user.onlineStatus ? 'Active now' : 'Tap to message'}
+                    <p className={`text-xs truncate w-40 ${selectedConnection?.id === conn.id ? 'text-purple-400 font-bold' : (conn.status === 'pending' ? 'text-pink-500 font-bold' : 'text-gray-500 font-medium')}`}>
+                      {conn.status === 'pending' ? 'New connection request' : (conn.user.onlineStatus ? 'Active now' : 'Tap to message')}
                     </p>
                   </div>
                 </div>

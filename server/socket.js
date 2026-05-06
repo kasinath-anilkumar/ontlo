@@ -737,6 +737,11 @@ module.exports = (io) => {
                     }
                   }
                 );
+
+                // 🔥 Update unread badge counts
+                io.to(`user_${recipientId}`).emit('counts-delta', {
+                  messages: 1
+                });
               }
 
             } catch (error) {
@@ -923,6 +928,63 @@ module.exports = (io) => {
         );
 
 
+
+        // ======================================================
+        // IN-CALL ACTIONS (Doc Section 17.2)
+        // ======================================================
+
+        socket.on('action-connect', async ({ roomId, userId }) => {
+          try {
+            if (!roomId || !socket.userId) return;
+
+            // 1. Get match info
+            const match = matchmaker.activeMatches.get(roomId);
+            if (!match) return;
+
+            // 2. Find target user
+            const targetUserId = match.user1Id.toString() === socket.userId.toString()
+              ? match.user2Id
+              : match.user1Id;
+
+            if (!targetUserId) return;
+
+            // 3. Emit real-time popup to the peer
+            socket.to(roomId).emit('peer-wants-connection');
+
+            // 4. Persistence
+            const Like = require('./models/Like');
+            
+            // Check if already liked (mutual)
+            const existingLike = await Like.findOne({
+              fromUser: targetUserId,
+              toUser: socket.userId
+            });
+
+            if (existingLike) {
+              // It's a match! The acceptance logic in interactions.js will handle the full creation,
+              // but for the live UI, we can signal success.
+              io.to(roomId).emit('connection-established');
+            }
+
+            // Create/Update the like record
+            await Like.findOneAndUpdate(
+              { fromUser: socket.userId, toUser: targetUserId },
+              { isRead: false },
+              { upsert: true, new: true }
+            );
+
+          } catch (error) {
+            console.error('[ACTION-CONNECT ERROR]:', error);
+          }
+        });
+
+        socket.on('action-skip', () => {
+          try {
+            matchmaker.skipMatch(socket.id, io, 'skipped');
+          } catch (error) {
+            console.error('[ACTION-SKIP ERROR]:', error);
+          }
+        });
 
         // ======================================================
         // DISCONNECT

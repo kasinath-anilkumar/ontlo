@@ -256,7 +256,7 @@ const getUserCounts = async (
             notifications,
 
             connections:
-              connectionIds.length,
+              connectionIds.length + likes,
 
             likes,
 
