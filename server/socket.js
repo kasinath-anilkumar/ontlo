@@ -481,15 +481,29 @@ module.exports = (io) => {
             try {
 
               // ======================================================
-              // ROOM CHECK
+              // CONNECTION & MEMBERSHIP CHECK
               // ======================================================
 
+              const connection =
+                await Connection.findById(
+                  roomId,
+                  'users userDetails'
+                ).lean();
+
               if (
-                !socket.rooms.has(
-                  roomId
+                !connection ||
+                !connection.users.some(
+                  (u) =>
+                    u.toString() ===
+                    socket.userId.toString()
                 )
               ) {
                 return;
+              }
+
+              // Auto-join if not in room (failsafe)
+              if (!socket.rooms.has(roomId)) {
+                socket.join(roomId);
               }
 
               // ======================================================
@@ -519,25 +533,6 @@ module.exports = (io) => {
 
               const timestamp =
                 new Date();
-
-              // ======================================================
-              // CONNECTION
-              // ======================================================
-
-              const connection =
-                await Connection.findById(
-
-                  roomId,
-
-                  `
-                  users
-                  userDetails
-                  `
-                ).lean();
-
-              if (!connection) {
-                return;
-              }
 
               // ======================================================
               // CREATE MESSAGE

@@ -349,9 +349,10 @@ router.get(
             imageUrl:
               m.imageUrl || null,
 
-            sender: isSelf
-              ? 'You'
-              : 'Remote',
+            sender:
+              m.sender,
+
+            isSelf,
 
             senderInfo:
               m.senderInfo || null,
