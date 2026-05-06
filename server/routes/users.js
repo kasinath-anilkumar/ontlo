@@ -564,17 +564,32 @@ router.post('/block/:id', auth, async (req, res) => {
     );
 
     // ======================================================
-    // REMOVE CONNECTION
+    // REMOVE CONNECTION AND DATA
     // ======================================================
 
-    await Connection.deleteMany({
+    const connectionsToRemove = await Connection.find({
       users: {
         $all: [
           req.userId,
           req.params.id
         ]
       }
-    });
+    }).select('_id').lean();
+
+    const connectionIds = connectionsToRemove.map(c => c._id);
+
+    if (connectionIds.length > 0) {
+      // 1. Delete Connections
+      await Connection.deleteMany({ _id: { $in: connectionIds } });
+
+      // 2. Delete Messages
+      const Message = require('../models/Message');
+      await Message.deleteMany({ connectionId: { $in: connectionIds } });
+
+      // 3. Delete Notifications
+      const Notification = require('../models/Notification');
+      await Notification.deleteMany({ relatedId: { $in: connectionIds } });
+    }
 
     res.json({
       success: true
@@ -643,6 +658,98 @@ router.post('/unblock/:id', auth, async (req, res) => {
   }
 });
 
+// ======================================================
+// DELETE ACCOUNT
+// ======================================================
 
+router.delete('/account', auth, async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    // 1. Find User
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // 2. Cleanup associated data
+    const Connection = require('../models/Connection');
+    const Like = require('../models/Like');
+    const Message = require('../models/Message');
+    const Notification = require('../models/Notification');
+    const SupportTicket = require('../models/SupportTicket');
+
+    // Delete connections
+    await Connection.deleteMany({ users: userId });
+
+    // Delete likes/requests involving user
+    await Like.deleteMany({
+      $or: [{ fromUser: userId }, { toUser: userId }]
+    });
+
+    // Delete messages sent by user
+    await Message.deleteMany({ sender: userId });
+
+    // Delete notifications for or from user
+    await Notification.deleteMany({
+      $or: [{ user: userId }, { 'fromUser._id': userId }]
+    });
+
+    // Delete support tickets
+    await SupportTicket.deleteMany({ user: userId });
+
+    // 3. Delete the user
+    await User.findByIdAndDelete(userId);
+
+    // 4. Force disconnect socket
+    if (req.io) {
+      req.io.to(`user_${userId}`).emit('force-logout');
+    }
+
+    res.json({ success: true, message: 'Account permanently deleted' });
+
+  } catch (error) {
+    console.error('[DELETE ACCOUNT ERROR]:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
+
+// ======================================================
+// EXPORT DATA
+// ======================================================
+
+router.get('/export', auth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const user = await User.findById(userId).lean();
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const Connection = require('../models/Connection');
+    const Message = require('../models/Message');
+
+    const connections = await Connection.find({ users: userId }).lean();
+    const messages = await Message.find({ sender: userId }).lean();
+
+    const exportData = {
+      profile: user,
+      connections: connections,
+      messagesSent: messages,
+      exportedAt: new Date().toISOString()
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="ontlo_my_data.json"');
+    
+    res.send(JSON.stringify(exportData, null, 2));
+
+  } catch (error) {
+    console.error('[EXPORT DATA ERROR]:', error);
+    res.status(500).json({ error: 'Failed to export data' });
+  }
+});
 
 module.exports = router;

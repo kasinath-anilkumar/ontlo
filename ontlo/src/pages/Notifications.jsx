@@ -125,8 +125,10 @@ const Notifications = () => {
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border transition-all
                   ${n.isRead ? 'bg-white/5 border-white/5' : 'bg-purple-500/20 border-purple-500/30'}
                 `}>
-                  {n.fromUser ? (
+                  {n.fromUser && n.fromUser.profilePic ? (
                     <img src={n.fromUser.profilePic} className="w-full h-full rounded-2xl object-cover" alt="" />
+                  ) : n.fromUser ? (
+                    <User className="w-5 h-5 text-gray-400" />
                   ) : getIcon(n.type)}
                 </div>
 
@@ -142,6 +144,9 @@ const Notifications = () => {
                           n.type === 'alert' || n.type === 'security' || n.type === 'safety' ? 'Security Alert' :
                             n.type === 'info' || n.type === 'system' ? 'System Info' : n.type}
                       </span>
+                      {n.fromUser && n.fromUser.username && n.fromUser.username !== 'User' && (
+                        <span className="text-[10px] font-black text-gray-300 uppercase tracking-tight ml-1">{n.fromUser.username}</span>
+                      )}
                     </div>
                     <span className="text-[9px] text-gray-500 font-bold uppercase tracking-tight">{formatTime(n.createdAt)}</span>
                   </div>

@@ -250,6 +250,14 @@ router.delete(
         await Like.deleteOne({ _id: req.params.id });
       } else {
         await Connection.deleteOne({ _id: req.params.id });
+        
+        // Cleanup orphaned messages
+        const Message = require('../models/Message');
+        await Message.deleteMany({ connectionId: req.params.id });
+        
+        // Cleanup orphaned notifications
+        const Notification = require('../models/Notification');
+        await Notification.deleteMany({ relatedId: req.params.id });
       }
 
       // ======================================================
