@@ -9,8 +9,7 @@ const MessageSchema = new mongoose.Schema(
     connectionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Connection',
-      required: true,
-      index: true
+      required: true
     },
 
     // ======================================================
@@ -20,8 +19,7 @@ const MessageSchema = new mongoose.Schema(
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
-      index: true
+      required: true
     },
 
     // ======================================================

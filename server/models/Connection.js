@@ -21,9 +21,7 @@ const ConnectionSchema = new mongoose.Schema(
 
     pairKey: {
       type: String,
-      unique: true,
-      required: true,
-      index: true
+      required: true
     },
 
     // ======================================================
