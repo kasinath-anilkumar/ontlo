@@ -140,13 +140,11 @@ ConnectionSchema.index({
 // PRE VALIDATION
 // ======================================================
 
-ConnectionSchema.pre('validate', function (next) {
+ConnectionSchema.pre('validate', async function () {
 
   // Must contain exactly 2 users
   if (this.users.length !== 2) {
-    return next(
-      new Error('Connection must contain exactly 2 users')
-    );
+    throw new Error('Connection must contain exactly 2 users');
   }
 
   // Prevent self connection
@@ -154,9 +152,7 @@ ConnectionSchema.pre('validate', function (next) {
     this.users[0].toString() ===
     this.users[1].toString()
   ) {
-    return next(
-      new Error('Users cannot connect to themselves')
-    );
+    throw new Error('Users cannot connect to themselves');
   }
 
   // Stable ordering
@@ -170,8 +166,6 @@ ConnectionSchema.pre('validate', function (next) {
 
   // Generate stable pair key
   this.pairKey = sortedUsers.join('_');
-
-  next();
 });
 
 
