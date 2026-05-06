@@ -93,6 +93,37 @@ router.get('/', auth, async (req, res) => {
       })
       .filter(Boolean);
 
+    // ======================================================
+    // FETCH PENDING REQUESTS (Doc Section 17.5)
+    // ======================================================
+
+    const Like = require('../models/Like');
+
+    const matchRequests = await Like.find({
+      toUser: req.userId
+    })
+      .populate('fromUser', 'username profilePic onlineStatus')
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    const requestFormatted = matchRequests.map((r) => {
+      if (!r.fromUser) return null;
+
+      return {
+        id: r._id,
+        user: {
+          _id: r.fromUser._id,
+          username: r.fromUser.username || 'User',
+          profilePic: r.fromUser.profilePic || '',
+          onlineStatus: r.fromUser.onlineStatus || 'offline'
+        },
+        status: 'pending',
+        createdAt: r.createdAt,
+        updatedAt: r.createdAt
+      };
+    }).filter(Boolean);
+
     const duration = Date.now() - start;
 
     if (duration > 500) {
@@ -101,7 +132,39 @@ router.get('/', auth, async (req, res) => {
       );
     }
 
-    res.json(formatted);
+    // Merge and return
+    res.json([
+      ...requestFormatted,
+      ...formatted
+    ]);
+
+    // ======================================================
+    // ASYNC MARK READ
+    // ======================================================
+
+    if (matchRequests.length > 0) {
+
+      const unreadIds = matchRequests
+        .filter(r => !r.isRead)
+        .map(r => r._id);
+
+      if (unreadIds.length > 0) {
+
+        Like.updateMany(
+          {
+            _id: { $in: unreadIds }
+          },
+          {
+            $set: {
+              isRead: true,
+              readAt: new Date()
+            }
+          }
+        ).catch(err => {
+          console.error('[MARK LIKES READ ERROR]:', err);
+        });
+      }
+    }
 
   } catch (error) {
 
