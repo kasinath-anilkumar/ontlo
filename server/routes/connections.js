@@ -210,19 +210,34 @@ router.delete(
       }
 
       // ======================================================
-      // FIND CONNECTION
+      // FIND CONNECTION OR LIKE
       // ======================================================
 
-      const connection = await Connection.findOne({
+      let connection = await Connection.findOne({
         _id: req.params.id,
         users: req.userId
       })
         .select('_id')
         .lean();
 
+      let isLike = false;
+
+      if (!connection) {
+        // Check if it's a pending Like request instead
+        const Like = require('../models/Like');
+        connection = await Like.findOne({
+          _id: req.params.id,
+          toUser: req.userId
+        }).select('_id').lean();
+        
+        if (connection) {
+          isLike = true;
+        }
+      }
+
       if (!connection) {
         return res.status(404).json({
-          error: 'Connection not found'
+          error: 'Connection or request not found'
         });
       }
 
@@ -230,20 +245,31 @@ router.delete(
       // DELETE
       // ======================================================
 
-      await Connection.deleteOne({
-        _id: req.params.id
-      });
+      if (isLike) {
+        const Like = require('../models/Like');
+        await Like.deleteOne({ _id: req.params.id });
+      } else {
+        await Connection.deleteOne({ _id: req.params.id });
+      }
 
       // ======================================================
       // SOCKET UPDATE
       // ======================================================
 
       if (req.io) {
-        req.io
-          .to(`user_${req.userId}`)
-          .emit('connection-deleted', {
-            connectionId: req.params.id
-          });
+        if (isLike) {
+          req.io
+            .to(`user_${req.userId}`)
+            .emit('counts-delta', {
+              connections: -1
+            });
+        } else {
+          req.io
+            .to(`user_${req.userId}`)
+            .emit('connection-deleted', {
+              connectionId: req.params.id
+            });
+        }
       }
 
       res.json({
