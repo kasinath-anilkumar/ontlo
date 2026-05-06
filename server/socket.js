@@ -1002,10 +1002,43 @@ module.exports = (io) => {
                     ]
                   });
 
+                  // 🔥 Create persistent Notification in DB
+                  const Notification = require('./models/Notification');
+                  await Notification.create([
+                    {
+                      user: targetUserId,
+                      type: 'match',
+                      content: `You matched with ${currentUserFull.username}!`,
+                      fromUser: {
+                        _id: currentUserFull._id,
+                        username: currentUserFull.username,
+                        profilePic: currentUserFull.profilePic
+                      },
+                      relatedId: existingConn ? existingConn._id : null
+                    },
+                    {
+                      user: socket.userId,
+                      type: 'match',
+                      content: `You matched with ${targetUserFull.username}!`,
+                      fromUser: {
+                        _id: targetUserFull._id,
+                        username: targetUserFull.username,
+                        profilePic: targetUserFull.profilePic
+                      },
+                      relatedId: existingConn ? existingConn._id : null
+                    }
+                  ]);
+
                   // Notify both clients of the new active connection
                   io.to(roomId).emit('connection-established');
-                  io.to(`user_${targetUserId}`).emit('counts-delta', { connections: 1 });
-                  io.to(`user_${socket.userId}`).emit('counts-delta', { connections: 1 });
+                  io.to(`user_${targetUserId}`).emit('counts-delta', { connections: 1, notifications: 1 });
+                  io.to(`user_${socket.userId}`).emit('counts-delta', { connections: 1, notifications: 1 });
+                  
+                  io.to(`user_${targetUserId}`).emit('new-notification', {
+                    type: 'match',
+                    content: `You matched with ${currentUserFull.username}!`,
+                    fromUser: currentUserFull
+                  });
                   return; // Stop here, no need to create another Like
                 }
               }

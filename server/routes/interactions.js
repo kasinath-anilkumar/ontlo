@@ -558,14 +558,15 @@ router.post(
             profilePic: currentUserFull.profilePic
           }
         }).catch(() => {});
-
         // ======================================================
         // REALTIME
         // ======================================================
 
         if (req.io) {
 
+          // 🔥 Standard notification event for toasts
           req.io.to(`user_${targetUserId}`).emit('new-match', {
+            connectionId: newConn._id,
             user: {
               _id: currentUserFull._id,
               username: currentUserFull.username,
@@ -573,7 +574,45 @@ router.post(
             }
           });
 
-          // 🔥 Standard notification event for toasts
+          // 🔥 Create persistent Notification in DB
+          const Notification = require('../models/Notification');
+          await Notification.create([
+            {
+              user: targetUserId,
+              type: 'match',
+              content: `You matched with ${currentUserFull.username}!`,
+              fromUser: {
+                _id: currentUserFull._id,
+                username: currentUserFull.username,
+                profilePic: currentUserFull.profilePic
+              },
+              relatedId: newConn._id
+            },
+            {
+              user: req.userId,
+              type: 'match',
+              content: `You matched with ${targetUserFull.username}!`,
+              fromUser: {
+                _id: targetUserFull._id,
+                username: targetUserFull.username,
+                profilePic: targetUserFull.profilePic
+              },
+              relatedId: newConn._id
+            }
+          ]);
+
+          // 🔥 Update unread badge counts
+          req.io.to(`user_${targetUserId}`).emit('counts-delta', {
+            connections: 1,
+            notifications: 1
+          });
+          
+          req.io.to(`user_${req.userId}`).emit('counts-delta', {
+            connections: 1,
+            notifications: 1
+          });
+
+          // Standard notification event for toasts
           req.io.to(`user_${targetUserId}`).emit('new-notification', {
             type: 'match',
             content: `Connection request accepted! You matched with ${currentUserFull.username}!`,
@@ -582,11 +621,6 @@ router.post(
               username: currentUserFull.username,
               profilePic: currentUserFull.profilePic
             }
-          });
-
-          // 🔥 Update unread badge counts
-          req.io.to(`user_${targetUserId}`).emit('counts-delta', {
-            connections: 1
           });
         }
       }
