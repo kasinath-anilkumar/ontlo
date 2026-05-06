@@ -1,45 +1,163 @@
 const express = require('express');
+
 const router = express.Router();
-const { upload, uploadImage } = require('../config/cloudinary');
+
+const {
+  upload,
+  uploadImage
+} = require('../config/cloudinary');
+
 const auth = require('../middleware/auth');
 
-// Single image upload
-router.post('/profile-pic', auth, (req, res) => {
-  upload.single('image')(req, res, async (err) => {
-    if (err) {
-      console.error('Multer/Cloudinary Error:', err);
-      return res.status(500).json({ error: 'Cloudinary upload failed', details: err.message });
-    }
-    
-    console.log('Upload request received for user:', req.userId);
-    if (!req.file) {
-      console.warn('No file in request');
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
 
-    try {
-      const result = await uploadImage(req.file, 'ontlo_profiles');
-      console.log('File uploaded to Cloudinary:', result.secure_url);
-      res.json({ url: result.secure_url });
-    } catch (uploadErr) {
-      console.error('Cloudinary upload failed:', uploadErr.message);
-      res.status(500).json({ error: 'Cloudinary upload failed', details: uploadErr.message });
-    }
-  });
-});
 
-// Chat image upload
-router.post('/chat-image', auth, (req, res) => {
-  upload.single('image')(req, res, async (err) => {
-    if (err) return res.status(500).json({ error: 'Upload failed' });
-    if (!req.file) return res.status(400).json({ error: 'No file' });
-    try {
-      const result = await uploadImage(req.file, 'ontlo_chat');
-      res.json({ url: result.secure_url });
-    } catch (uploadErr) {
-      res.status(500).json({ error: 'Upload failed', details: uploadErr.message });
-    }
-  });
-});
+// ======================================================
+// ALLOWED MIME TYPES
+// ======================================================
+
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp'
+];
+
+
+
+// ======================================================
+// REUSABLE IMAGE UPLOAD HANDLER
+// ======================================================
+
+const handleImageUpload = (folder) => {
+
+  return async (req, res) => {
+
+    upload.single('image')(req, res, async (err) => {
+
+      try {
+
+        // ======================================================
+        // MULTER/CLOUDINARY ERROR
+        // ======================================================
+
+        if (err) {
+
+          console.error(
+            '[UPLOAD ERROR]:',
+            err
+          );
+
+          return res.status(500).json({
+            error: 'Upload failed'
+          });
+        }
+
+        // ======================================================
+        // FILE REQUIRED
+        // ======================================================
+
+        if (!req.file) {
+
+          return res.status(400).json({
+            error: 'No image uploaded'
+          });
+        }
+
+        // ======================================================
+        // MIME TYPE VALIDATION
+        // ======================================================
+
+        if (
+          !ALLOWED_IMAGE_TYPES.includes(
+            req.file.mimetype
+          )
+        ) {
+
+          return res.status(400).json({
+            error:
+              'Only JPG, PNG and WEBP images allowed'
+          });
+        }
+
+        // ======================================================
+        // FILE SIZE LIMIT
+        // ======================================================
+
+        const MAX_SIZE =
+          5 * 1024 * 1024; // 5MB
+
+        if (req.file.size > MAX_SIZE) {
+
+          return res.status(400).json({
+            error:
+              'Image size exceeds 5MB limit'
+          });
+        }
+
+        // ======================================================
+        // UPLOAD TO CLOUDINARY
+        // ======================================================
+
+        const result = await uploadImage(
+          req.file,
+          folder
+        );
+
+        if (!result?.secure_url) {
+
+          return res.status(500).json({
+            error:
+              'Image upload failed'
+          });
+        }
+
+        // ======================================================
+        // SUCCESS RESPONSE
+        // ======================================================
+
+        res.json({
+          url: result.secure_url
+        });
+
+      } catch (uploadError) {
+
+        console.error(
+          '[CLOUDINARY ERROR]:',
+          uploadError
+        );
+
+        res.status(500).json({
+          error: 'Upload failed'
+        });
+      }
+    });
+  };
+};
+
+
+
+// ======================================================
+// PROFILE PICTURE UPLOAD
+// ======================================================
+
+router.post(
+  '/profile-pic',
+  auth,
+  handleImageUpload('ontlo_profiles')
+);
+
+
+
+// ======================================================
+// CHAT IMAGE UPLOAD
+// ======================================================
+
+router.post(
+  '/chat-image',
+  auth,
+  handleImageUpload('ontlo_chat')
+);
+
+
 
 module.exports = router;

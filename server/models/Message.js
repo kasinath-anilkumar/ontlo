@@ -1,48 +1,156 @@
-// models/Message.js
-
 const mongoose = require('mongoose');
 
-const MessageSchema = new mongoose.Schema({
-  connectionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    index: true
-  },
+const MessageSchema = new mongoose.Schema(
+  {
+    // ======================================================
+    // CONNECTION
+    // ======================================================
 
-  sender: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true
-  },
+    connectionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Connection',
+      required: true,
+      index: true
+    },
 
-  // 🔥 OPTIONAL (keep — good for avoiding joins)
-  senderInfo: {
-    _id: mongoose.Schema.Types.ObjectId,
-    username: String,
-    profilePic: String
-  },
+    // ======================================================
+    // SENDER
+    // ======================================================
 
-  text: {
-    type: String,
-    required: function () {
-      return !this.imageUrl;
-    }
-  },
+    sender: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true
+    },
 
-  imageUrl: {
-    type: String
-  },
+    // ======================================================
+    // EMBEDDED SENDER SNAPSHOT
+    // Avoid populate()
+    // ======================================================
 
-  isRead: {
-    type: Boolean,
-    default: false
+    senderInfo: {
+      _id: mongoose.Schema.Types.ObjectId,
+
+      username: {
+        type: String,
+        trim: true
+      },
+
+      profilePic: {
+        type: String,
+        default: ''
+      }
+    },
+
+    // ======================================================
+    // TEXT MESSAGE
+    // ======================================================
+
+    text: {
+      type: String,
+
+      trim: true,
+
+      maxlength: 5000,
+
+      required: function () {
+        return !this.imageUrl;
+      }
+    },
+
+    // ======================================================
+    // IMAGE
+    // ======================================================
+
+    imageUrl: {
+      type: String,
+      default: null
+    },
+
+    // ======================================================
+    // READ STATUS
+    // ======================================================
+
+    isRead: {
+      type: Boolean,
+      default: false
+    },
+
+    readAt: {
+      type: Date,
+      default: null
+    },
+
+    // ======================================================
+    // OPTIONAL SOFT DELETE
+    // ======================================================
+
+    deletedFor: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ]
+
+  },
+  {
+    timestamps: true
+  }
+);
+
+
+
+// ======================================================
+// INDEXES
+// ======================================================
+
+// Chat history
+MessageSchema.index({
+  connectionId: 1,
+  createdAt: 1
+});
+
+// Unread messages
+MessageSchema.index({
+  connectionId: 1,
+  isRead: 1
+});
+
+// Sender messages
+MessageSchema.index({
+  sender: 1
+});
+
+// Recent messages
+MessageSchema.index({
+  createdAt: -1
+});
+
+
+
+// ======================================================
+// VALIDATION
+// ======================================================
+
+MessageSchema.pre('validate', function (next) {
+
+  // Require text or image
+  if (
+    (!this.text || !this.text.trim()) &&
+    !this.imageUrl
+  ) {
+    return next(
+      new Error('Message text or image required')
+    );
   }
 
-}, { timestamps: true });
+  next();
+});
 
 
-// 🔥 INDEXES (MATCH YOUR QUERIES)
-MessageSchema.index({ connectionId: 1, createdAt: 1 });  // chat history
-MessageSchema.index({ connectionId: 1, isRead: 1 });     // unread
-MessageSchema.index({ sender: 1 });
 
-module.exports = mongoose.model('Message', MessageSchema);
+module.exports = mongoose.model(
+  'Message',
+  MessageSchema
+);

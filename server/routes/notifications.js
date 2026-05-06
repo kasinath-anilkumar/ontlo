@@ -1,176 +1,357 @@
-// routes/notification.routes.js
-
 const express = require('express');
+const mongoose = require('mongoose');
+
 const router = express.Router();
 
 const auth = require('../middleware/auth');
+
 const Notification = require('../models/Notification');
 const User = require('../models/User');
-const mongoose = require('mongoose');
 
-// Health check
+
+
+// ======================================================
+// HEALTH CHECK
+// ======================================================
+
 router.get('/health/check', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date()
+  });
 });
 
-// Test count (optional debug)
+
+
+// ======================================================
+// TEST COUNT
+// ======================================================
+
 router.get('/test/count', async (req, res) => {
   try {
     const start = Date.now();
+
     const count = await Notification.countDocuments({});
+
     const duration = Date.now() - start;
 
-    console.log(`[TEST] Notification count: ${count}, took ${duration}ms`);
+    console.log(
+      `[TEST] Notification count: ${count}, took ${duration}ms`
+    );
 
-    res.json({ count, duration });
+    res.json({
+      count,
+      duration
+    });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
 
 
-// 🔥 GET notifications (ZERO JOIN VERSION)
+
+// ======================================================
+// GET NOTIFICATIONS
+// ======================================================
+
 router.get('/', auth, async (req, res) => {
   try {
     const start = Date.now();
 
-    const notifications = await Notification.find({ user: req.userId })
-      .hint({ user: 1, createdAt: -1 }) // 🔥 FORCE INDEX
+    const notifications = await Notification.find(
+      { user: req.userId },
+
+      // 🔥 FETCH ONLY NEEDED FIELDS
+      `
+      type
+      content
+      fromUser
+      relatedId
+      isRead
+      readAt
+      createdAt
+      `
+    )
       .sort({ createdAt: -1 })
       .limit(30)
-      .maxTimeMS(5000) // 🛡️ CRITICAL: Don't let it hang the server for 40s
+      .hint({
+        user: 1,
+        createdAt: -1,
+        isRead: 1
+      })
+      .maxTimeMS(5000)
       .lean();
 
-    // 1. Normalize all notifications (handle legacy string fromUser)
-    notifications.forEach(n => {
-      if (n.fromUser && (typeof n.fromUser === 'string' || mongoose.Types.ObjectId.isValid(n.fromUser))) {
-        const id = n.fromUser;
-        n.fromUser = { _id: id, username: 'User', profilePic: '' };
+    // ======================================================
+    // HANDLE LEGACY NOTIFICATIONS
+    // ======================================================
+
+    notifications.forEach((n) => {
+      if (
+        n.fromUser &&
+        typeof n.fromUser === 'string'
+      ) {
+        n.fromUser = {
+          _id: n.fromUser,
+          username: 'User',
+          profilePic: ''
+        };
       }
     });
 
-    // 2. Identify missing profile data
-    const missingUserIds = notifications
-      .filter(n => n.fromUser && n.fromUser._id && !n.fromUser.profilePic)
-      .map(n => n.fromUser._id);
+    // ======================================================
+    // FIND MISSING PROFILE DATA
+    // ======================================================
+
+    const missingUserIds = [
+      ...new Set(
+        notifications
+          .filter(
+            (n) =>
+              n.fromUser &&
+              n.fromUser._id &&
+              !n.fromUser.profilePic
+          )
+          .map((n) => n.fromUser._id.toString())
+      )
+    ];
 
     let userMap = {};
+
     if (missingUserIds.length > 0) {
-      const users = await User.find({ _id: { $in: missingUserIds } })
+      const users = await User.find({
+        _id: {
+          $in: missingUserIds
+        }
+      })
         .select('username profilePic')
         .lean();
-      users.forEach(u => {
+
+      users.forEach((u) => {
         userMap[u._id.toString()] = u;
       });
     }
 
-    // 3. Merge data
-    const formatted = notifications.map(n => {
+    // ======================================================
+    // MERGE USER DATA
+    // ======================================================
+
+    const formatted = notifications.map((n) => {
       if (n.fromUser && n.fromUser._id) {
-        const userIdStr = n.fromUser._id.toString();
-        if (userMap[userIdStr]) {
-          n.fromUser.username = userMap[userIdStr].username || n.fromUser.username;
-          n.fromUser.profilePic = userMap[userIdStr].profilePic || n.fromUser.profilePic;
+        const userId = n.fromUser._id.toString();
+
+        if (userMap[userId]) {
+          n.fromUser.username =
+            userMap[userId].username ||
+            n.fromUser.username;
+
+          n.fromUser.profilePic =
+            userMap[userId].profilePic ||
+            n.fromUser.profilePic;
         }
       }
+
       return n;
     });
 
     const duration = Date.now() - start;
+
     if (duration > 500) {
-      console.warn(`[NOTIFY SLOW] Fetch took ${duration}ms`);
+      console.warn(
+        `[NOTIFY SLOW] Fetch took ${duration}ms`
+      );
     }
 
     res.json(formatted);
 
   } catch (err) {
     console.error('[NOTIFY ERROR]:', err);
-    res.status(500).json({ error: 'Server error' });
+
+    res.status(500).json({
+      error: 'Server error'
+    });
   }
 });
 
 
-// 🔥 Mark one as read
+
+// ======================================================
+// MARK ONE AS READ
+// ======================================================
+
 router.patch('/:id/read', auth, async (req, res) => {
   try {
+    // 🔥 VALIDATE OBJECT ID
+    if (
+      !mongoose.Types.ObjectId.isValid(req.params.id)
+    ) {
+      return res.status(400).json({
+        error: 'Invalid notification ID'
+      });
+    }
+
     const start = Date.now();
 
-    await Notification.updateOne(
-      { _id: req.params.id, user: req.userId },
-      { isRead: true }
+    const result = await Notification.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        user: req.userId,
+        isRead: false
+      },
+      {
+        isRead: true,
+        readAt: new Date()
+      },
+      {
+        new: true
+      }
     );
+
+    // 🔥 DECREMENT USER COUNTER
+    if (result) {
+      await User.updateOne(
+        {
+          _id: req.userId
+        },
+        {
+          $inc: {
+            notificationCount: -1
+          }
+        }
+      );
+    }
 
     const duration = Date.now() - start;
 
     if (duration > 100) {
-      console.log(`[SLOW] Mark read took ${duration}ms`);
+      console.log(
+        `[SLOW] Mark read took ${duration}ms`
+      );
     }
 
-    res.json({ message: 'Marked as read' });
+    res.json({
+      message: 'Marked as read'
+    });
 
-    // OPTIONAL: emit without forcing DB recalculation
+    // 🔥 SOCKET EVENT
     if (req.io) {
-      req.io.to(`user_${req.userId}`).emit('notification-read', {
-        id: req.params.id
-      });
+      req.io
+        .to(`user_${req.userId}`)
+        .emit('notification-read', {
+          id: req.params.id
+        });
     }
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[READ ERROR]:', err);
+
+    res.status(500).json({
+      error: 'Server error'
+    });
   }
 });
 
 
-// 🔥 Mark all as read
+
+// ======================================================
+// MARK ALL AS READ
+// ======================================================
+
 router.post('/read-all', auth, async (req, res) => {
   try {
     const start = Date.now();
 
     await Notification.updateMany(
-      { user: req.userId, isRead: false },
-      { isRead: true }
+      {
+        user: req.userId,
+        isRead: false
+      },
+      {
+        isRead: true,
+        readAt: new Date()
+      }
+    );
+
+    // 🔥 RESET USER COUNTER
+    await User.updateOne(
+      {
+        _id: req.userId
+      },
+      {
+        $set: {
+          notificationCount: 0
+        }
+      }
     );
 
     const duration = Date.now() - start;
 
     if (duration > 100) {
-      console.log(`[SLOW] Read all took ${duration}ms`);
+      console.log(
+        `[SLOW] Read all took ${duration}ms`
+      );
     }
 
-    res.json({ message: 'All marked as read' });
+    res.json({
+      message: 'All marked as read'
+    });
 
+    // 🔥 SOCKET EVENT
     if (req.io) {
-      req.io.to(`user_${req.userId}`).emit('notifications-cleared');
+      req.io
+        .to(`user_${req.userId}`)
+        .emit('notifications-cleared');
     }
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[READ ALL ERROR]:', err);
+
+    res.status(500).json({
+      error: 'Server error'
+    });
   }
 });
 
 
-// 🔥 SIMPLE COUNT (NO HEAVY STATS)
+
+// ======================================================
+// GET NOTIFICATION COUNTS
+// ======================================================
+
 router.get('/counts', auth, async (req, res) => {
   try {
     const start = Date.now();
 
-    const unreadCount = await Notification.countDocuments({
-      user: req.userId,
-      isRead: false
-    });
+    // 🔥 INSTANT COUNT FROM USER MODEL
+    const user = await User.findById(req.userId)
+      .select('notificationCount')
+      .lean();
 
     const duration = Date.now() - start;
 
     if (duration > 100) {
-      console.log(`[COUNT] took ${duration}ms`);
+      console.log(
+        `[COUNT] took ${duration}ms`
+      );
     }
 
-    res.json({ notifications: unreadCount });
+    res.json({
+      notifications:
+        user?.notificationCount || 0
+    });
 
   } catch (err) {
     console.error('[COUNT ERROR]:', err);
-    res.status(500).json({ error: 'Server error' });
+
+    res.status(500).json({
+      error: 'Server error'
+    });
   }
 });
+
+
 
 module.exports = router;

@@ -1,226 +1,924 @@
 // socket.js
 
-const matchmaker = require('./services/Matchmaker');
-const User = require('./models/User');
-const Message = require('./models/Message');
-const Connection = require('./models/Connection');
-const Notification = require('./models/Notification');
-
 const jwt = require('jsonwebtoken');
+
 const { JWT_SECRET } = require('./config/jwt');
-const { moderateText } = require('./utils/moderation');
-const { getUserCounts } = require('./utils/stats');
-const { attachMatchmakingProfile } = require('./utils/socketMatchProfile');
+
+const matchmaker =
+  require('./services/Matchmaker');
+
+const User =
+  require('./models/User');
+
+const Message =
+  require('./models/Message');
+
+const Connection =
+  require('./models/Connection');
+
+const Notification =
+  require('./models/Notification');
+
+const {
+  moderateText
+} = require('./utils/moderation');
+
+const {
+  getUserCounts
+} = require('./utils/stats');
+
+const {
+  attachMatchmakingProfile
+} = require('./utils/socketMatchProfile');
+
+
+
+// ======================================================
+// FREE TIER OPTIMIZED SOCKET ARCHITECTURE
+// ======================================================
 
 module.exports = (io) => {
+
+  // ======================================================
+  // MEMORY PRESENCE
+  // ======================================================
+
   const onlineUsers = new Set();
+
+  const userSocketCounts =
+    new Map();
+
   let lastOnlineCountEmit = 0;
 
-  /////////////////////////////////////////////////////
-  // 🔥 HELPERS
-  /////////////////////////////////////////////////////
+  const ONLINE_EMIT_COOLDOWN = 5000;
 
-  const pushUserStats = async (userId) => {
-    try {
-      const counts = await getUserCounts(userId, false);
-      io.to(`user_${userId}`).emit('counts-update', counts);
-    } catch (err) {
-      console.error('pushUserStats error:', err);
-    }
-  };
 
-  const emitCountsDelta = (userId, delta) => {
-    io.to(`user_${userId}`).emit('counts-delta', delta);
-  };
 
-  const notifyFriendsOnline = async (userId) => {
-    try {
-      const connections = await Connection.find({ users: userId })
-        .select('users')
-        .lean();
+  // ======================================================
+  // PUSH USER COUNTS
+  // ======================================================
 
-      const friendIds = connections
-        .map(c => c.users.find(u => u.toString() !== userId.toString()))
-        .filter(Boolean);
+  const pushUserStats =
+    async (userId) => {
 
-      friendIds.forEach(fid => {
-        io.to(`user_${fid}`).emit('online-status-change', {
-          userId,
-          isOnline: onlineUsers.has(userId.toString())
-        });
-      });
-
-    } catch (err) {
-      console.error('notifyFriendsOnline error:', err);
-    }
-  };
-
-  /////////////////////////////////////////////////////
-  // 🔥 SOCKET CONNECTION
-  /////////////////////////////////////////////////////
-
-  io.on('connection', async (socket) => {
-    let token = socket.handshake.auth?.token;
-
-    if (!token && socket.handshake.headers.cookie) {
-      const cookies = socket.handshake.headers.cookie.split(';').reduce((res, c) => {
-        const [key, val] = c.trim().split('=').map(decodeURIComponent);
-        try {
-          return Object.assign(res, { [key]: JSON.parse(val) });
-        } catch {
-          return Object.assign(res, { [key]: val });
-        }
-      }, {});
-      token = cookies.token;
-    }
-
-    /////////////////////////////////////////////////////
-    // 🔐 AUTH
-    /////////////////////////////////////////////////////
-
-    if (token) {
       try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        socket.userId = decoded.id;
 
-        const user = await attachMatchmakingProfile(socket);
-        socket.user = user; // 🔥 store for reuse
+        const counts =
+          await getUserCounts(
+            userId,
+            false
+          );
 
-        if (user) {
-          socket.join(`user_${socket.userId}`);
-
-          if (user.role === 'user') {
-            const userIdStr = socket.userId.toString();
-
-            // 🔥 MEMORY ONLY (NO DB WRITE)
-            onlineUsers.add(userIdStr);
-
-            pushUserStats(userIdStr);
-            notifyFriendsOnline(userIdStr);
-
-            const now = Date.now();
-            if (now - lastOnlineCountEmit > 5000) {
-              lastOnlineCountEmit = now;
-              io.emit('online-count', { count: onlineUsers.size });
-            }
-          }
-
-          matchmaker.handleReconnect(socket, io);
-        }
-
-      } catch (err) {
-        console.error('Socket Auth Error:', err.message);
-      }
-    }
-
-    /////////////////////////////////////////////////////
-    // 💬 CHAT MESSAGE
-    /////////////////////////////////////////////////////
-
-    socket.on('chat-message', async ({ message, imageUrl, roomId }) => {
-      if (!socket.rooms.has(roomId)) return;
-
-      const moderation = moderateText(message);
-      const finalMessage = moderation.text;
-      const timestamp = new Date();
-
-      socket.to(roomId).emit('chat-message', {
-        sender: socket.userId, // Use userId instead of socketId for consistency
-        text: finalMessage,
-        imageUrl,
-        createdAt: timestamp
-      });
-
-      // 🔥 SAVE MESSAGE + UPDATE CONNECTION
-      try {
-        const conn = await Connection.findById(roomId).select('users').lean();
-        if (!conn) return;
-
-        const newMessage = await Message.create({
-          connectionId: roomId,
-          sender: socket.userId,
-          text: finalMessage,
-          imageUrl
-        });
-
-        // 🔥 UPDATE LAST MESSAGE (IMPORTANT)
-        await Connection.findByIdAndUpdate(roomId, {
-          lastMessage: {
-            text: finalMessage,
-            createdAt: timestamp
-          },
-          updatedAt: timestamp
-        });
-
-        const recipientId = conn.users.find(
-          u => u.toString() !== socket.userId.toString()
+        io.to(
+          `user_${userId}`
+        ).emit(
+          'counts-update',
+          counts
         );
 
-        if (recipientId) {
-          // 🔥 ZERO JOIN NOTIFICATION
-          await Notification.create({
-            user: recipientId,
-            type: 'message',
-            content: finalMessage.substring(0, 50),
+      } catch (error) {
 
-            fromUser: {
-              _id: socket.user._id,
-              username: socket.user.username,
-              profilePic: socket.user.profilePic
+        console.error(
+          '[PUSH USER STATS ERROR]:',
+          error
+        );
+      }
+    };
+
+
+
+  // ======================================================
+  // DELTA COUNTS
+  // ======================================================
+
+  const emitCountsDelta =
+    (userId, delta) => {
+
+      io.to(
+        `user_${userId}`
+      ).emit(
+        'counts-delta',
+        delta
+      );
+    };
+
+
+
+  // ======================================================
+  // NOTIFY FRIENDS ONLINE
+  // ======================================================
+
+  const notifyFriendsOnline =
+    async (userId) => {
+
+      try {
+
+        const connections =
+          await Connection.find(
+
+            {
+              users: userId,
+              status: 'active'
             },
 
-            relatedId: roomId
-          });
+            'users'
+          ).lean();
 
-          // 🔥 PUSH REALTIME
-          io.to(`user_${recipientId}`).emit('new-notification', {
-            type: 'message',
-            content: finalMessage.substring(0, 50),
-            fromUser: socket.user,
-            relatedId: roomId
-          });
+        const friendIds =
+          connections
+            .map((conn) =>
+              conn.users.find(
+                u =>
+                  u.toString() !==
+                  userId.toString()
+              )
+            )
+            .filter(Boolean);
 
-          emitCountsDelta(recipientId.toString(), {
-            messages: 1,
-            notifications: 1,
-            perChat: { [roomId]: 1 }
-          });
+        const isOnline =
+          onlineUsers.has(
+            userId.toString()
+          );
+
+        friendIds.forEach(
+          (friendId) => {
+
+            io.to(
+              `user_${friendId}`
+            ).emit(
+              'online-status-change',
+              {
+                userId,
+                isOnline
+              }
+            );
+          }
+        );
+
+      } catch (error) {
+
+        console.error(
+          '[ONLINE NOTIFY ERROR]:',
+          error
+        );
+      }
+    };
+
+
+
+  // ======================================================
+  // GLOBAL ONLINE COUNT
+  // ======================================================
+
+  const emitOnlineCount =
+    () => {
+
+      const now = Date.now();
+
+      if (
+        now - lastOnlineCountEmit <
+        ONLINE_EMIT_COOLDOWN
+      ) {
+
+        return;
+      }
+
+      lastOnlineCountEmit = now;
+
+      io.emit(
+        'online-count',
+        {
+          count:
+            onlineUsers.size
+        }
+      );
+    };
+
+
+
+  // ======================================================
+  // SOCKET CONNECTION
+  // ======================================================
+
+  io.on(
+    'connection',
+
+    async (socket) => {
+
+      try {
+
+        let token =
+          socket.handshake.auth
+            ?.token;
+
+        // ======================================================
+        // COOKIE TOKEN
+        // ======================================================
+
+        if (
+          !token &&
+          socket.handshake.headers
+            .cookie
+        ) {
+
+          const cookies =
+            socket.handshake.headers.cookie
+              .split(';')
+              .reduce(
+                (res, cookie) => {
+
+                  const [
+                    key,
+                    value
+                  ] = cookie
+                    .trim()
+                    .split('=')
+                    .map(
+                      decodeURIComponent
+                    );
+
+                  try {
+
+                    return Object.assign(
+                      res,
+                      {
+                        [key]:
+                          JSON.parse(
+                            value
+                          )
+                      }
+                    );
+
+                  } catch {
+
+                    return Object.assign(
+                      res,
+                      {
+                        [key]:
+                          value
+                      }
+                    );
+                  }
+
+                },
+
+                {}
+              );
+
+          token =
+            cookies.token;
         }
 
-      } catch (err) {
-        console.error('Message error:', err);
-      }
-    });
+        // ======================================================
+        // NO TOKEN
+        // ======================================================
 
-    /////////////////////////////////////////////////////
-    // 🔌 DISCONNECT
-    /////////////////////////////////////////////////////
+        if (!token) {
+          return;
+        }
 
-    socket.on('disconnect', async () => {
-      try {
-        if (socket.userId) {
-          const userIdStr = socket.userId.toString();
+        // ======================================================
+        // VERIFY JWT
+        // ======================================================
 
-          const sockets = await io.in(`user_${userIdStr}`).fetchSockets();
+        const decoded =
+          jwt.verify(
+            token,
+            JWT_SECRET
+          );
 
-          if (sockets.length === 0) {
-            onlineUsers.delete(userIdStr);
+        socket.userId =
+          decoded.id;
 
-            notifyFriendsOnline(userIdStr);
+        // ======================================================
+        // USER PROFILE
+        // ======================================================
 
-            const now = Date.now();
-            if (now - lastOnlineCountEmit > 5000) {
-              lastOnlineCountEmit = now;
-              io.emit('online-count', { count: onlineUsers.size });
+        const user =
+          await attachMatchmakingProfile(
+            socket
+          );
+
+        if (!user) {
+          return;
+        }
+
+        socket.user =
+          user;
+
+        // ======================================================
+        // USER ROOM
+        // ======================================================
+
+        socket.join(
+          `user_${socket.userId}`
+        );
+
+        // ======================================================
+        // TRACK SOCKETS
+        // ======================================================
+
+        const userIdStr =
+          socket.userId.toString();
+
+        const currentCount =
+          userSocketCounts.get(
+            userIdStr
+          ) || 0;
+
+        userSocketCounts.set(
+          userIdStr,
+          currentCount + 1
+        );
+
+        // ======================================================
+        // ONLINE STATUS
+        // ======================================================
+
+        if (
+          !onlineUsers.has(
+            userIdStr
+          )
+        ) {
+
+          onlineUsers.add(
+            userIdStr
+          );
+
+          // MEMORY + LIGHT DB UPDATE
+          User.updateOne(
+            {
+              _id:
+                socket.userId
+            },
+            {
+              $set: {
+                onlineStatus:
+                  'online',
+
+                lastSeen:
+                  new Date()
+              }
+            }
+          ).catch(() => {});
+
+          notifyFriendsOnline(
+            userIdStr
+          );
+
+          emitOnlineCount();
+        }
+
+        // ======================================================
+        // INITIAL COUNTS
+        // ======================================================
+
+        pushUserStats(
+          userIdStr
+        );
+
+        // ======================================================
+        // RECONNECT MATCHMAKER
+        // ======================================================
+
+        matchmaker.handleReconnect(
+          socket,
+          io
+        );
+
+
+
+        // ======================================================
+        // JOIN CHAT ROOM
+        // ======================================================
+
+        socket.on(
+          'join-room',
+
+          (roomId) => {
+
+            socket.join(roomId);
+          }
+        );
+
+
+
+        // ======================================================
+        // LEAVE ROOM
+        // ======================================================
+
+        socket.on(
+          'leave-room',
+
+          (roomId) => {
+
+            socket.leave(roomId);
+          }
+        );
+
+
+
+        // ======================================================
+        // TYPING START
+        // ======================================================
+
+        socket.on(
+          'typing-start',
+
+          ({ roomId }) => {
+
+            socket
+              .to(roomId)
+              .emit(
+                'typing-start',
+                {
+                  userId:
+                    socket.userId
+                }
+              );
+          }
+        );
+
+
+
+        // ======================================================
+        // TYPING STOP
+        // ======================================================
+
+        socket.on(
+          'typing-stop',
+
+          ({ roomId }) => {
+
+            socket
+              .to(roomId)
+              .emit(
+                'typing-stop',
+                {
+                  userId:
+                    socket.userId
+                }
+              );
+          }
+        );
+
+
+
+        // ======================================================
+        // CHAT MESSAGE
+        // ======================================================
+
+        socket.on(
+
+          'chat-message',
+
+          async ({
+            roomId,
+            message,
+            imageUrl
+          }) => {
+
+            try {
+
+              // ======================================================
+              // ROOM CHECK
+              // ======================================================
+
+              if (
+                !socket.rooms.has(
+                  roomId
+                )
+              ) {
+                return;
+              }
+
+              // ======================================================
+              // VALIDATION
+              // ======================================================
+
+              if (
+                (!message ||
+                  !message.trim()) &&
+                !imageUrl
+              ) {
+
+                return;
+              }
+
+              // ======================================================
+              // MODERATION
+              // ======================================================
+
+              const moderation =
+                moderateText(
+                  message || ''
+                );
+
+              const finalMessage =
+                moderation.text;
+
+              const timestamp =
+                new Date();
+
+              // ======================================================
+              // CONNECTION
+              // ======================================================
+
+              const connection =
+                await Connection.findById(
+
+                  roomId,
+
+                  `
+                  users
+                  userDetails
+                  `
+                ).lean();
+
+              if (!connection) {
+                return;
+              }
+
+              // ======================================================
+              // CREATE MESSAGE
+              // ======================================================
+
+              const createdMessage =
+                await Message.create({
+
+                  connectionId:
+                    roomId,
+
+                  sender:
+                    socket.userId,
+
+                  senderInfo: {
+
+                    _id:
+                      socket.user._id,
+
+                    username:
+                      socket.user
+                        .username,
+
+                    profilePic:
+                      socket.user
+                        .profilePic
+                  },
+
+                  text:
+                    finalMessage,
+
+                  imageUrl:
+                    imageUrl ||
+                    null
+                });
+
+              // ======================================================
+              // UPDATE CONNECTION
+              // ======================================================
+
+              Connection.updateOne(
+                {
+                  _id: roomId
+                },
+                {
+                  $set: {
+
+                    lastMessage: {
+
+                      text:
+                        finalMessage ||
+                        '📷 Image',
+
+                      createdAt:
+                        timestamp
+                    },
+
+                    updatedAt:
+                      timestamp
+                  }
+                }
+              ).catch(() => {});
+
+              // ======================================================
+              // RECIPIENT
+              // ======================================================
+
+              const recipientId =
+                connection.users.find(
+                  (u) =>
+                    u.toString() !==
+                    socket.userId.toString()
+                );
+
+              // ======================================================
+              // REALTIME MESSAGE
+              // ======================================================
+
+              io.to(roomId).emit(
+                'chat-message',
+
+                {
+
+                  id:
+                    createdMessage._id,
+
+                  roomId,
+
+                  sender:
+                    socket.userId,
+
+                  senderInfo:
+                    createdMessage.senderInfo,
+
+                  text:
+                    finalMessage,
+
+                  imageUrl:
+                    imageUrl ||
+                    null,
+
+                  createdAt:
+                    timestamp
+                }
+              );
+
+              // ======================================================
+              // NOTIFICATION
+              // ======================================================
+
+              if (
+                recipientId
+              ) {
+
+                Notification.create({
+
+                  user:
+                    recipientId,
+
+                  type:
+                    'message',
+
+                  content:
+                    finalMessage
+                      ?.substring(
+                        0,
+                        80
+                      ) ||
+                    '📷 Image',
+
+                  fromUser: {
+
+                    _id:
+                      socket.user
+                        ._id,
+
+                    username:
+                      socket.user
+                        .username,
+
+                    profilePic:
+                      socket.user
+                        .profilePic
+                  },
+
+                  relatedId:
+                    roomId
+                }).catch(() => {});
+
+                // DELTA COUNTS
+                emitCountsDelta(
+
+                  recipientId.toString(),
+
+                  {
+
+                    messages: 1,
+
+                    notifications: 1,
+
+                    perChat: {
+                      [roomId]: 1
+                    }
+                  }
+                );
+
+                // REALTIME NOTIFICATION
+                io.to(
+                  `user_${recipientId}`
+                ).emit(
+
+                  'new-notification',
+
+                  {
+
+                    type:
+                      'message',
+
+                    content:
+                      finalMessage
+                        ?.substring(
+                          0,
+                          80
+                        ) ||
+                      '📷 Image',
+
+                    roomId,
+
+                    fromUser: {
+
+                      _id:
+                        socket.user
+                          ._id,
+
+                      username:
+                        socket.user
+                          .username,
+
+                      profilePic:
+                        socket.user
+                          .profilePic
+                    }
+                  }
+                );
+              }
+
+            } catch (error) {
+
+              console.error(
+                '[CHAT MESSAGE ERROR]:',
+                error
+              );
             }
           }
-        }
+        );
 
-        matchmaker.handleDisconnect(socket, io);
 
-      } catch (err) {
-        console.error('Disconnect error:', err);
+
+        // ======================================================
+        // MESSAGE READ
+        // ======================================================
+
+        socket.on(
+
+          'messages-read',
+
+          async ({
+            roomId
+          }) => {
+
+            try {
+
+              await Message.updateMany(
+
+                {
+
+                  connectionId:
+                    roomId,
+
+                  sender: {
+                    $ne:
+                      socket.userId
+                  },
+
+                  isRead: false
+                },
+
+                {
+
+                  $set: {
+
+                    isRead: true,
+
+                    readAt:
+                      new Date()
+                  }
+                }
+              );
+
+              socket
+                .to(roomId)
+                .emit(
+                  'messages-read',
+                  {
+                    roomId,
+                    userId:
+                      socket.userId
+                  }
+                );
+
+            } catch (error) {
+
+              console.error(
+                '[READ ERROR]:',
+                error
+              );
+            }
+          }
+        );
+
+
+
+        // ======================================================
+        // DISCONNECT
+        // ======================================================
+
+        socket.on(
+          'disconnect',
+
+          async () => {
+
+            try {
+
+              if (
+                !socket.userId
+              ) {
+                return;
+              }
+
+              const userIdStr =
+                socket.userId.toString();
+
+              const currentCount =
+                userSocketCounts.get(
+                  userIdStr
+                ) || 0;
+
+              // ======================================================
+              // DECREASE SOCKET COUNT
+              // ======================================================
+
+              if (
+                currentCount <= 1
+              ) {
+
+                userSocketCounts.delete(
+                  userIdStr
+                );
+
+                onlineUsers.delete(
+                  userIdStr
+                );
+
+                // LIGHT DB UPDATE
+                User.updateOne(
+                  {
+                    _id:
+                      socket.userId
+                  },
+                  {
+                    $set: {
+
+                      onlineStatus:
+                        'offline',
+
+                      lastSeen:
+                        new Date()
+                    }
+                  }
+                ).catch(() => {});
+
+                notifyFriendsOnline(
+                  userIdStr
+                );
+
+                emitOnlineCount();
+
+              } else {
+
+                userSocketCounts.set(
+                  userIdStr,
+                  currentCount - 1
+                );
+              }
+
+              // ======================================================
+              // MATCHMAKER
+              // ======================================================
+
+              matchmaker.handleDisconnect(
+                socket,
+                io
+              );
+
+            } catch (error) {
+
+              console.error(
+                '[DISCONNECT ERROR]:',
+                error
+              );
+            }
+          }
+        );
+
+      } catch (error) {
+
+        console.error(
+          '[SOCKET CONNECTION ERROR]:',
+          error
+        );
       }
-    });
-  });
+    }
+  );
 };

@@ -1,399 +1,648 @@
 const express = require('express');
+const mongoose = require('mongoose');
+
 const router = express.Router();
+
 const User = require('../models/User');
 const Connection = require('../models/Connection');
 const Message = require('../models/Message');
 const Notification = require('../models/Notification');
-const Report = require('../models/Report');
-const jwt = require('jsonwebtoken');
-const { JWT_SECRET } = require('../config/jwt');
-const { deleteImage } = require('../config/cloudinary');
 
 const auth = require('../middleware/auth');
-const validate = require('../middleware/validate');
-const {
-  blockUserSchema,
-  unblockUserSchema,
-  settingsSchema,
-  userIdParamSchema,
-} = require('../validators/user.validator');
-const { logActivity } = require('../utils/logger');
 
-const AppConfig = require('../models/AppConfig');
 
-// Discover: Get potential matches based on Admin algorithm settings
+
+// ======================================================
+// DISCOVER USERS
+// ======================================================
+
 router.get('/discover', auth, async (req, res) => {
+
   try {
-    const currentUserId = req.userId;
 
-    const currentUser = await User.findById(currentUserId).select('age').lean();
-    if (!currentUser) return res.status(404).json({ error: 'User not found' });
+    const currentUser = await User.findById(
+      req.userId,
 
-    // AppConfig is a single document (radius, ageGap, boostPremium on root schema)
-    const config = await AppConfig.findOne().lean();
-    const settings = {
-      radius: config?.radius ?? 50,
-      ageGap: config?.ageGap ?? 5,
-      boostPremium: config?.boostPremium !== false
-    };
+      `
+      age
+      interests
+      blockedUsers
+      matchPreferences
+      `
+    ).lean();
+
+    if (!currentUser) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    const recentTime = new Date(
+      Date.now() - 1000 * 60 * 60 * 24
+    );
 
     const query = {
-      _id: { $ne: currentUserId },
-      role: 'user', // Hide admins/moderators from discovery
+
+      _id: {
+        $nin: [
+          req.userId,
+          ...(currentUser.blockedUsers || [])
+        ]
+      },
+
+      role: 'user',
+
       status: 'active',
+
       isShadowBanned: false,
-      onlineStatus: true
+
+      lastSeen: {
+        $gte: recentTime
+      }
     };
 
-    // Apply Age Filter from Admin settings
-    if (currentUser.age) {
-      query.age = { 
-        $gte: currentUser.age - settings.ageGap, 
-        $lte: currentUser.age + settings.ageGap 
+    // ======================================================
+    // GENDER FILTER
+    // ======================================================
+
+    if (
+      currentUser.matchPreferences?.gender &&
+      currentUser.matchPreferences.gender !== 'All'
+    ) {
+
+      query.gender =
+        currentUser.matchPreferences.gender;
+    }
+
+    // ======================================================
+    // AGE FILTER
+    // ======================================================
+
+    if (
+      currentUser.matchPreferences?.ageRange
+    ) {
+
+      query.age = {
+        $gte:
+          currentUser.matchPreferences
+            .ageRange.min,
+
+        $lte:
+          currentUser.matchPreferences
+            .ageRange.max
       };
     }
 
-    // Apply Location Filter (Mocking radius for now as we don't have GeoJSON indices yet)
-    // In a real production app, we would use $near with settings.radius
+    // ======================================================
+    // INTEREST FILTER
+    // ======================================================
 
-    const matches = await User.find(query)
-      .sort(settings.boostPremium ? { isPremium: -1, createdAt: -1 } : { createdAt: -1 })
+    if (
+      currentUser.matchPreferences
+        ?.interests?.length > 0
+    ) {
+
+      query.interests = {
+        $in:
+          currentUser.matchPreferences
+            .interests
+      };
+    }
+
+    const users = await User.find(
+
+      query,
+
+      `
+      username
+      fullName
+      profilePic
+      age
+      gender
+      bio
+      interests
+      onlineStatus
+      isPremium
+      lastSeen
+      `
+    )
+      .sort({
+        isPremium: -1,
+        createdAt: -1
+      })
       .limit(20)
-      .select('username profilePic age gender bio isPremium')
       .lean();
 
-    res.json(matches);
+    res.json(users);
+
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
 
-// Get online users who are also connections for the Home page
-router.get('/online', auth.optional, async (req, res) => {
-  try {
-    const currentUserId = req.userId;
-    if (!currentUserId) return res.json({ onlineConnections: [], matchingInterestCount: 0 });
-
-    const currentUser = await User.findById(currentUserId).select('interests').lean();
-    if (!currentUser) return res.json({ onlineConnections: [], matchingInterestCount: 0 });
-
-    // 1. Find all connection documents for this user
-    const connections = await Connection.find({ users: currentUserId, status: 'active' })
-      .select('users')
-      .lean();
-    
-    // 2. Extract the "other" user IDs
-    const connectedUserIds = connections.map(conn => 
-      conn.users.find(id => id.toString() !== currentUserId.toString())
+    console.error(
+      '[DISCOVER ERROR]:',
+      error
     );
 
-    // 3. Find which of those connected users are currently online
-    const onlineConnections = await User.find({
-      _id: { $in: connectedUserIds },
-      onlineStatus: true,
-      role: 'user'
-    })
-    .limit(10)
-    .select('username profilePic fullName')
-    .lean();
-
-    // 4. FOMO Loop: Calculate count of online users matching interests
-    const matchingInterestCount = await User.countDocuments({
-      _id: { $ne: currentUserId },
-      onlineStatus: true,
-      role: 'user',
-      interests: { $in: currentUser.interests || [] }
+    res.status(500).json({
+      error: 'Server error'
     });
-    
+  }
+});
+
+
+
+// ======================================================
+// GET CURRENT USER
+// ======================================================
+
+router.get('/me', auth, async (req, res) => {
+
+  try {
+
+    const user = await User.findById(
+
+      req.userId,
+
+      `
+      username
+      email
+      profilePic
+      fullName
+      age
+      dob
+      gender
+      location
+      interests
+      bio
+      isProfileComplete
+      onlineStatus
+      isVerified
+      isPremium
+      premiumExpiresAt
+      boosts
+      settings
+      notificationPreferences
+      matchPreferences
+      notificationCount
+      favorites
+      createdAt
+      `
+    ).lean();
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    res.json(user);
+
+  } catch (error) {
+
+    console.error(
+      '[ME ERROR]:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Server error'
+    });
+  }
+});
+
+
+
+// ======================================================
+// GET SINGLE USER
+// ======================================================
+
+router.get('/:id', auth, async (req, res) => {
+
+  try {
+
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        req.params.id
+      )
+    ) {
+      return res.status(400).json({
+        error: 'Invalid user ID'
+      });
+    }
+
+    const user = await User.findById(
+
+      req.params.id,
+
+      `
+      username
+      fullName
+      profilePic
+      age
+      gender
+      bio
+      interests
+      onlineStatus
+      isPremium
+      lastSeen
+      `
+    ).lean();
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    // ======================================================
+    // PROFILE VIEW COUNT
+    // ======================================================
+
+    if (
+      req.userId.toString() !==
+      req.params.id.toString()
+    ) {
+
+      User.updateOne(
+        {
+          _id: req.params.id
+        },
+        {
+          $inc: {
+            profileViews: 1
+          }
+        }
+      ).catch(() => {});
+    }
+
+    const connectionCount =
+      await Connection.countDocuments({
+        users: req.params.id
+      });
+
     res.json({
-      onlineConnections,
-      matchingInterestCount
+      ...user,
+      connectionCount
     });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
+
+    console.error(
+      '[GET USER ERROR]:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Server error'
+    });
   }
 });
 
-// Get blocked users list
-router.get('/blocked/list', auth, async (req, res) => {
+
+
+// ======================================================
+// UPDATE PROFILE
+// ======================================================
+
+router.patch('/profile/update', auth, async (req, res) => {
+
   try {
-    const currentUserId = req.userId;
 
-    const user = await User.findById(currentUserId).populate('blockedUsers', 'username profilePic fullName').lean();
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const allowedUpdates = [
 
-    res.json(user.blockedUsers);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+      'fullName',
+      'age',
+      'dob',
+      'gender',
+      'location',
+      'bio',
+      'interests',
+      'profilePic',
+      'settings',
+      'notificationPreferences',
+      'matchPreferences',
+      'lowBandwidth'
+    ];
 
-// Get single user by ID
-router.get('/:id', validate({ params: userIdParamSchema }), async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id)
-      .select('username profilePic fullName age gender location interests bio isPremium onlineStatus')
-      .lean();
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const connectionsCount = await Connection.countDocuments({ users: user._id });
-    
-    const userObj = { ...user, connectionsCount };
-    
-    res.json(userObj);
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+    const updates = {};
 
-// Social Return Loop: Ping a past connection
-router.post('/ping/:targetUserId', auth, async (req, res) => {
-  try {
-    const senderId = req.userId;
-    const targetUserId = req.params.targetUserId;
+    allowedUpdates.forEach((field) => {
 
-    // Verify they are actually connections
-    const existingConnection = await Connection.findOne({
-      users: { $all: [senderId, targetUserId] }
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
     });
 
-    if (!existingConnection) {
-      return res.status(403).json({ error: 'You can only ping established connections.' });
-    }
+    // ======================================================
+    // PROFILE COMPLETE CHECK
+    // ======================================================
 
-    const sender = await User.findById(senderId).select('username fullName').lean();
-    if (!sender) return res.status(404).json({ error: 'User not found' });
+    const requiredFields = [
+      'fullName',
+      'age',
+      'gender',
+      'bio',
+      'profilePic'
+    ];
 
-    await Notification.create({
-      user: targetUserId,
-      type: 'system',
-      content: `${sender.fullName || sender.username} waved at you! 👋`,
-      fromUser: {
-        _id: sender._id,
-        username: sender.username,
-        profilePic: sender.profilePic
-      },
-      relatedId: existingConnection._id.toString()
-    });
+    const existingUser = await User.findById(
+      req.userId
+    ).lean();
 
-    await logActivity({
-      userId: senderId,
-      action: 'social_ping',
-      req,
-      metadata: { targetUserId }
-    });
-
-    res.json({ message: 'Ping sent successfully' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Block a user
-router.post('/block', auth, validate({ body: blockUserSchema }), async (req, res) => {
-  try {
-    const currentUserId = req.userId;
-    const { blockedUserId } = req.body;
-
-    if (currentUserId.toString() === blockedUserId) {
-      return res.status(400).json({ error: 'Cannot block yourself' });
-    }
-
-    const currentUser = await User.findById(currentUserId);
-    if (!currentUser) return res.status(404).json({ error: 'User not found' });
-
-    if (!currentUser.blockedUsers.includes(blockedUserId)) {
-      currentUser.blockedUsers.push(blockedUserId);
-      await currentUser.save();
-    }
-
-    // Also remove any existing connection between them
-    await Connection.deleteOne({
-      users: { $all: [currentUserId, blockedUserId] }
-    });
-
-    res.json({ message: 'User blocked successfully' });
-
-    await logActivity({
-      userId: currentUserId,
-      action: 'user_block',
-      req,
-      metadata: { blockedUserId }
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Unblock a user
-router.post('/unblock', auth, validate({ body: unblockUserSchema }), async (req, res) => {
-  try {
-    const currentUserId = req.userId;
-    const { unblockUserId } = req.body;
-
-    const user = await User.findById(currentUserId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    user.blockedUsers = user.blockedUsers.filter(id => id.toString() !== unblockUserId);
-    await user.save();
-
-    res.json({ message: 'User unblocked successfully' });
-
-    await logActivity({
-      userId: currentUserId,
-      action: 'user_unblock',
-      req,
-      metadata: { unblockUserId }
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Update user settings
-router.patch('/settings', auth, validate({ body: settingsSchema }), async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { settings } = req.body;
-
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    // Update settings object
-    user.settings = { ...user.settings, ...settings };
-    await user.save();
-
-    res.json({ message: 'Settings updated successfully', settings: user.settings });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Update matchmaking preferences
-router.patch('/match-preferences', auth, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { gender, ageRange, region, interests } = req.body;
-
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    if (gender) user.matchPreferences.gender = gender;
-    if (ageRange) {
-      if (ageRange.min !== undefined) user.matchPreferences.ageRange.min = ageRange.min;
-      if (ageRange.max !== undefined) user.matchPreferences.ageRange.max = ageRange.max;
-    }
-    if (region) user.matchPreferences.region = region;
-    if (interests) user.matchPreferences.interests = interests;
-
-    await user.save();
-
-    res.json({ message: 'Match preferences updated successfully', matchPreferences: user.matchPreferences });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Delete account completely
-router.delete('/account', auth, async (req, res) => {
-  try {
-    const currentUserId = req.userId;
-
-    const user = await User.findById(currentUserId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    // 1. Delete Profile Picture from Cloudinary
-    if (user.profilePic) {
-      await deleteImage(user.profilePic);
-    }
-
-    // 2. Find all connections
-    const connections = await Connection.find({ users: currentUserId });
-    const connectionIds = connections.map(c => c._id);
-
-    // 3. Delete all messages in those connections (and any sent by user)
-    await Message.deleteMany({
-      $or: [
-        { connectionId: { $in: connectionIds } },
-        { sender: currentUserId }
-      ]
-    });
-
-    // 4. Delete the connections
-    await Connection.deleteMany({ users: currentUserId });
-
-    // 5. Delete notifications
-    await Notification.deleteMany({
-      $or: [{ user: currentUserId }, { fromUser: currentUserId }]
-    });
-
-    // 6. Delete reports where user is reporter
-    await Report.deleteMany({ reporter: currentUserId });
-
-    // 7. Finally delete the user
-    await User.findByIdAndDelete(currentUserId);
-
-    res.json({ message: 'Account deleted successfully' });
-
-    await logActivity({
-      userId: currentUserId,
-      action: 'account_deletion',
-      req
-    });
-  } catch (error) {
-    console.error('Account deletion error:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Export user data as JSON
-router.get('/export', auth, async (req, res) => {
-  try {
-    const currentUserId = req.userId;
-
-    const user = await User.findById(currentUserId).lean();
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const connections = await Connection.find({ users: currentUserId }).lean();
-    const connectionIds = connections.map(c => c._id);
-
-    const messages = await Message.find({
-      $or: [
-        { connectionId: { $in: connectionIds } },
-        { sender: currentUserId }
-      ]
-    }).lean();
-
-    const notifications = await Notification.find({ user: currentUserId }).lean();
-
-    const exportData = {
-      profile: user,
-      connections: connections,
-      messages: messages,
-      notifications: notifications,
-      exportedAt: new Date().toISOString()
+    const mergedUser = {
+      ...existingUser,
+      ...updates
     };
 
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename=ontlo_data_export_${currentUserId}.json`);
-    res.json(exportData);
+    const isComplete =
+      requiredFields.every(
+        field => !!mergedUser[field]
+      );
 
-    await logActivity({
-      userId: currentUserId,
-      action: 'export_data',
-      req
-    });
+    updates.isProfileComplete =
+      isComplete;
+
+    const updatedUser =
+      await User.findByIdAndUpdate(
+
+        req.userId,
+
+        {
+          $set: updates
+        },
+
+        {
+          new: true,
+          runValidators: true
+        }
+      ).select(
+        `
+        username
+        profilePic
+        fullName
+        age
+        gender
+        bio
+        interests
+        isProfileComplete
+        `
+      );
+
+    // ======================================================
+    // UPDATE SNAPSHOTS
+    // ======================================================
+
+    Connection.updateMany(
+      {
+        'userDetails._id': req.userId
+      },
+      {
+        $set: {
+          'userDetails.$[elem].username':
+            updatedUser.username,
+
+          'userDetails.$[elem].profilePic':
+            updatedUser.profilePic
+        }
+      },
+      {
+        arrayFilters: [
+          {
+            'elem._id':
+              new mongoose.Types.ObjectId(
+                req.userId
+              )
+          }
+        ]
+      }
+    ).catch(() => {});
+
+    Message.updateMany(
+      {
+        'senderInfo._id': req.userId
+      },
+      {
+        $set: {
+          'senderInfo.username':
+            updatedUser.username,
+
+          'senderInfo.profilePic':
+            updatedUser.profilePic
+        }
+      }
+    ).catch(() => {});
+
+    Notification.updateMany(
+      {
+        'fromUser._id': req.userId
+      },
+      {
+        $set: {
+          'fromUser.username':
+            updatedUser.username,
+
+          'fromUser.profilePic':
+            updatedUser.profilePic
+        }
+      }
+    ).catch(() => {});
+
+    res.json(updatedUser);
+
   } catch (error) {
-    console.error('Data export error:', error);
-    res.status(500).json({ error: 'Server error' });
+
+    console.error(
+      '[UPDATE PROFILE ERROR]:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Server error'
+    });
   }
 });
+
+
+
+// ======================================================
+// UPDATE ONLINE STATUS
+// ======================================================
+
+router.post('/presence/update', auth, async (req, res) => {
+
+  try {
+
+    const {
+      status
+    } = req.body;
+
+    const allowedStatuses = [
+      'online',
+      'offline',
+      'away'
+    ];
+
+    if (
+      !allowedStatuses.includes(status)
+    ) {
+
+      return res.status(400).json({
+        error: 'Invalid status'
+      });
+    }
+
+    await User.updateOne(
+      {
+        _id: req.userId
+      },
+      {
+        $set: {
+          onlineStatus: status,
+          lastSeen: new Date()
+        }
+      }
+    );
+
+    res.json({
+      success: true
+    });
+
+  } catch (error) {
+
+    console.error(
+      '[PRESENCE ERROR]:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Server error'
+    });
+  }
+});
+
+
+
+// ======================================================
+// BLOCK USER
+// ======================================================
+
+router.post('/block/:id', auth, async (req, res) => {
+
+  try {
+
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        req.params.id
+      )
+    ) {
+
+      return res.status(400).json({
+        error: 'Invalid user ID'
+      });
+    }
+
+    if (
+      req.userId.toString() ===
+      req.params.id.toString()
+    ) {
+
+      return res.status(400).json({
+        error:
+          'Cannot block yourself'
+      });
+    }
+
+    await User.updateOne(
+      {
+        _id: req.userId
+      },
+      {
+        $addToSet: {
+          blockedUsers:
+            req.params.id
+        }
+      }
+    );
+
+    // ======================================================
+    // REMOVE CONNECTION
+    // ======================================================
+
+    await Connection.deleteMany({
+      users: {
+        $all: [
+          req.userId,
+          req.params.id
+        ]
+      }
+    });
+
+    res.json({
+      success: true
+    });
+
+  } catch (error) {
+
+    console.error(
+      '[BLOCK ERROR]:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Server error'
+    });
+  }
+});
+
+
+
+// ======================================================
+// UNBLOCK USER
+// ======================================================
+
+router.post('/unblock/:id', auth, async (req, res) => {
+
+  try {
+
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        req.params.id
+      )
+    ) {
+
+      return res.status(400).json({
+        error: 'Invalid user ID'
+      });
+    }
+
+    await User.updateOne(
+      {
+        _id: req.userId
+      },
+      {
+        $pull: {
+          blockedUsers:
+            req.params.id
+        }
+      }
+    );
+
+    res.json({
+      success: true
+    });
+
+  } catch (error) {
+
+    console.error(
+      '[UNBLOCK ERROR]:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Server error'
+    });
+  }
+});
+
+
 
 module.exports = router;

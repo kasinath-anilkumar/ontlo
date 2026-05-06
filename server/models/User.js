@@ -1,171 +1,484 @@
 const mongoose = require('mongoose');
 
-const UserSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    minlength: 3
-  },
-  email: {
-    type: String,
-    unique: true,
-    sparse: true,
-    trim: true,
-    lowercase: true
-  },
-  password: {
-    type: String,
-    required: true,
-    minlength: 6
-  },
-  profilePic: {
-    type: String,
-    default: ''
-  },
-  // Profile fields
-  fullName: String,
-  age: Number,
-  dob: Date,
-  gender: {
-    type: String,
-    enum: ['Male', 'Female', 'Other', 'Prefer not to say']
-  },
-  location: String,
-  coordinates: {
-    lat: Number,
-    lng: Number
-  },
-  interests: [String],
-  bio: String,
-  isProfileComplete: {
-    type: Boolean,
-    default: false
-  },
-  onlineStatus: {
-    type: Boolean,
-    default: false
-  },
-  blockedUsers: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  role: {
-    type: String,
-    enum: ['user', 'moderator', 'admin', 'superadmin'],
-    default: 'user'
-  },
-  status: {
-    type: String,
-    enum: ['active', 'suspended', 'banned'],
-    default: 'active'
-  },
-  lastLogin: {
-    type: Date,
-    default: Date.now
-  },
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  referralCode: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  referredBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  isShadowBanned: {
-    type: Boolean,
-    default: false
-  },
-  lastIp: String,
-  settings: {
-    emailNotifications: { type: Boolean, default: true },
-    discoveryMode: { type: Boolean, default: true },
-    stealthMode: { type: Boolean, default: false },
-    language: { type: String, default: 'en' }
-  },
-  refreshTokens: [String],
-  loginAttempts: {
-    type: Number,
-    required: true,
-    default: 0
-  },
-  lockUntil: {
-    type: Number
-  },
-  isPremium: {
-    type: Boolean,
-    default: false
-  },
-  premiumExpiresAt: {
-    type: Date
-  },
-  boosts: {
-    type: Number,
-    default: 0
-  },
-  lastBoostedAt: {
-    type: Date
-  },
-  region: {
-    type: String,
-    default: 'Global'
-  },
-  lowBandwidth: {
-    type: Boolean,
-    default: false
-  },
-  matchPreferences: {
-    gender: { type: String, enum: ['Male', 'Female', 'Other', 'All'], default: 'All' },
-    ageRange: {
-      min: { type: Number, default: 18 },
-      max: { type: Number, default: 100 }
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_TIME = 2 * 60 * 60 * 1000;
+
+const UserSchema = new mongoose.Schema(
+  {
+    // ======================================================
+    // BASIC AUTH
+    // ======================================================
+
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 30,
+      index: true
     },
-    distance: { type: Number, default: 500 },
-    interests: { type: [String], default: [] }
+
+    email: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      lowercase: true,
+      maxlength: 120,
+      index: true
+    },
+
+    password: {
+      type: String,
+      required: true,
+      minlength: 6,
+      select: false
+    },
+
+    // ======================================================
+    // PROFILE
+    // ======================================================
+
+    profilePic: {
+      type: String,
+      default: ''
+    },
+
+    fullName: {
+      type: String,
+      trim: true,
+      maxlength: 80
+    },
+
+    age: {
+      type: Number,
+      min: 18,
+      max: 100
+    },
+
+    dob: Date,
+
+    gender: {
+      type: String,
+      enum: [
+        'Male',
+        'Female',
+        'Other',
+        'Prefer not to say'
+      ]
+    },
+
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 500
+    },
+
+    location: {
+      type: String,
+      trim: true,
+      maxlength: 100
+    },
+
+    // ======================================================
+    // GEO LOCATION
+    // ======================================================
+
+    locationCoordinates: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point'
+      },
+
+      coordinates: {
+        type: [Number],
+        default: [0, 0]
+      }
+    },
+
+    // ======================================================
+    // INTERESTS
+    // ======================================================
+
+    interests: {
+      type: [String],
+      default: []
+    },
+
+    // ======================================================
+    // PROFILE STATUS
+    // ======================================================
+
+    isProfileComplete: {
+      type: Boolean,
+      default: false
+    },
+
+    // ======================================================
+    // ONLINE STATUS
+    // ======================================================
+
+    onlineStatus: {
+      type: String,
+      enum: ['online', 'offline', 'away'],
+      default: 'offline'
+    },
+
+    lastSeen: {
+      type: Date,
+      default: null
+    },
+
+    // ======================================================
+    // BLOCKED USERS
+    // ======================================================
+
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
+
+    // ======================================================
+    // ROLE & STATUS
+    // ======================================================
+
+    role: {
+      type: String,
+      enum: [
+        'user',
+        'moderator',
+        'admin',
+        'superadmin'
+      ],
+      default: 'user'
+    },
+
+    status: {
+      type: String,
+      enum: [
+        'active',
+        'suspended',
+        'banned'
+      ],
+      default: 'active'
+    },
+
+    isShadowBanned: {
+      type: Boolean,
+      default: false
+    },
+
+    // ======================================================
+    // SECURITY
+    // ======================================================
+
+    lastLogin: {
+      type: Date,
+      default: Date.now
+    },
+
+    lastIp: {
+      type: String,
+      default: ''
+    },
+
+    loginAttempts: {
+      type: Number,
+      default: 0
+    },
+
+    lockUntil: Number,
+
+    // ======================================================
+    // VERIFICATION
+    // ======================================================
+
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+
+    // ======================================================
+    // PREMIUM
+    // ======================================================
+
+    isPremium: {
+      type: Boolean,
+      default: false
+    },
+
+    premiumExpiresAt: Date,
+
+    boosts: {
+      type: Number,
+      default: 0
+    },
+
+    lastBoostedAt: Date,
+
+    // ======================================================
+    // REFERRALS
+    // ======================================================
+
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true
+    },
+
+    referredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+
+    // ======================================================
+    // SETTINGS
+    // ======================================================
+
+    settings: {
+      emailNotifications: {
+        type: Boolean,
+        default: true
+      },
+
+      discoveryMode: {
+        type: Boolean,
+        default: true
+      },
+
+      stealthMode: {
+        type: Boolean,
+        default: false
+      },
+
+      language: {
+        type: String,
+        default: 'en'
+      }
+    },
+
+    // ======================================================
+    // NOTIFICATION PREFERENCES
+    // ======================================================
+
+    notificationPreferences: {
+      messages: {
+        type: Boolean,
+        default: true
+      },
+
+      matches: {
+        type: Boolean,
+        default: true
+      },
+
+      calls: {
+        type: Boolean,
+        default: true
+      },
+
+      marketing: {
+        type: Boolean,
+        default: false
+      }
+    },
+
+    // ======================================================
+    // MATCH PREFERENCES
+    // ======================================================
+
+    matchPreferences: {
+      gender: {
+        type: String,
+        enum: [
+          'Male',
+          'Female',
+          'Other',
+          'All'
+        ],
+        default: 'All'
+      },
+
+      ageRange: {
+        min: {
+          type: Number,
+          default: 18
+        },
+
+        max: {
+          type: Number,
+          default: 100
+        }
+      },
+
+      distance: {
+        type: Number,
+        default: 500
+      },
+
+      interests: {
+        type: [String],
+        default: []
+      }
+    },
+
+    // ======================================================
+    // TOKENS
+    // ======================================================
+
+    refreshTokens: [
+      {
+        token: String,
+
+        createdAt: {
+          type: Date,
+          default: Date.now
+        }
+      }
+    ],
+
+    // ======================================================
+    // FAVORITES
+    // ======================================================
+
+    favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
+
+    // ======================================================
+    // COUNTERS
+    // ======================================================
+
+    notificationCount: {
+      type: Number,
+      default: 0
+    },
+
+    profileViews: {
+      type: Number,
+      default: 0
+    }
   },
-  favorites: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }]
-}, { timestamps: true });
+  {
+    timestamps: true
+  }
+);
 
-UserSchema.index({ role: 1 });
-UserSchema.index({ isPremium: 1 });
-UserSchema.index({ onlineStatus: 1 });
-UserSchema.index({ onlineStatus: 1, role: 1 }); // Compound index for online users queries
-UserSchema.index({ interests: 1 }); // Index for interest-based matching
 
-UserSchema.virtual('isLocked').get(function() {
-  return !!(this.lockUntil && this.lockUntil > Date.now());
+
+// ======================================================
+// INDEXES
+// ======================================================
+
+UserSchema.index({
+  role: 1
 });
 
-UserSchema.methods.incLoginAttempts = function() {
-  // If we have a previous lock that has expired, restart at 1
-  if (this.lockUntil && this.lockUntil < Date.now()) {
-    return this.updateOne({
-      $set: { loginAttempts: 1 },
-      $unset: { lockUntil: 1 }
-    });
-  }
-  
-  // Otherwise we're incrementing
-  const updates = { $inc: { loginAttempts: 1 } };
-  
-  // Lock the account if we've reached max attempts and it's not already locked
-  const MAX_LOGIN_ATTEMPTS = 5;
-  const LOCK_TIME = 2 * 60 * 60 * 1000; // 2 hours
-  
-  if (this.loginAttempts + 1 >= MAX_LOGIN_ATTEMPTS && !this.isLocked) {
-    updates.$set = { lockUntil: Date.now() + LOCK_TIME };
-  }
-  
-  return this.updateOne(updates);
-};
+UserSchema.index({
+  isPremium: 1
+});
 
-module.exports = mongoose.model('User', UserSchema);
+UserSchema.index({
+  onlineStatus: 1
+});
+
+UserSchema.index({
+  onlineStatus: 1,
+  role: 1
+});
+
+UserSchema.index({
+  status: 1,
+  onlineStatus: 1
+});
+
+UserSchema.index({
+  interests: 1
+});
+
+UserSchema.index({
+  interests: 1,
+  onlineStatus: 1
+});
+
+UserSchema.index({
+  createdAt: -1
+});
+
+UserSchema.index({
+  locationCoordinates: '2dsphere'
+});
+
+
+
+// ======================================================
+// VIRTUALS
+// ======================================================
+
+UserSchema.virtual('isLocked').get(function () {
+
+  return !!(
+    this.lockUntil &&
+    this.lockUntil > Date.now()
+  );
+});
+
+
+
+// ======================================================
+// LOGIN ATTEMPTS
+// ======================================================
+
+UserSchema.methods.incLoginAttempts =
+  function () {
+
+    if (
+      this.lockUntil &&
+      this.lockUntil < Date.now()
+    ) {
+
+      return this.updateOne({
+        $set: {
+          loginAttempts: 1
+        },
+
+        $unset: {
+          lockUntil: 1
+        }
+      });
+    }
+
+    const updates = {
+      $inc: {
+        loginAttempts: 1
+      }
+    };
+
+    if (
+      this.loginAttempts + 1 >=
+        MAX_LOGIN_ATTEMPTS &&
+      !this.isLocked
+    ) {
+
+      updates.$set = {
+        lockUntil:
+          Date.now() + LOCK_TIME
+      };
+    }
+
+    return this.updateOne(updates);
+  };
+
+
+
+module.exports = mongoose.model(
+  'User',
+  UserSchema
+);

@@ -1,92 +1,238 @@
-// routes/connection.routes.js
-
 const express = require('express');
+const mongoose = require('mongoose');
+
 const router = express.Router();
 
 const Connection = require('../models/Connection');
+
 const auth = require('../middleware/auth');
+
 const validate = require('../middleware/validate');
-const { connectionIdParamSchema } = require('../validators/connection.validator');
+
+const {
+  connectionIdParamSchema
+} = require('../validators/connection.validator');
 
 
-// 🔥 GET connections (FINAL OPTIMIZED)
+
+// ======================================================
+// GET CONNECTIONS
+// ======================================================
+
 router.get('/', auth, async (req, res) => {
   try {
-    const connections = await Connection.find({
-      users: req.userId,
-      status: 'active'
-    })
-      .select('users userDetails lastMessage createdAt updatedAt status')
-      .populate('users', 'username profilePic onlineStatus')
+
+    const start = Date.now();
+
+    const connections = await Connection.find(
+      {
+        users: req.userId,
+        status: 'active'
+      },
+
+      // 🔥 FETCH ONLY NEEDED FIELDS
+      `
+      users
+      userDetails
+      lastMessage
+      createdAt
+      updatedAt
+      status
+      `
+    )
       .sort({ updatedAt: -1 })
       .limit(20)
-      .hint({ users: 1, updatedAt: -1 }) // 🔥 FORCE INDEX
-      .maxTimeMS(5000) // 🛡️ PROTECT SERVER
+      .hint({
+        users: 1,
+        updatedAt: -1
+      })
+      .maxTimeMS(5000)
       .lean();
 
     const userIdStr = req.userId.toString();
 
-    const formatted = connections.map((c) => {
-      // Prioritize populated 'users' as it's the live source of truth
-      // Check for .username to ensure it's actually populated and not just an array of IDs
-      const isPopulated = c.users && c.users.length > 0 && c.users[0]?.username;
-      const usersList = isPopulated ? c.users : (c.userDetails || []);
+    const formatted = connections
+      .map((connection) => {
 
-      const otherUser = usersList.find(
-        (u) => u && u._id && u._id.toString() !== userIdStr
+        // ======================================================
+        // FIND OTHER USER
+        // ======================================================
+
+        const otherUser = (connection.userDetails || [])
+          .find(
+            (u) =>
+              u &&
+              u._id &&
+              u._id.toString() !== userIdStr
+          );
+
+        // Invalid connection
+        if (!otherUser) {
+          return null;
+        }
+
+        return {
+          id: connection._id,
+
+          user: {
+            _id: otherUser._id,
+            username: otherUser.username || 'User',
+            profilePic: otherUser.profilePic || '',
+            onlineStatus:
+              otherUser.onlineStatus || 'offline'
+          },
+
+          status: connection.status,
+
+          lastMessage: connection.lastMessage || null,
+
+          createdAt: connection.createdAt,
+
+          updatedAt: connection.updatedAt
+        };
+      })
+      .filter(Boolean);
+
+    const duration = Date.now() - start;
+
+    if (duration > 500) {
+      console.warn(
+        `[CONNECTIONS SLOW] took ${duration}ms`
       );
-
-      return {
-        id: c._id,
-        user: otherUser && otherUser.username ? otherUser : null,
-        status: c.status,
-        createdAt: c.createdAt,
-        lastMessage: c.lastMessage || null
-      };
-    }).filter(c => c.user !== null); // Hide invalid connections where user data is missing
+    }
 
     res.json(formatted);
 
   } catch (error) {
-    console.error('[CONNECTION ERROR]:', error);
-    res.status(500).json({ error: 'Server error' });
+
+    console.error(
+      '[CONNECTION FETCH ERROR]:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Server error'
+    });
   }
 });
 
-// 🔥 DELETE connection
+
+
+// ======================================================
+// DELETE CONNECTION
+// ======================================================
+
 router.delete(
   '/:id',
   auth,
-  validate({ params: connectionIdParamSchema }),
+  validate({
+    params: connectionIdParamSchema
+  }),
   async (req, res) => {
+
     try {
+
+      // ======================================================
+      // VALIDATE OBJECT ID
+      // ======================================================
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          req.params.id
+        )
+      ) {
+        return res.status(400).json({
+          error: 'Invalid connection ID'
+        });
+      }
+
+      // ======================================================
+      // FIND CONNECTION
+      // ======================================================
+
       const connection = await Connection.findOne({
         _id: req.params.id,
         users: req.userId
-      });
+      })
+        .select('_id')
+        .lean();
 
       if (!connection) {
-        return res.status(404).json({ error: 'Connection not found' });
+        return res.status(404).json({
+          error: 'Connection not found'
+        });
       }
 
-      await Connection.deleteOne({ _id: req.params.id });
-      res.json({ message: 'Connection removed' });
+      // ======================================================
+      // DELETE
+      // ======================================================
+
+      await Connection.deleteOne({
+        _id: req.params.id
+      });
+
+      // ======================================================
+      // SOCKET UPDATE
+      // ======================================================
+
+      if (req.io) {
+        req.io
+          .to(`user_${req.userId}`)
+          .emit('connection-deleted', {
+            connectionId: req.params.id
+          });
+      }
+
+      res.json({
+        message: 'Connection removed'
+      });
+
     } catch (error) {
-      res.status(500).json({ error: 'Server error' });
+
+      console.error(
+        '[DELETE CONNECTION ERROR]:',
+        error
+      );
+
+      res.status(500).json({
+        error: 'Server error'
+      });
     }
   }
 );
 
-// 🔥 ONLINE connections
+
+
+// ======================================================
+// GET ONLINE CONNECTIONS
+// ======================================================
+
 router.get('/online', auth, async (req, res) => {
+
   try {
-    const { getOnlineConnections } = require('../utils/stats');
-    const onlineOnes = await getOnlineConnections(req.userId);
-    res.json(onlineOnes);
+
+    const {
+      getOnlineConnections
+    } = require('../utils/stats');
+
+    const onlineConnections =
+      await getOnlineConnections(req.userId);
+
+    res.json(onlineConnections);
+
   } catch (error) {
-    console.error('[Online Connections Error]:', error);
-    res.status(500).json({ error: 'Server error' });
+
+    console.error(
+      '[ONLINE CONNECTION ERROR]:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Server error'
+    });
   }
 });
+
+
 
 module.exports = router;

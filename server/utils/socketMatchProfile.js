@@ -1,30 +1,215 @@
-const User = require('../models/User');
+// utils/socketMatchProfile.js
 
-/**
- * Loads matchmaking fields from DB onto the socket (Matchmaker reads these from queue sockets).
- */
-async function attachMatchmakingProfile(socket) {
-  if (!socket.userId) return null;
-  const user = await User.findById(socket.userId)
-    .select(
-      'username profilePic role age gender interests location matchPreferences coordinates blockedUsers isShadowBanned isPremium lastBoostedAt onlineStatus'
-    )
-    .lean();
-  if (!user) return null;
+const User =
+  require('../models/User');
 
-  socket.role = user.role;
-  socket.age = user.age;
-  socket.gender = user.gender;
-  socket.interests = user.interests || [];
-  socket.location = user.location;
-  socket.matchPreferences = user.matchPreferences;
-  socket.coordinates = user.coordinates;
-  socket.blockedUsers = (user.blockedUsers || []).map((id) => id.toString());
-  socket.isShadowBanned = !!user.isShadowBanned;
-  socket.isPremium = !!user.isPremium;
-  socket.lastBoostedAt = user.lastBoostedAt;
 
-  return user;
+
+// ======================================================
+// LOAD MATCHMAKING PROFILE
+// FREE-TIER OPTIMIZED
+// ======================================================
+
+async function attachMatchmakingProfile(
+  socket
+) {
+
+  try {
+
+    if (!socket.userId) {
+      return null;
+    }
+
+    // ======================================================
+    // LOAD ONLY REQUIRED FIELDS
+    // ======================================================
+
+    const user = await User.findById(
+
+      socket.userId,
+
+      `
+      username
+      profilePic
+      role
+      age
+      gender
+      interests
+      location
+      locationCoordinates
+      matchPreferences
+      blockedUsers
+      isShadowBanned
+      isPremium
+      lastBoostedAt
+      onlineStatus
+      status
+      `
+    ).lean();
+
+    // ======================================================
+    // USER NOT FOUND
+    // ======================================================
+
+    if (!user) {
+      return null;
+    }
+
+    // ======================================================
+    // BLOCK BANNED USERS
+    // ======================================================
+
+    if (
+      user.status === 'banned'
+    ) {
+
+      return null;
+    }
+
+    // ======================================================
+    // STORE ON SOCKET
+    // ======================================================
+
+    socket.user = {
+
+      _id:
+        user._id,
+
+      username:
+        user.username,
+
+      profilePic:
+        user.profilePic || ''
+    };
+
+    socket.role =
+      user.role || 'user';
+
+    socket.age =
+      user.age || null;
+
+    socket.gender =
+      user.gender || null;
+
+    socket.interests =
+      Array.isArray(
+        user.interests
+      )
+        ? user.interests
+        : [];
+
+    socket.location =
+      user.location || '';
+
+    // ======================================================
+    // GEOJSON COORDINATES
+    // ======================================================
+
+    socket.coordinates =
+      user.locationCoordinates
+        ?.coordinates || [
+        0,
+        0
+      ];
+
+    // ======================================================
+    // MATCH PREFERENCES
+    // ======================================================
+
+    socket.matchPreferences =
+      user.matchPreferences || {
+
+        gender: 'All',
+
+        ageRange: {
+          min: 18,
+          max: 100
+        },
+
+        distance: 500,
+
+        interests: []
+      };
+
+    // ======================================================
+    // BLOCKED USERS
+    // ======================================================
+
+    socket.blockedUsers =
+      (
+        user.blockedUsers || []
+      ).map((id) =>
+        id.toString()
+      );
+
+    // ======================================================
+    // FLAGS
+    // ======================================================
+
+    socket.isShadowBanned =
+      !!user.isShadowBanned;
+
+    socket.isPremium =
+      !!user.isPremium;
+
+    socket.lastBoostedAt =
+      user.lastBoostedAt ||
+      null;
+
+    socket.onlineStatus =
+      user.onlineStatus ||
+      'offline';
+
+    // ======================================================
+    // MATCHMAKER PAYLOAD
+    // ======================================================
+
+    socket.matchProfile = {
+
+      userId:
+        user._id.toString(),
+
+      age:
+        socket.age,
+
+      gender:
+        socket.gender,
+
+      interests:
+        socket.interests,
+
+      preferences:
+        socket.matchPreferences,
+
+      coordinates:
+        socket.coordinates,
+
+      blockedUsers:
+        socket.blockedUsers,
+
+      isPremium:
+        socket.isPremium,
+
+      boostTime:
+        socket.lastBoostedAt
+    };
+
+    return user;
+
+  } catch (error) {
+
+    console.error(
+      '[MATCH PROFILE ERROR]:',
+      error
+    );
+
+    return null;
+  }
 }
 
-module.exports = { attachMatchmakingProfile };
+
+
+module.exports = {
+
+  attachMatchmakingProfile
+};
