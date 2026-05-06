@@ -1,4 +1,4 @@
-import { Bell, MessageSquare, Heart, Shield, Check, Trash2, Loader2, ChevronLeft } from "lucide-react";
+import { Bell, MessageSquare, Heart, Shield, Check, Trash2, Loader2, ChevronLeft, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API_URL, { apiFetch } from "../utils/api";
