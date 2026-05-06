@@ -583,6 +583,11 @@ router.post(
               profilePic: currentUserFull.profilePic
             }
           });
+
+          // 🔥 Update unread badge counts
+          req.io.to(`user_${targetUserId}`).emit('counts-delta', {
+            connections: 1
+          });
         }
       }
 
