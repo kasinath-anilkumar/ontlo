@@ -330,16 +330,19 @@ const UserSchema = new mongoose.Schema(
     // TOKENS
     // ======================================================
 
-    refreshTokens: [
-      {
-        token: String,
+    refreshTokens: {
+      type: [
+        {
+          token: String,
 
-        createdAt: {
-          type: Date,
-          default: Date.now
+          createdAt: {
+            type: Date,
+            default: Date.now
+          }
         }
-      }
-    ],
+      ],
+      select: false
+    },
 
     // ======================================================
     // FAVORITES

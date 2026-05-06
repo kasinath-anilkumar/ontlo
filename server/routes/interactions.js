@@ -180,7 +180,132 @@ router.post(
       }
 
       // ======================================================
-      // CREATE LIKE
+      // MUTUAL LIKE CHECK (Immediate Match)
+      // ======================================================
+
+      const mutualLike =
+        await Like.findOne({
+          fromUser:
+            targetUserId,
+
+          toUser:
+            req.user.id
+        }).lean();
+
+      if (mutualLike) {
+
+        // ======================================================
+        // CREATE CONNECTION
+        // ======================================================
+
+        const Connection = require('../models/Connection');
+
+        // Check if connection already exists (failsafe)
+        const sortedIds = [
+          req.user.id,
+          targetUserId
+        ].sort();
+
+        const pairKey = sortedIds.join('_');
+
+        const existingConn = await Connection.findOne({
+          pairKey
+        }).lean();
+
+        if (!existingConn) {
+
+          const targetUserFull = await User.findById(targetUserId).select('username profilePic onlineStatus').lean();
+          const currentUserFull = await User.findById(req.user.id).select('username profilePic onlineStatus').lean();
+
+          await Connection.create({
+            users: [req.user.id, targetUserId],
+            pairKey,
+            userDetails: [
+              {
+                _id: currentUserFull._id,
+                username: currentUserFull.username,
+                profilePic: currentUserFull.profilePic,
+                onlineStatus: currentUserFull.onlineStatus
+              },
+              {
+                _id: targetUserFull._id,
+                username: targetUserFull.username,
+                profilePic: targetUserFull.profilePic,
+                onlineStatus: targetUserFull.onlineStatus
+              }
+            ]
+          });
+
+          // ======================================================
+          // NOTIFICATIONS (BOTH)
+          // ======================================================
+
+          // Notify Target
+          Notification.create({
+            user: targetUserId,
+            type: 'match',
+            content: `You matched with ${currentUserFull.username}!`,
+            fromUser: {
+              _id: currentUserFull._id,
+              username: currentUserFull.username,
+              profilePic: currentUserFull.profilePic
+            }
+          }).catch(() => {});
+
+          // Notify Current
+          Notification.create({
+            user: req.user.id,
+            type: 'match',
+            content: `You matched with ${targetUserFull.username}!`,
+            fromUser: {
+              _id: targetUserFull._id,
+              username: targetUserFull.username,
+              profilePic: targetUserFull.profilePic
+            }
+          }).catch(() => {});
+
+          // ======================================================
+          // REALTIME (BOTH)
+          // ======================================================
+
+          if (req.io) {
+
+            // To Target
+            req.io.to(`user_${targetUserId}`).emit('new-match', {
+              user: {
+                _id: currentUserFull._id,
+                username: currentUserFull.username,
+                profilePic: currentUserFull.profilePic
+              }
+            });
+
+            // To Current
+            req.io.to(`user_${req.user.id}`).emit('new-match', {
+              user: {
+                _id: targetUserFull._id,
+                username: targetUserFull.username,
+                profilePic: targetUserFull.profilePic
+              }
+            });
+          }
+        }
+
+        // Cleanup likes
+        await Like.deleteMany({
+          $or: [
+            { fromUser: req.user.id, toUser: targetUserId },
+            { fromUser: targetUserId, toUser: req.user.id }
+          ]
+        });
+
+        return res.json({
+          success: true,
+          isMatch: true
+        });
+      }
+
+      // ======================================================
+      // CREATE LIKE (Standard)
       // ======================================================
 
       await Like.create({
@@ -220,7 +345,7 @@ router.post(
           'like',
 
         content:
-          `${currentUser?.username || 'Someone'} liked you`,
+          `${currentUser?.username || 'Someone'} sent you a connection request`,
 
         fromUser: {
 
@@ -285,7 +410,8 @@ router.post(
 
       res.json({
 
-        success: true
+        success: true,
+        isMatch: false
       });
 
     } catch (error) {
@@ -311,6 +437,165 @@ router.post(
 
         error:
           'Server error'
+      });
+    }
+  }
+);
+
+
+
+// ======================================================
+// ACCEPT CONNECTION REQUEST
+// ======================================================
+
+router.post(
+  '/accept/:userId',
+
+  auth,
+
+  async (req, res) => {
+
+    try {
+
+      const targetUserId =
+        req.params.userId;
+
+      // ======================================================
+      // VALIDATE
+      // ======================================================
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          targetUserId
+        )
+      ) {
+        return res.status(400).json({
+          error: 'Invalid user id'
+        });
+      }
+
+      // ======================================================
+      // FIND REQUEST (LIKE)
+      // ======================================================
+
+      const matchRequest =
+        await Like.findOne({
+          fromUser:
+            targetUserId,
+
+          toUser:
+            req.user.id
+        }).lean();
+
+      if (!matchRequest) {
+
+        return res.status(404).json({
+
+          error:
+            'No pending request found'
+        });
+      }
+
+      // ======================================================
+      // CREATE CONNECTION
+      // ======================================================
+
+      const Connection = require('../models/Connection');
+
+      const sortedIds = [
+        req.user.id,
+        targetUserId
+      ].sort();
+
+      const pairKey = sortedIds.join('_');
+
+      const existingConn = await Connection.findOne({
+        pairKey
+      }).lean();
+
+      if (!existingConn) {
+
+        const targetUserFull = await User.findById(targetUserId).select('username profilePic onlineStatus').lean();
+        const currentUserFull = await User.findById(req.userId).select('username profilePic onlineStatus').lean();
+
+        if (!targetUserFull || !currentUserFull) {
+          return res.status(404).json({
+            error: 'User not found'
+          });
+        }
+
+        await Connection.create({
+          users: [req.userId, targetUserId],
+          pairKey,
+          userDetails: [
+            {
+              _id: currentUserFull._id,
+              username: currentUserFull.username,
+              profilePic: currentUserFull.profilePic,
+              onlineStatus: currentUserFull.onlineStatus
+            },
+            {
+              _id: targetUserFull._id,
+              username: targetUserFull.username,
+              profilePic: targetUserFull.profilePic,
+              onlineStatus: targetUserFull.onlineStatus
+            }
+          ]
+        });
+
+        // ======================================================
+        // NOTIFICATIONS
+        // ======================================================
+
+        Notification.create({
+          user: targetUserId,
+          type: 'match',
+          content: `Connection request accepted! You matched with ${currentUserFull.username}!`,
+          fromUser: {
+            _id: currentUserFull._id,
+            username: currentUserFull.username,
+            profilePic: currentUserFull.profilePic
+          }
+        }).catch(() => {});
+
+        // ======================================================
+        // REALTIME
+        // ======================================================
+
+        if (req.io) {
+
+          req.io.to(`user_${targetUserId}`).emit('new-match', {
+            user: {
+              _id: currentUserFull._id,
+              username: currentUserFull.username,
+              profilePic: currentUserFull.profilePic
+            }
+          });
+        }
+      }
+
+      // Cleanup likes
+      await Like.deleteMany({
+        $or: [
+          { fromUser: req.userId, toUser: targetUserId },
+          { fromUser: targetUserId, toUser: req.userId }
+        ]
+      });
+
+      res.json({
+        success: true,
+        message: 'Match accepted'
+      });
+
+    } catch (error) {
+
+      console.error(
+        '[ACCEPT ERROR]:',
+        error
+      );
+
+      res.status(500).json({
+        error: 'Server error'
       });
     }
   }

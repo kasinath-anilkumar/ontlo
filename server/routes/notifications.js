@@ -77,19 +77,15 @@ router.get('/', auth, async (req, res) => {
     )
       .sort({ createdAt: -1 })
       .limit(30)
-      .hint({
-        user: 1,
-        createdAt: -1,
-        isRead: 1
-      })
-      .maxTimeMS(5000)
       .lean();
 
     // ======================================================
-    // HANDLE LEGACY NOTIFICATIONS
+    // FORMAT RESPONSE
     // ======================================================
 
-    notifications.forEach((n) => {
+    const formatted = notifications.map((n) => {
+
+      // Ensure fromUser object structure for consistency
       if (
         n.fromUser &&
         typeof n.fromUser === 'string'
@@ -99,59 +95,6 @@ router.get('/', auth, async (req, res) => {
           username: 'User',
           profilePic: ''
         };
-      }
-    });
-
-    // ======================================================
-    // FIND MISSING PROFILE DATA
-    // ======================================================
-
-    const missingUserIds = [
-      ...new Set(
-        notifications
-          .filter(
-            (n) =>
-              n.fromUser &&
-              n.fromUser._id &&
-              !n.fromUser.profilePic
-          )
-          .map((n) => n.fromUser._id.toString())
-      )
-    ];
-
-    let userMap = {};
-
-    if (missingUserIds.length > 0) {
-      const users = await User.find({
-        _id: {
-          $in: missingUserIds
-        }
-      })
-        .select('username profilePic')
-        .lean();
-
-      users.forEach((u) => {
-        userMap[u._id.toString()] = u;
-      });
-    }
-
-    // ======================================================
-    // MERGE USER DATA
-    // ======================================================
-
-    const formatted = notifications.map((n) => {
-      if (n.fromUser && n.fromUser._id) {
-        const userId = n.fromUser._id.toString();
-
-        if (userMap[userId]) {
-          n.fromUser.username =
-            userMap[userId].username ||
-            n.fromUser.username;
-
-          n.fromUser.profilePic =
-            userMap[userId].profilePic ||
-            n.fromUser.profilePic;
-        }
       }
 
       return n;

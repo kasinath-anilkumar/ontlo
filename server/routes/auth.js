@@ -910,6 +910,118 @@ router.post(
 
 
 // ======================================================
+// REFRESH TOKEN
+// ======================================================
+
+router.post(
+  '/refresh-token',
+
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const {
+        refreshToken
+      } = req.cookies;
+
+      if (!refreshToken) {
+
+        return res.status(401).json({
+
+          error:
+            'No refresh token provided'
+        });
+      }
+
+      // Verify JWT
+      let decoded;
+
+      try {
+
+        decoded =
+          jwt.verify(
+            refreshToken,
+            JWT_REFRESH_SECRET
+          );
+
+      } catch (err) {
+
+        return res.status(401).json({
+
+          error:
+            'Invalid or expired refresh token'
+        });
+      }
+
+      // Load user with tokens
+      const user =
+        await User.findById(
+          decoded.id
+        ).select(
+          '+refreshTokens'
+        );
+
+      if (!user) {
+
+        return res.status(401).json({
+
+          error:
+            'User not found'
+        });
+      }
+
+      // Check if token exists in DB
+      const tokenExists =
+        user.refreshTokens.some(
+          t =>
+            t.token ===
+            refreshToken
+        );
+
+      if (!tokenExists) {
+
+        // Potential reuse attack or revoked token
+        return res.status(401).json({
+
+          error:
+            'Token is no longer valid'
+        });
+      }
+
+      // Rotate tokens
+      const accessToken =
+        await generateTokens(
+          user,
+          res
+        );
+
+      res.json({
+        token:
+          accessToken
+      });
+
+    } catch (error) {
+
+      console.error(
+        '[REFRESH TOKEN ERROR]:',
+        error
+      );
+
+      res.status(500).json({
+
+        error:
+          'Internal server error'
+      });
+    }
+  }
+);
+
+
+
+// ======================================================
 // LOGIN
 // ======================================================
 

@@ -14,6 +14,10 @@ const {
   connectionIdParamSchema
 } = require('../validators/message.validator');
 
+const {
+  moderateText
+} = require('../utils/moderation');
+
 
 
 // ======================================================
@@ -117,6 +121,16 @@ router.post(
       }
 
       // ======================================================
+      // MODERATION
+      // ======================================================
+
+      const moderation =
+        moderateText(text || '');
+
+      const finalMessage =
+        moderation.text;
+
+      // ======================================================
       // GET SENDER SNAPSHOT
       // ======================================================
 
@@ -147,8 +161,8 @@ router.post(
             }
           : undefined,
 
-        text: text
-          ? text.trim()
+        text: finalMessage
+          ? finalMessage.trim()
           : undefined,
 
         imageUrl:
