@@ -459,7 +459,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       </div>
 
       {/* Input Area */}
-      <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:p-6 bg-[#0B0E14] border-t border-[#1e293b]/20">
+      <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-6 sm:p-6 bg-[#0B0E14] border-t border-[#1e293b]/20">
         <form onSubmit={sendMessage} className="max-w-4xl mx-auto flex items-center gap-2 sm:gap-3">
           <input 
             type="file" 

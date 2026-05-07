@@ -2,6 +2,7 @@ import { Bell, MessageSquare, Heart, Shield, Check, Trash2, Loader2, ChevronLeft
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API_URL, { apiFetch } from "../utils/api";
+import { useSocket } from "../context/SocketContext";
 
 const Notifications = () => {
   const { notifications, setNotifications, fetchGlobalNotifications } = useSocket();
