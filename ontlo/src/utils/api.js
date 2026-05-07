@@ -8,8 +8,9 @@ let refreshPromise = null;
 
 export const apiFetch = async (url, options = {}) => {
   // 1. Deduplicate concurrent identical requests
+  // Skip deduplication if a signal is provided to avoid React Strict Mode mount/unmount race conditions
   const requestKey = `${options.method || 'GET'}:${url}`;
-  if (pendingRequests.has(requestKey)) {
+  if (!options.signal && pendingRequests.has(requestKey)) {
     const response = await pendingRequests.get(requestKey);
     return response.clone();
   }

@@ -298,13 +298,14 @@ router.get(
 
     try {
 
+      const mongoose = require('mongoose');
       const messages = await Message.find(
         {
           connectionId:
             req.params.connectionId,
 
           deletedFor: {
-            $ne: req.userId
+            $ne: new mongoose.Types.ObjectId(req.userId)
           }
         },
 
@@ -322,12 +323,10 @@ router.get(
           createdAt: 1
         })
         .limit(100)
-        .hint({
-          connectionId: 1,
-          createdAt: 1
-        })
         .maxTimeMS(3000)
         .lean();
+
+      console.log(`[DEBUG] Found ${messages.length} messages for connection ${req.params.connectionId}`);
 
       const userIdStr =
         req.userId.toString();
@@ -416,7 +415,7 @@ router.post(
             req.params.connectionId,
 
           sender: {
-            $ne: req.userId
+            $ne: new mongoose.Types.ObjectId(req.userId)
           },
 
           isRead: false

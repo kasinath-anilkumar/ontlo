@@ -569,6 +569,8 @@ module.exports = (io) => {
                     null
                 });
 
+              console.log(`[DEBUG] Saved message ${createdMessage._id} to connection ${roomId}`);
+
               // ======================================================
               // UPDATE CONNECTION
               // ======================================================
