@@ -26,21 +26,21 @@ const MatchSettingsModal = ({ onClose, currentPreferences, onSave }) => {
     setIsSaving(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await apiFetch(`${API_URL}/api/users/match-preferences`, {
+      const res = await apiFetch(`${API_URL}/api/users/profile/update`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify(preferences)
+        body: JSON.stringify({ matchPreferences: preferences })
       });
       
       if (res.ok) {
         const data = await res.json();
-        if (socket) {
+        if (socket && data.matchPreferences) {
           socket.emit('update-match-preferences', data.matchPreferences);
         }
-        onSave(data.matchPreferences);
+        onSave(data.matchPreferences || preferences);
         onClose();
       }
     } catch (error) {
