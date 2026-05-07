@@ -545,7 +545,7 @@ const VideoContainer = () => {
                             onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
                             className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black rounded-md uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-sm sm:text-base md:text-lg"
                           >
-                            Find Matching
+                            Find Match
                           </button>
                         </div>
                       )}
