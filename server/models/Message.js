@@ -131,19 +131,15 @@ MessageSchema.index({
 // VALIDATION
 // ======================================================
 
-MessageSchema.pre('validate', function (next) {
+MessageSchema.pre('validate', async function () {
 
   // Require text or image
   if (
     (!this.text || !this.text.trim()) &&
     !this.imageUrl
   ) {
-    return next(
-      new Error('Message text or image required')
-    );
+    throw new Error('Message text or image required');
   }
-
-  next();
 });
 
 

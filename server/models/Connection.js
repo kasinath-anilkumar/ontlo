@@ -134,6 +134,12 @@ ConnectionSchema.index({
   unique: true
 });
 
+// Online filtering
+ConnectionSchema.index({
+  users: 1,
+  "userDetails.onlineStatus": 1
+});
+
 
 
 // ======================================================

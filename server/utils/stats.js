@@ -142,6 +142,9 @@ const getUserCounts = async (
               userIdStr
             );
 
+          // Profiling
+          const start = Date.now();
+
           // ======================================================
           // CONNECTIONS
           // ======================================================
@@ -247,6 +250,11 @@ const getUserCounts = async (
               totalMessages += count;
             }
           );
+
+          const duration = Date.now() - start;
+          if (duration > 300) {
+            console.warn(`[STATS SLOW] getUserCounts for ${userIdStr} took ${duration}ms`);
+          }
 
           const result = {
 
@@ -396,12 +404,15 @@ const getOnlineConnections =
 
           try {
 
+            const startOnline = Date.now();
+
             const connections =
               await Connection.find(
 
                 {
                   users: userId,
-                  status: 'active'
+                  status: 'active',
+                  "userDetails.onlineStatus": "online"
                 },
 
                 `
@@ -413,6 +424,11 @@ const getOnlineConnections =
                 })
                 .limit(100)
                 .lean();
+
+            const durationOnline = Date.now() - startOnline;
+            if (durationOnline > 300) {
+              console.warn(`[STATS SLOW] getOnlineConnections for ${userIdStr} took ${durationOnline}ms`);
+            }
 
             const result =
               connections
