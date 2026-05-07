@@ -16,11 +16,13 @@ export const SocketProvider = ({ children }) => {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // Centralized Global State
   const [counts, setCounts] = useState({ messages: 0, notifications: 0, perChat: {} });
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const isFetchingRef = useRef(false);
+  const lastFetchRef = useRef({ connections: 0, notifications: 0 });
 
   // Toast Notification State
   const [toast, setToast] = useState(null);
@@ -32,6 +34,8 @@ export const SocketProvider = ({ children }) => {
       setToast(null);
     }, 5000);
   };
+
+  const [isConnected, setIsConnected] = useState(false);
 
   // 1. Auth Check & Initial Data Fetch
   useEffect(() => {
@@ -87,6 +91,38 @@ export const SocketProvider = ({ children }) => {
     };
   }, []);
 
+  const fetchGlobalConnections = async (force = false) => {
+    // Cache for 2 minutes unless forced
+    if (!force && connections.length > 0 && Date.now() - lastFetchRef.current.connections < 120000) return;
+    
+    try {
+      const res = await apiFetch(`${API_URL}/api/connections`);
+      if (res.ok) {
+        const data = await res.json();
+        setConnections(data);
+        lastFetchRef.current.connections = Date.now();
+      }
+    } catch (err) {
+      console.error("Fetch connections failed", err);
+    }
+  };
+
+  const fetchGlobalNotifications = async (force = false) => {
+    // Cache for 2 minutes unless forced
+    if (!force && notifications.length > 0 && Date.now() - lastFetchRef.current.notifications < 120000) return;
+
+    try {
+      const res = await apiFetch(`${API_URL}/api/notifications`);
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+        lastFetchRef.current.notifications = Date.now();
+      }
+    } catch (err) {
+      console.error("Fetch notifications failed", err);
+    }
+  };
+
   // 2. Real-time Socket Updates
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -100,6 +136,11 @@ export const SocketProvider = ({ children }) => {
     });
     
     setSocket(newSocket);
+
+    // Connection Events
+    newSocket.on('connect', () => setIsConnected(true));
+    newSocket.on('disconnect', () => setIsConnected(false));
+    newSocket.on('connect_error', () => setIsConnected(false));
 
     // Global Listeners
     newSocket.on('counts-update', (data) => setCounts(data));
@@ -121,13 +162,42 @@ export const SocketProvider = ({ children }) => {
       });
     });
     newSocket.on('online-users-update', (data) => setOnlineUsers(data));
+
+    newSocket.on('online-status-change', ({ userId, isOnline }) => {
+      setConnections(prev => prev.map(conn => 
+        conn.user._id === userId 
+          ? { ...conn, user: { ...conn.user, onlineStatus: isOnline ? 'online' : 'offline' } } 
+          : conn
+      ));
+    });
+
+    newSocket.on('chat-message', (msg) => {
+      setConnections(prev => {
+        const updated = prev.map(conn => 
+          conn.id === msg.roomId 
+            ? { ...conn, lastMessage: { text: msg.text, createdAt: msg.createdAt }, updatedAt: msg.createdAt } 
+            : conn
+        );
+        // Re-sort so the conversation with the newest message is at the top
+        return [...updated].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+      });
+    });
     
     // Rich Toast Notification Listener
     newSocket.on('new-notification', (notification) => {
       showToast(notification);
+      // Append to cache
+      setNotifications(prev => [notification, ...prev].slice(0, 50));
+    });
+
+    newSocket.on('new-match', () => {
+      fetchGlobalConnections(true);
     });
 
     return () => {
+      newSocket.off('connect');
+      newSocket.off('disconnect');
+      newSocket.off('connect_error');
       newSocket.off('counts-update');
       newSocket.off('online-users-update');
       newSocket.off('new-notification');
@@ -138,13 +208,20 @@ export const SocketProvider = ({ children }) => {
   return (
     <SocketContext.Provider value={{ 
       socket, 
+      isConnected,
       counts, 
       setCounts,
       onlineUsers, 
       setOnlineUsers,
       user, 
       setUser,
-      isInitialLoad
+      isInitialLoad,
+      connections,
+      setConnections,
+      fetchGlobalConnections,
+      notifications,
+      setNotifications,
+      fetchGlobalNotifications
     }}>
       {children}
       

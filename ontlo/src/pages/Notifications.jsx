@@ -4,27 +4,22 @@ import { useNavigate } from "react-router-dom";
 import API_URL, { apiFetch } from "../utils/api";
 
 const Notifications = () => {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { notifications, setNotifications, fetchGlobalNotifications } = useSocket();
+  const [loading, setLoading] = useState(notifications.length === 0);
   const navigate = useNavigate();
 
   const fetchNotifications = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await apiFetch(`${API_URL}/api/notifications`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (response.ok) setNotifications(data);
-    } catch (err) {
-      console.error("Failed to fetch notifications", err);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    await fetchGlobalNotifications(true);
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchNotifications();
+    if (notifications.length === 0) {
+      fetchGlobalNotifications();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const markAsRead = async (id) => {

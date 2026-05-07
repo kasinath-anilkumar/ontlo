@@ -7,7 +7,7 @@ import ChatPanel from "../chat/ChatPanel";
 import MatchSettingsModal from "./MatchSettingsModal";
 
 const VideoContainer = () => {
-  const { socket, user, setUser } = useSocket();
+  const { socket, isConnected, user, setUser } = useSocket();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -38,6 +38,7 @@ const VideoContainer = () => {
   useEffect(() => { showChatRef.current = showChat; }, [showChat]);
   const [chatMessages, setChatMessages] = useState([]);
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [isPeerTyping, setIsPeerTyping] = useState(false);
   const [showConnectRequest, setShowConnectRequest] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(null);
   const connectionStatusRef = useRef(null);
@@ -405,7 +406,10 @@ const VideoContainer = () => {
     const onChatMessage = (msg) => { 
       setChatMessages(prev => [...prev, { ...msg, type: "remote" }]); 
       if (!showChatRef.current) setHasNewMessage(true); 
+      setIsPeerTyping(false);
     };
+    const onPeerTyping = () => setIsPeerTyping(true);
+    const onPeerStopTyping = () => setIsPeerTyping(false);
     const onPeerWantsConnection = () => {
       if (connectionStatusRef.current !== 'sent' && connectionStatusRef.current !== 'accepted') {
         setShowConnectRequest(true);
@@ -424,6 +428,8 @@ const VideoContainer = () => {
 
     socket.on("match-found", onMatchFound);
     socket.on("chat-message", onChatMessage);
+    socket.on("typing", onPeerTyping);
+    socket.on("stop-typing", onPeerStopTyping);
     socket.on("peer-wants-connection", onPeerWantsConnection);
     socket.on("connection-established", onConnectionEstablished);
     socket.on("webrtc-offer", onOffer);
@@ -435,6 +441,8 @@ const VideoContainer = () => {
     return () => {
       socket.off("match-found", onMatchFound);
       socket.off("chat-message", onChatMessage);
+      socket.off("typing", onPeerTyping);
+      socket.off("stop-typing", onPeerStopTyping);
       socket.off("peer-wants-connection", onPeerWantsConnection);
       socket.off("connection-established", onConnectionEstablished);
       socket.off("webrtc-offer", onOffer);
@@ -497,6 +505,10 @@ const VideoContainer = () => {
               <h1 className="text-lg font-bold text-white uppercase italic tracking-tighter">Ontlo Live</h1>
               <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-bold border border-green-500/20">
                 <Shield className="w-3 h-3" /> Secure
+              </div>
+              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${isConnected ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20 animate-pulse'}`}>
+                <div className={`w-1 h-1 rounded-full ${isConnected ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.6)]' : 'bg-orange-400'}`}></div>
+                {isConnected ? 'LIVE' : 'CONNECTING...'}
               </div>
             </div>
 
@@ -652,7 +664,14 @@ const VideoContainer = () => {
                         <button onClick={skipMatch} className="bg-white text-black px-6 h-10 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-2">Next <RefreshCw className="w-3 h-3" /></button>
                         <button onClick={toggleChat} className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all ${showChat ? 'bg-purple-600 text-white' : 'bg-black/40 backdrop-blur-md border border-white/10 text-white hover:bg-white/10'}`}>
                           <MessageSquare className="w-4 h-4" />
-                          {hasNewMessage && !showChat && (
+                          {isPeerTyping && !showChat && (
+                            <div className="absolute -top-1 -left-1 flex gap-0.5 bg-purple-500 px-1.5 py-1 rounded-full border border-[#0B0E14] animate-in zoom-in duration-300">
+                              <span className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <span className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <span className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                          )}
+                          {hasNewMessage && !showChat && !isPeerTyping && (
                             <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-[#0B0E14] animate-bounce shadow-[0_0_10px_rgba(239,68,68,0.5)] flex items-center justify-center">
                               <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
                             </span>

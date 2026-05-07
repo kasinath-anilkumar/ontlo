@@ -15,7 +15,7 @@ const ICEBREAKERS = [
 ];
 
 const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessages, onSendMessage, isStandaloneChat }) => {
-  const { socket, user } = useSocket();
+  const { socket, user, isConnected } = useSocket();
   const [internalMessages, setInternalMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -263,7 +263,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#0B0E14] relative">
+    <div className="h-full flex flex-col bg-[#0B0E14] relative" translate="no">
 
       {/* Header */}
       <div className="p-3 md:p-4 flex flex-col items-center border-b border-[#1e293b]/30 bg-[#0B0E14]/80 backdrop-blur-xl sticky top-0 z-10">
@@ -297,7 +297,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
             )}
             <div>
               <h2 className="text-sm font-black text-white uppercase tracking-tight">
-                {remoteUser?.username || "Live Chat"}
+                <span>{remoteUser?.username || "Live Chat"}</span>
               </h2>
               <div className="flex items-center gap-1.5">
                 {remoteTyping ? (
@@ -305,9 +305,17 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                     Typing...
                   </span>
                 ) : (
-                  <span className={`text-[10px] font-bold uppercase tracking-widest ${remoteUser?.onlineStatus ? "text-green-500" : "text-gray-500"}`}>
-                    {remoteUser?.onlineStatus ? "Online now" : "Offline"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${remoteUser?.onlineStatus ? "text-green-500" : "text-gray-500"}`}>
+                      {remoteUser?.onlineStatus ? "Online now" : "Offline"}
+                    </span>
+                    {isConnected && (
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-green-500/10 border border-green-500/20 rounded text-[8px] font-black text-green-500 uppercase tracking-tighter animate-pulse">
+                        <span className="w-1 h-1 bg-green-500 rounded-full"></span>
+                        Live
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

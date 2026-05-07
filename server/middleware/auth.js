@@ -139,7 +139,7 @@ const handleAuth =
         getToken(req);
 
       if (!token) {
-
+        console.warn(`[AUTH] Missing token for ${req.method} ${req.path}`);
         return res.status(401).json({
 
           error:

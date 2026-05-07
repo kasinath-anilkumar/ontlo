@@ -6,49 +6,37 @@ import Skeleton from "../components/ui/Skeleton";
 import { useSocket } from "../context/SocketContext";
 
 const Messages = () => {
-  const [connections, setConnections] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { counts, socket, isConnected, connections, setConnections, fetchGlobalConnections } = useSocket();
+  const [loading, setLoading] = useState(connections.length === 0);
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
-  const { counts, socket } = useSocket();
 
   const fetchConnections = async () => {
-    try {
-      const { apiFetch, API_URL } = await import("../utils/api");
-      const response = await apiFetch(`${API_URL}/api/connections`);
-      const data = await response.json();
-      if (response.ok) {
-        setConnections(data);
-        
-        const stateId = location.state?.selectId;
-        if (stateId) {
-          const target = data.find(c => c.id === stateId);
-          if (target) setSelectedConnection(target);
-        } else if (data.length > 0 && window.innerWidth > 768 && !selectedConnection) {
-          setSelectedConnection(data[0]);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch messages", err);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    await fetchGlobalConnections(true);
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchConnections();
-    
-    if (!socket) return;
-    // Only refresh the connection list when a real new match arrives.
-    const handleNewMatch = () => fetchConnections();
-    socket.on('new-match', handleNewMatch);
-
-    return () => {
-      socket.off('new-match', handleNewMatch);
+    const handleInitialSelection = () => {
+      const stateId = location.state?.selectId;
+      if (stateId) {
+        const target = connections.find(c => c.id === stateId);
+        if (target) setSelectedConnection(target);
+      } else if (connections.length > 0 && window.innerWidth > 768 && !selectedConnection) {
+        setSelectedConnection(connections[0]);
+      }
     };
-  }, [location.state, socket]);
+
+    if (connections.length === 0) {
+      fetchGlobalConnections().then(handleInitialSelection);
+    } else {
+      setLoading(false);
+      handleInitialSelection();
+    }
+  }, [location.state, connections.length]);
 
   const filteredConnections = useMemo(() => {
     return connections.filter(c => 
@@ -71,13 +59,21 @@ const Messages = () => {
   };
 
   return (
-    <div className="absolute inset-0 flex bg-transparent overflow-hidden">
+    <div className="h-full flex bg-transparent overflow-hidden relative" translate="no">
       <div className="absolute top-0 left-0 w-64 h-64 bg-purple-600/5 blur-[100px] pointer-events-none"></div>
 
       <div className={`w-full md:w-96 flex flex-col h-full bg-[#0B0E14] z-10 transition-all duration-300 ${selectedConnection ? 'hidden md:flex' : 'flex'}`}>
         <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl p-6 pb-4 border-b border-white/5">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-black text-white tracking-tight">Messages</h1>
+            <div className="flex flex-col">
+              <h1 className="text-3xl font-black text-white tracking-tight">Messages</h1>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-orange-500 animate-pulse'}`}></div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+                  {isConnected ? 'Real-time Connected' : 'Connecting...'}
+                </span>
+              </div>
+            </div>
             <button onClick={() => navigate("/video")} className="w-10 h-10 rounded-full bg-[#151923] border border-[#1e293b] flex items-center justify-center text-white hover:bg-[#1e293b] transition shadow-lg">
               <Plus className="w-5 h-5" />
             </button>
@@ -138,7 +134,10 @@ const Messages = () => {
                   <div className="overflow-hidden">
                     <h3 className="text-white font-black mb-0.5 truncate uppercase tracking-tight">{conn.user.username}</h3>
                     <p className={`text-xs truncate w-40 ${selectedConnection?.id === conn.id ? 'text-purple-400 font-bold' : (conn.status === 'pending' ? 'text-pink-500 font-bold' : 'text-gray-500 font-medium')}`}>
-                      {conn.status === 'pending' ? 'New connection request' : (conn.user.onlineStatus ? 'Active now' : 'Tap to message')}
+                      {conn.status === 'pending' 
+                        ? 'New connection request' 
+                        : (conn.lastMessage?.text || (conn.user.onlineStatus ? 'Active now' : 'Tap to message'))
+                      }
                     </p>
                   </div>
                 </div>
@@ -164,7 +163,7 @@ const Messages = () => {
 
       <div className={`flex-1 h-full bg-[#0B0E14] z-20 ${!selectedConnection && 'hidden md:flex'}`}>
         {selectedConnection ? (
-          <div className="h-full flex flex-col w-full animate-in slide-in-from-right-4 duration-300">
+          <div key={selectedConnection.id} className="h-full flex flex-col w-full animate-in slide-in-from-right-4 duration-300">
             <div className="flex-1 overflow-hidden relative">
               <ChatPanel 
                 connectionId={selectedConnection.id} 

@@ -423,14 +423,14 @@ module.exports = (io) => {
         // ======================================================
 
         socket.on(
-          'typing-start',
+          'typing',
 
           ({ roomId }) => {
 
             socket
               .to(roomId)
               .emit(
-                'typing-start',
+                'typing',
                 {
                   userId:
                     socket.userId
@@ -446,14 +446,14 @@ module.exports = (io) => {
         // ======================================================
 
         socket.on(
-          'typing-stop',
+          'stop-typing',
 
           ({ roomId }) => {
 
             socket
               .to(roomId)
               .emit(
-                'typing-stop',
+                'stop-typing',
                 {
                   userId:
                     socket.userId

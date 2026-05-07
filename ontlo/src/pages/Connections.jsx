@@ -6,39 +6,25 @@ import API_URL, { apiFetch } from "../utils/api";
 import { useSocket } from "../context/SocketContext";
 
 const Connections = () => {
-  const [connections, setConnections] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { socket, connections, setConnections, fetchGlobalConnections } = useSocket();
+  const [loading, setLoading] = useState(connections.length === 0);
   const [activeMenu, setActiveMenu] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const navigate = useNavigate();
-  const { socket } = useSocket();
 
   const fetchConnections = async () => {
-    try {
-      const response = await apiFetch(`${API_URL}/api/connections`);
-      const data = await response.json();
-      if (response.ok) {
-        setConnections(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch connections", err);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    await fetchGlobalConnections(true);
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchConnections();
-
-    if (socket) {
-      const handleUpdate = () => fetchConnections();
-      socket.on('new-match', handleUpdate); // Refresh when a new match happens
-      
-      return () => {
-        socket.off('new-match', handleUpdate);
-      };
+    if (connections.length === 0) {
+      fetchGlobalConnections();
+    } else {
+      setLoading(false);
     }
-  }, [socket]);
+  }, []);
 
   const removeConnection = async (id, e) => {
     e.stopPropagation();

@@ -38,6 +38,13 @@ export const apiFetch = async (url, options = {}) => {
       const isAuthRequest = url.includes('/login') || url.includes('/register') || url.includes('/setup') || url.includes('/refresh-token');
       
       if (response.status === 401 && !isAuthRequest) {
+        const currentToken = localStorage.getItem("token");
+        console.warn('[Auth] 401 Unauthorized received', { 
+          url, 
+          hasTokenInStorage: !!currentToken,
+          tokenMatches: currentToken === token 
+        });
+        
         console.warn('[Auth] Token expired, attempting silent refresh...', { url, tokenExists: !!token });
         
         // Synchronize multiple refresh attempts
