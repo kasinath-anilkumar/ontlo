@@ -182,6 +182,17 @@ export const SocketProvider = ({ children }) => {
         return [...updated].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
       });
     });
+
+    newSocket.on('messages-read', ({ connectionId }) => {
+      setCounts(prev => {
+        const chatCount = prev.perChat[connectionId] || 0;
+        return {
+          ...prev,
+          messages: Math.max(0, prev.messages - chatCount),
+          perChat: { ...prev.perChat, [connectionId]: 0 }
+        };
+      });
+    });
     
     // Rich Toast Notification Listener
     newSocket.on('new-notification', (notification) => {
@@ -201,6 +212,7 @@ export const SocketProvider = ({ children }) => {
       newSocket.off('counts-update');
       newSocket.off('online-users-update');
       newSocket.off('new-notification');
+      newSocket.off('messages-read');
       newSocket.disconnect();
     };
   }, [user?._id, user?.id]);

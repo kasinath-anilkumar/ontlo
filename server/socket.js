@@ -611,7 +611,13 @@ module.exports = (io) => {
               // REALTIME MESSAGE
               // ======================================================
 
-              io.to(roomId).emit(
+              // Emit to both the chat room and the recipient's personal room for global updates
+              let target = io.to(roomId);
+              if (recipientId) {
+                target = target.to(`user_${recipientId}`);
+              }
+
+              target.emit(
                 'chat-message',
 
                 {

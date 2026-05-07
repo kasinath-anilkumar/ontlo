@@ -101,7 +101,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   useEffect(() => {
     if (!socket || !effectiveRoomId) return;
 
-    socket.emit("join-chat", { roomId: effectiveRoomId });
+    socket.emit("join-room", effectiveRoomId);
 
     // Only register chat-message here when we are in STANDALONE mode (no parent managing messages).
     // In video mode, persistedMessages is provided and VideoContainer handles the socket event.
@@ -136,7 +136,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     socket.on("messages-read", handleMessagesRead);
 
     return () => {
-      socket.emit("leave-chat", { roomId: effectiveRoomId });
+      socket.emit("leave-room", effectiveRoomId);
       if (handleMessage) socket.off("chat-message", handleMessage);
       // Remove exactly these handler instances — not all listeners for the event
       socket.off("typing", handleTyping);
@@ -214,7 +214,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     socket.emit("stop-typing", { roomId: effectiveRoomId });
     setIsTyping(false);
     clearTimeout(typingTimeoutRef.current);
-    const newMsg = { text: inputValue, sender: "You", timestamp: new Date().toISOString(), type: "self" };
+    const newMsg = { text: inputValue, sender: "You", createdAt: new Date().toISOString(), type: "self" };
     if (onSendMessage) onSendMessage(newMsg);
     else setInternalMessages((prev) => [...prev, newMsg]);
     setInputValue("");
@@ -239,7 +239,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       const result = await res.json();
       if (res.ok) {
         socket.emit("chat-message", { imageUrl: result.url, roomId: effectiveRoomId });
-        const newMsg = { imageUrl: result.url, sender: "You", timestamp: new Date().toISOString(), type: "self" };
+        const newMsg = { imageUrl: result.url, sender: "You", createdAt: new Date().toISOString(), type: "self" };
         if (onSendMessage) onSendMessage(newMsg);
         else setInternalMessages((prev) => [...prev, newMsg]);
       }
@@ -397,7 +397,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
           messages.map((msg, idx) => {
             const showDate =
               idx === 0 ||
-              formatMessageDate(messages[idx - 1].timestamp) !== formatMessageDate(msg.timestamp);
+              formatMessageDate(messages[idx - 1].createdAt) !== formatMessageDate(msg.createdAt);
 
             // Find if this is the first unread message from the remote user
             const isFirstUnread = msg.type === "remote" && !msg.isRead && 
@@ -408,7 +408,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                 {showDate && (
                   <div className="flex justify-center my-6">
                     <span className="px-3 py-1 bg-[#151923] rounded-full text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 border border-[#1e293b]/30">
-                      {formatMessageDate(msg.timestamp)}
+                      {formatMessageDate(msg.createdAt)}
                     </span>
                   </div>
                 )}
@@ -429,7 +429,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                     </div>
                     <div className="flex items-center gap-1.5 mt-1 px-1 opacity-30">
                       <span className="text-[8px] font-black uppercase tracking-widest text-white">
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                       {msg.type === "self" && (
                         msg.isRead 

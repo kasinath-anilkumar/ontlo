@@ -383,6 +383,8 @@ router.get(
 
     try {
 
+      req._mark('DB Start');
+
       const user =
         await User.findById(
 
@@ -393,6 +395,8 @@ router.get(
           -refreshTokens
           `
         ).lean();
+
+      req._mark('DB End');
 
       if (!user) {
 

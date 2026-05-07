@@ -391,7 +391,7 @@ app.use((
 app.get(
   '/',
   (req, res) => {
-
+    if (req._mark) req._mark('Route Start');
     res.send(
       'Ontlo API is running...'
     );
@@ -604,9 +604,9 @@ const startServer =
 
           retryReads: true,
 
-          maxPoolSize: 5,
+          maxPoolSize: 50,
 
-          minPoolSize: 0
+          minPoolSize: 5
         }
       );
 
@@ -757,6 +757,23 @@ setInterval(() => {
   }
 
 }, 60000);
+
+
+
+// ======================================================
+// EVENT LOOP MONITOR
+// ======================================================
+
+let lastLoop = Date.now();
+
+setInterval(() => {
+  const now = Date.now();
+  const lag = now - lastLoop - 1000;
+  if (lag > 200) {
+    console.warn(`[LAG WARNING] Event loop lag: ${lag}ms`);
+  }
+  lastLoop = now;
+}, 1000);
 
 
 

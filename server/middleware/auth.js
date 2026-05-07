@@ -130,6 +130,7 @@ const handleAuth =
       Date.now();
 
     try {
+      if (req._mark) req._mark('Auth Init');
 
       // ======================================================
       // TOKEN
