@@ -21,13 +21,13 @@ const Home = () => {
   }, [socket]);
 
   return (
-    <div className="flex flex-col h-full space-y-4 sm:space-y-6 pb-24 sm:pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden ">
+    <div className="flex flex-col h-screen space-y-4 sm:space-y-6 pb-24 sm:pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden sm:scrollbar:hidden md:scrollbar:visible  ">
       {/* Background Glows */}
       <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="absolute bottom-20 left-0 w-[300px] h-[300px] bg-pink-600/5 blur-[100px] rounded-full pointer-events-none"></div>
 
       {/* Top Bar */}
-      <header className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 -mt-6 sm:-mt-8 mb-6 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 border-b border-white/5">
+      <header className="sticky md:hidden  top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 sm:-mt-8 mb-6 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 border-b border-white/5">
         <div className="block sm:hidden flex-shrink-0">
           <img src={logo} alt="Ontlo" className="h-8 w-auto object-contain drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
         </div>
@@ -70,7 +70,7 @@ const Home = () => {
       </header>
 
       {/* Hero Section */}
-      <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10 pt-6">
+      <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10 pt-0 md:pt-6 mt-0">
         <div className="mb-5 sm:mb-6">
           <h1 className="text-lg sm:text-xl md:text-2xl font-black text-white mb-0.5 tracking-tight">{getDynamicGreeting()}, {user?.fullName?.split(' ')[0] || user?.username} 👋</h1>
           <p className="text-[11px] sm:text-xs md:text-sm text-gray-400 font-medium tracking-tight">Ready to meet someone new?</p>
@@ -166,7 +166,7 @@ const Home = () => {
                 </div>
               ))
             ) : contextOnlineUsers.map((u) => (
-              <div key={u.id} className="flex flex-col items-center gap-3 flex-shrink-0 cursor-pointer group snap-center" onClick={() => navigate("/messages")}>
+              <div key={u.user?._id || u._id || u.id} className="flex flex-col items-center gap-3 flex-shrink-0 cursor-pointer group snap-center" onClick={() => navigate("/messages")}>
                 <div className="relative">
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full p-0.5 bg-gradient-to-b from-purple-500 to-transparent group-hover:from-purple-400 transition-all shadow-lg group-hover:shadow-purple-500/20">
                     {u.user.profilePic ? (

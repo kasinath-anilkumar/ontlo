@@ -5,6 +5,7 @@ import { useSocket } from "../../context/SocketContext";
 import API_URL, { apiFetch } from "../../utils/api";
 import ChatPanel from "../chat/ChatPanel";
 import MatchSettingsModal from "./MatchSettingsModal";
+import ontloLogo  from "../../assets/ontlo_Logo.webp";
 
 const VideoContainer = () => {
   const { socket, isConnected, user, setUser } = useSocket();
@@ -502,7 +503,7 @@ const VideoContainer = () => {
         <>
           <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-[#1e293b] bg-[#0B0E14]">
             <div className="flex items-center gap-4">
-              <h1 className="text-lg font-bold text-white uppercase italic tracking-tighter">Ontlo Live</h1>
+              <img src={ontloLogo} alt="Ontlo" className="w-12 h-12 sm:block md:hidden" />
               <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-bold border border-green-500/20">
                 <Shield className="w-3 h-3" /> Secure
               </div>

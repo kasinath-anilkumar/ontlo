@@ -69,7 +69,7 @@ const Notifications = () => {
   };
 
   return (
-    <div className="h-full w-f bg-transparent flex flex-col w-full mx-auto px-2">
+    <div className="h-screen w-f bg-transparent flex flex-col w-full mx-auto px-2 sm:scrollbar:hidden md:scrollbar:visible">
 
       {/* Header */}
       <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-4 -mx-4 px-4 sm:-mx-8 sm:px-8 mb-4 flex items-center justify-between border-b border-white/5">

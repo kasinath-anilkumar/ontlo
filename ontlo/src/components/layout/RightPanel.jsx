@@ -54,7 +54,7 @@ const RightPanel = ({ onClose }) => {
 
           <div className="space-y-4">
             {onlineUsers.length > 0 ? onlineUsers.map((item) => (
-              <div key={item.id} className="flex items-center justify-between group">
+              <div key={item.user?._id || item._id || item.id} className="flex items-center justify-between group">
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     {item.user.profilePic ? (
@@ -94,7 +94,7 @@ const RightPanel = ({ onClose }) => {
 
           <div className="space-y-4">
             {recentConnections.length > 0 ? recentConnections.map((conn) => (
-              <div key={conn.id} className="flex items-center justify-between group cursor-pointer" onClick={() => navigate("/messages")}>
+              <div key={conn._id || conn.id} className="flex items-center justify-between group cursor-pointer" onClick={() => navigate("/messages")}>
                 <div className="flex items-center gap-3">
                   {conn.user.profilePic ? (
                     <img src={conn.user.profilePic} loading="lazy" className="w-12 h-12 rounded-full object-cover border-2 border-white/5 group-hover:border-purple-500/50 transition-all shadow-lg" />

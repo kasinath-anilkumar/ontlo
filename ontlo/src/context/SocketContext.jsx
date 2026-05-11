@@ -143,10 +143,17 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('connect_error', () => setIsConnected(false));
 
     // Global Listeners
-    newSocket.on('counts-update', (data) => setCounts(data));
+    newSocket.on('counts-update', (data) => {
+  setCounts({
+    messages: data.messages || 0,
+    notifications: data.notifications || 0,
+    connections: data.connections || 0,
+    perChat: data.perChat || {}
+  });
+});
     newSocket.on('counts-delta', (delta) => {
       setCounts((prev) => {
-        const perChat = { ...prev.perChat };
+        const perChat = { ...(prev?.perChat || {}) };
         if (delta.perChat) {
           Object.entries(delta.perChat).forEach(([connectionId, value]) => {
             perChat[connectionId] = (perChat[connectionId] || 0) + value;
@@ -185,7 +192,7 @@ export const SocketProvider = ({ children }) => {
 
     newSocket.on('messages-read', ({ connectionId }) => {
       setCounts(prev => {
-        const chatCount = prev.perChat[connectionId] || 0;
+        const chatCount = prev?.perChat?.[connectionId] || 0;
         return {
           ...prev,
           messages: Math.max(0, prev.messages - chatCount),

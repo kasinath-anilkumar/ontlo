@@ -108,18 +108,18 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     const handleMessage = persistedMessages
       ? null
       : (msg) => {
-          if (!mountedRef.current) return;
-          setInternalMessages((prev) => [...prev, { ...msg, type: "remote" }]);
-          
-          // Optimization: Mark as read immediately if chat is open
-          if (connectionId) {
-            const token = localStorage.getItem("token");
-            apiFetch(`${API_URL}/api/messages/${connectionId}/read`, {
-              method: "POST",
-              headers: { Authorization: `Bearer ${token}` },
-            }).catch(() => {});
-          }
-        };
+        if (!mountedRef.current) return;
+        setInternalMessages((prev) => [...prev, { ...msg, type: "remote" }]);
+
+        // Optimization: Mark as read immediately if chat is open
+        if (connectionId) {
+          const token = localStorage.getItem("token");
+          apiFetch(`${API_URL}/api/messages/${connectionId}/read`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => { });
+        }
+      };
 
     // Named handlers for typing — so we can remove exactly these listeners
     const handleTyping = () => { if (mountedRef.current) setRemoteTyping(true); };
@@ -253,13 +253,29 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   const COMMON_EMOJIS = ["❤️", "😂", "🔥", "😍", "👍", "🙌", "✨", "😊", "👋", "🎉", "🔥", "💯", "😂", "😮", "😢", "🚀", "💀", "😜", "🙈", "🤝"];
 
   const formatMessageDate = (dateStr) => {
+    if (!dateStr) return "";
+
     const date = new Date(dateStr);
+
+    if (isNaN(date.getTime())) return "";
+
     const now = new Date();
-    if (date.toDateString() === now.toDateString()) return "Today";
+
+    if (date.toDateString() === now.toDateString()) {
+      return "Today";
+    }
+
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
-    if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
-    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+
+    if (date.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    }
+
+    return date.toLocaleDateString([], {
+      month: "short",
+      day: "numeric"
+    });
   };
 
   return (
@@ -269,7 +285,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       <div className="p-3 md:p-4 flex flex-col items-center border-b border-[#1e293b]/30 bg-[#0B0E14]/80 backdrop-blur-xl sticky top-0 z-10">
         {/* Mobile Drag Handle */}
         {!isStandaloneChat && <div className="md:hidden w-12 h-1.5 bg-white/20 rounded-full mb-3" />}
-        
+
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-3 md:gap-4">
             {isStandaloneChat && (
@@ -322,36 +338,36 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
           </div>
           <div className="flex items-center gap-1 md:gap-2">
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="p-2 text-gray-500 hover:text-white transition"
+                className="p-2 px-4 text-gray-500 hover:text-white transition "
               >
                 <MoreHorizontal className="w-5 h-5" />
               </button>
-              
+
               {showMenu && (
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setShowMenu(false)}></div>
                   <div className="absolute right-0 top-10 w-48 bg-[#151923] border border-[#1e293b] rounded-2xl shadow-2xl z-30 py-2 overflow-hidden animate-in zoom-in-95 duration-200">
-                    <button 
+                    <button
                       onClick={() => { setShowProfileModal(true); setShowMenu(false); }}
                       className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-[#1e293b] hover:text-white flex items-center gap-2 transition"
                     >
                       <Users className="w-4 h-4 text-purple-400" /> View Profile
                     </button>
-                    
+
                     {connectionId && (
-                      <button 
+                      <button
                         onClick={handleRemoveConnection}
                         className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-[#1e293b] hover:text-white flex items-center gap-2 transition"
                       >
                         <UserX className="w-4 h-4 text-orange-400" /> Remove Connection
                       </button>
                     )}
-                    
+
                     <div className="h-px w-full bg-[#1e293b] my-1"></div>
-                    
-                    <button 
+
+                    <button
                       onClick={handleBlockUser}
                       className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition"
                     >
@@ -374,7 +390,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
             <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-white">Retrieving History</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-white">Loading Messages...</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -383,8 +399,8 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
               <p className="text-xs font-bold uppercase tracking-[0.2em]">Start a new conversation</p>
             </div>
             {!isStandaloneChat && (
-              <div 
-                className="mt-8 bg-purple-500/10 border border-purple-500/20 p-4 rounded-2xl max-w-[80%] mx-auto cursor-pointer hover:bg-purple-500/20 transition animate-in fade-in zoom-in duration-500" 
+              <div
+                className="mt-8 bg-purple-500/10 border border-purple-500/20 p-4 rounded-2xl max-w-[80%] mx-auto cursor-pointer hover:bg-purple-500/20 transition animate-in fade-in zoom-in duration-500"
                 onClick={() => setInputValue(icebreaker)}
               >
                 <p className="text-[10px] text-purple-400 font-black uppercase tracking-widest mb-2">Icebreaker ✨</p>
@@ -400,8 +416,8 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
               formatMessageDate(messages[idx - 1].createdAt) !== formatMessageDate(msg.createdAt);
 
             // Find if this is the first unread message from the remote user
-            const isFirstUnread = msg.type === "remote" && !msg.isRead && 
-                                  messages.findIndex(m => m.type === "remote" && !m.isRead) === idx;
+            const isFirstUnread = msg.type === "remote" && !msg.isRead &&
+              messages.findIndex(m => m.type === "remote" && !m.isRead) === idx;
 
             return (
               <div key={idx} className="space-y-4" ref={isFirstUnread ? unreadMessageRef : null}>
@@ -414,11 +430,10 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                 )}
                 <div className={`flex ${msg.type === "self" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
                   <div className={`flex flex-col ${msg.type === "self" ? "items-end" : "items-start"} max-w-[85%] sm:max-w-[70%]`}>
-                    <div className={`px-4 py-2.5 rounded-[20px] shadow-2xl relative ${
-                      msg.type === "self"
-                        ? "bg-gradient-to-br from-purple-600 via-pink-600 to-red-500 text-white rounded-tr-none shadow-purple-900/20"
-                        : "bg-[#1e293b]/60 backdrop-blur-md border border-white/5 text-white rounded-tl-none shadow-black/20"
-                    } ${msg.imageUrl ? "p-1" : ""}`}>
+                    <div className={`px-4 py-2.5 rounded-[20px] shadow-2xl relative ${msg.type === "self"
+                      ? "bg-gradient-to-br from-purple-600 via-pink-600 to-red-500 text-white rounded-tr-none shadow-purple-900/20"
+                      : "bg-[#1e293b]/60 backdrop-blur-md border border-white/5 text-white rounded-tl-none shadow-black/20"
+                      } ${msg.imageUrl ? "p-1" : ""}`}>
                       {msg.imageUrl ? (
                         <img src={msg.imageUrl} className="max-w-full rounded-[16px] object-cover max-h-60" loading="lazy" alt="sent" />
                       ) : (
@@ -429,10 +444,14 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                     </div>
                     <div className="flex items-center gap-1.5 mt-1 px-1 opacity-30">
                       <span className="text-[8px] font-black uppercase tracking-widest text-white">
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
+                        {msg.createdAt
+                          ? new Date(msg.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          })
+                          : ""}                      </span>
                       {msg.type === "self" && (
-                        msg.isRead 
+                        msg.isRead
                           ? <CheckCheck className="w-3 h-3 text-blue-400" />
                           : <Check className="w-3 h-3 text-gray-400" />
                       )}
@@ -459,17 +478,17 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       </div>
 
       {/* Input Area */}
-      <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-6 sm:p-6 bg-[#0B0E14] border-t border-[#1e293b]/20">
+      <div className="p-4 px-2 sm:px-6 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-6 sm:p-6 bg-[#0B0E14] border-t border-[#1e293b]/20">
         <form onSubmit={sendMessage} className="max-w-4xl mx-auto flex items-center gap-2 sm:gap-3">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            className="hidden" 
-            accept="image/*" 
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+            accept="image/*"
           />
-          <button 
-            type="button" 
+          <button
+            type="button"
             disabled={isUploading}
             onClick={() => fileInputRef.current?.click()}
             className="p-2.5 text-gray-400 hover:text-white bg-[#151923] rounded-full border border-[#1e293b]/50 transition shadow-lg disabled:opacity-50"
@@ -477,12 +496,12 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
             {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
           </button>
 
-          <div className="flex-1 bg-[#151923] border border-[#1e293b] rounded-[24px] sm:rounded-full px-5 py-2.5 flex items-center shadow-inner focus-within:border-purple-500/50 transition-all relative">
+          <div className="flex-1 bg-[#151923] border border-[#1e293b] rounded-[24px] sm:rounded-full px-5 py-2 flex items-center shadow-inner focus-within:border-purple-500/50 transition-all relative">
             {showEmojiPicker && (
               <div className="absolute bottom-16 left-0 w-64 bg-[#151923] border border-[#1e293b] rounded-3xl p-4 shadow-2xl grid grid-cols-5 gap-2 animate-in slide-in-from-bottom-4 duration-200 z-30">
                 {COMMON_EMOJIS.map((emoji, i) => (
-                  <button 
-                    key={i} 
+                  <button
+                    key={i}
                     type="button"
                     onClick={() => setInputValue(prev => prev + emoji)}
                     className="text-xl hover:scale-125 transition active:scale-95 p-1"
@@ -504,8 +523,8 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
               onFocus={() => setShowEmojiPicker(false)}
               className="flex-1 bg-transparent text-white text-[15px] outline-none disabled:opacity-50 font-medium"
             />
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               className={`p-1 transition ml-2 ${showEmojiPicker ? "text-pink-500" : "text-gray-500 hover:text-pink-500"}`}
             >
@@ -518,15 +537,15 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
             disabled={!effectiveRoomId || !inputValue.trim()}
             className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center text-white hover:scale-105 transition-all active:scale-95 disabled:opacity-20 shadow-xl shadow-purple-600/20"
           >
-            <Send className="w-4 h-4 sm:w-5 sm:h-5 transform translate-x-0.5" />
+            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </form>
       </div>
 
       {showProfileModal && (
-        <ProfileModal 
-          userId={remoteUser?._id || remoteUser?.id} 
-          onClose={() => setShowProfileModal(false)} 
+        <ProfileModal
+          userId={remoteUser?._id || remoteUser?.id}
+          onClose={() => setShowProfileModal(false)}
         />
       )}
     </div>
