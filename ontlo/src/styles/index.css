@@ -41,6 +41,15 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  .md\:scrollbar-default::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+    height: 6px;
+  }
+  .md\:scrollbar-default {
+    -ms-overflow-style: auto;
+    scrollbar-width: auto;
+  }
 }
 
 @layer base {

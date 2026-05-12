@@ -36,8 +36,15 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
+    
+    // Hide bottom nav on mobile when chat is open, except in video mode
+    if (window.innerWidth < 768 && window.location.pathname !== '/video') {
+      document.body.classList.add('hide-bottom-nav');
+    }
+
     return () => {
       mountedRef.current = false;
+      document.body.classList.remove('hide-bottom-nav');
       // Clear any pending typing timeout on unmount
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
@@ -333,7 +340,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     <div className="h-full flex flex-col bg-[#0B0E14] relative overflow-x-hidden" translate="no">
 
       {/* Header */}
-      <div className="fixed top-0 mt-1 p-3 md:p-4 flex flex-col items-center border-b border-[#1e293b]/30 bg-[#0B0E14]/80 backdrop-blur-xl sticky top-0 z-10">
+      <div className="sticky top-0 z-10 mt-1 p-3 md:p-4 flex flex-col items-center border-b border-[#1e293b]/30 bg-[#0B0E14]/80 backdrop-blur-xl">
         {/* Mobile Drag Handle */}
         {!isStandaloneChat && <div className="md:hidden w-12 h-1.5 bg-white/20 rounded-full mb-3" />}
 
@@ -431,7 +438,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 scrollbar-hide bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] bg-fixed">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-2 pb-8 md:pb-6 space-y-4 scrollbar-hide bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] bg-fixed">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
             <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
@@ -523,7 +530,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       </div>
 
       {/* Input Area */}
-      <div className="fixed bottom-0 left-0 right-0 sm:p-1 md:p-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-6 sm:p-6 bg-[#0B0E14] border-t border-[#1e293b]/20">
+      <div className="relative p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] bg-[#0B0E14] border-t border-[#1e293b]/20">
         <form onSubmit={sendMessage} className="max-w-4xl mx-auto flex items-center gap-2 sm:gap-3">
           <input
             type="file"

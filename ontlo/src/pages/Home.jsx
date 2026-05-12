@@ -21,7 +21,7 @@ const Home = () => {
   }, [socket]);
 
   return (
-    <div className="flex flex-col h-screen pt-28 md:pt-0 space-y-4 sm:space-y-6 pb-24 sm:pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden sm:scrollbar:hidden md:scrollbar:visible  ">
+    <div className="flex-1 flex flex-col pt-28 md:pt-0 space-y-4 sm:space-y-6 pb-24 sm:pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden scrollbar-hide md:scrollbar-default">
       {/* Background Glows */}
       <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="absolute bottom-20 left-0 w-[300px] h-[300px] bg-pink-600/5 blur-[100px] rounded-full pointer-events-none"></div>

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import Sidebar from "../navigation/Sidebar";
 import BottomNav from "../navigation/BottomNav";
-import RightPanel from "./RightPanel";
+import Sidebar from "../navigation/Sidebar";
 import VideoContainer from "../video/VideoContainer";
+import RightPanel from "./RightPanel";
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
@@ -23,6 +23,8 @@ const AppLayout = ({ children }) => {
     document.title = pageTitles[location.pathname] || "Ontlo";
   }, [location]);
 
+  const isFullscreenPage = ['/video'].includes(location.pathname);
+
   return (
     <div className="flex h-screen h-[100dvh] text-white bg-[#0B0E14] relative overflow-hidden">
       {/* Glow background */}
@@ -37,7 +39,7 @@ const AppLayout = ({ children }) => {
           id="main-scroll-container" 
           className={`flex-1 w-full h-full relative scroll-smooth ${
             ['/messages', '/video'].includes(location.pathname) ? 'overflow-hidden' : 'overflow-y-auto'
-          }`}
+          } ${location.pathname === '/' ? 'scrollbar-hide md:scrollbar-default' : ''}`}
         >
           <main className={`min-h-full animate-in fade-in slide-in-from-bottom-2 duration-500 ${
             ['/messages', '/video'].includes(location.pathname) ? 'h-full' : 'pb-24 md:pb-0'
@@ -48,7 +50,7 @@ const AppLayout = ({ children }) => {
           <VideoContainer />
         </div>
         
-        {isRightPanelOpen && location.pathname !== '/video' && (
+        {isRightPanelOpen && !isFullscreenPage && location.pathname !== '/video' && (
           <div className="hidden xl:block animate-in slide-in-from-right duration-300">
             <RightPanel onClose={() => setIsRightPanelOpen(false)} />
           </div>

@@ -1,13 +1,13 @@
-import { Bell, MessageSquare, Heart, Shield, Check, Trash2, Loader2, ChevronLeft, User } from "lucide-react";
+import { Bell, Check, ChevronLeft, Heart, Loader2, MessageSquare, Shield, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import API_URL, { apiFetch } from "../utils/api";
 import { useSocket } from "../context/SocketContext";
+import API_URL, { apiFetch } from "../utils/api";
 
 const Notifications = () => {
   const { notifications, setNotifications, fetchGlobalNotifications } = useSocket();
   const [loading, setLoading] =
-  useState(false);
+    useState(false);
   const navigate = useNavigate();
 
   const fetchNotifications = async () => {
@@ -16,23 +16,23 @@ const Notifications = () => {
     setLoading(false);
   };
 
-useEffect(() => {
+  useEffect(() => {
 
-  const load = async () => {
+    const load = async () => {
 
-    if (notifications.length === 0) {
+      if (notifications.length === 0) {
 
-      setLoading(true);
+        setLoading(true);
 
-      await fetchGlobalNotifications(true);
+        await fetchGlobalNotifications(true);
 
-      setLoading(false);
-    }
-  };
+        setLoading(false);
+      }
+    };
 
-  load();
+    load();
 
-}, []);
+  }, []);
 
   const markAsRead = async (id) => {
     try {
@@ -80,17 +80,18 @@ useEffect(() => {
   };
 
   return (
-    <div className="h-screen w-f bg-transparent flex flex-col w-full mx-auto px-2 sm:scrollbar:hidden md:scrollbar:visible overflowx-hidden ">
+    <div className="min-h-full relative bg-transparent overflow-hidden">
 
       {/* Header */}
-      <div className="sticky top-0 z-[999] w-full bg-[#0B0E14]/90 backdrop-blur-xl py-4 px-4 sm:px-8 mb-4 flex items-center justify-between border-b border-white/5">
+      <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl px-4 p-2 sm:px-2 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-full transition md:hidden">
             <ChevronLeft className="w-6 h-6" />
           </button>
-<h1 className="text-lg sm:text-xl md:text-2xl p-0 md:p-4 font-black text-white tracking-tighter uppercase">
-  Notifications
-</h1>        </div>
+          <h1 className="text-lg sm:text-xl md:text-2xl p-0 md:p-4 font-black text-white tracking-tighter uppercase">
+            Notifications
+          </h1>
+        </div>
 
         {notifications.some(n => !n.isRead) && (
           <button
@@ -103,11 +104,11 @@ useEffect(() => {
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center px-4 py-6">
           <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
         </div>
       ) : notifications.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-3 px-1 py-2">
           {notifications.map((n) => (
             <div
               key={n._id}
@@ -129,7 +130,7 @@ useEffect(() => {
                 <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-purple-500 to-pink-500"></div>
               )}
 
-              <div className="flex gap-4">
+              <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border transition-all
                   ${n.isRead ? 'bg-white/5 border-white/5' : 'bg-purple-500/20 border-purple-500/30'}
                 `}>

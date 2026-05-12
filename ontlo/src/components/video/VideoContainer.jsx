@@ -494,7 +494,7 @@ const VideoContainer = () => {
   if (isHidden) return null;
 
   return (
-    <div className={`bg-[#0B0E14] overflow-hidden transition-all duration-500 z-40 ${isVideoRoute ? "absolute inset-0 h-screen flex flex-col pb-[84px] md:pb-0" : "fixed bottom-24 right-4 w-48 h-72 sm:w-64 sm:h-96 shadow-2xl rounded-2xl z-[100] ring-4 ring-purple-500/50"}`} onClick={isPiP ? () => navigate('/video') : undefined}>
+    <div className={`bg-[#0B0E14] overflow-hidden transition-all duration-500 z-40 overflow-x-hidden overflow-y-hidden   ${isVideoRoute ? "absolute inset-0 h-screen flex flex-col pb-[84px] md:pb-0" : "fixed bottom-24 right-4 w-48 h-72 sm:w-64 sm:h-96 shadow-2xl rounded-2xl z-[100] ring-4 ring-purple-500/50"}`} onClick={isPiP ? () => navigate('/video') : undefined}>
       {isPiP ? (
         <div className="relative w-full h-full">
           <video ref={remoteVideoRef} autoPlay playsInline style={{ filter: (isBlurred || peerIsPrivate) ? "blur(60px)" : "none" }} className="w-full h-full object-cover rounded-2xl" />
@@ -504,7 +504,7 @@ const VideoContainer = () => {
         </div>
       ) : (
         <>
-          <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-[#1e293b] bg-[#0B0E14]">
+          <div className="sticky top-0 left-0 right-0 h-16 shrink-0 flex items-center justify-between px-6 border-b border-[#1e293b] bg-[#0B0E14]">
             <div className="flex items-center gap-4">
               <img src={ontloLogo} alt="Ontlo" className="w-12 h-12 sm:block md:hidden" />
               <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-bold border border-green-500/20">
