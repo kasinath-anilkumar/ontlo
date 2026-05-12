@@ -1,12 +1,12 @@
-import { getDynamicGreeting } from "../utils/greeting";
-import { Search, Bell, Users, Globe, Video, Heart, MessageSquare, ChevronRight, User, Star } from "lucide-react";
-import Skeleton from "../components/ui/Skeleton";
-import { useNavigate } from "react-router-dom";
+import { Bell, ChevronRight, Globe, Heart, Search, Star, User, Users, Video } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useSocket } from "../context/SocketContext";
+import { useNavigate } from "react-router-dom";
 import banner1 from "../assets/banner1.webp";
 import banner2 from "../assets/banner2.webp";
 import logo from "../assets/ontlo_Logo.webp";
+import Skeleton from "../components/ui/Skeleton";
+import { useSocket } from "../context/SocketContext";
+import { getDynamicGreeting } from "../utils/greeting";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -21,13 +21,13 @@ const Home = () => {
   }, [socket]);
 
   return (
-    <div className="flex flex-col h-screen space-y-4 sm:space-y-6 pb-24 sm:pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden sm:scrollbar:hidden md:scrollbar:visible  ">
+    <div className="flex flex-col h-screen pt-28 md:pt-0 space-y-4 sm:space-y-6 pb-24 sm:pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden sm:scrollbar:hidden md:scrollbar:visible  ">
       {/* Background Glows */}
       <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="absolute bottom-20 left-0 w-[300px] h-[300px] bg-pink-600/5 blur-[100px] rounded-full pointer-events-none"></div>
 
       {/* Top Bar */}
-      <header className="sticky md:hidden  top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 sm:-mt-8 mb-6 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 border-b border-white/5">
+      <header className="fixed md:hidden top-0 left-0 right-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 sm:pt-0 pb-4 -mx-2 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 border-b border-white/5">
         <div className="block sm:hidden flex-shrink-0">
           <img src={logo} alt="Ontlo" className="h-8 w-auto object-contain drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
         </div>
@@ -70,7 +70,7 @@ const Home = () => {
       </header>
 
       {/* Hero Section */}
-      <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10 pt-0 md:pt-6 mt-0">
+      <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10 pt-0 sm:pt-0 md:pt-6 mt-0">
         <div className="mb-5 sm:mb-6">
           <h1 className="text-lg sm:text-xl md:text-2xl font-black text-white mb-0.5 tracking-tight">{getDynamicGreeting()}, {user?.fullName?.split(' ')[0] || user?.username} 👋</h1>
           <p className="text-[11px] sm:text-xs md:text-sm text-gray-400 font-medium tracking-tight">Ready to meet someone new?</p>

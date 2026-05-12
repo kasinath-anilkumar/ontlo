@@ -1,7 +1,7 @@
-import { Settings, ShieldCheck, HelpCircle, LogOut, ChevronRight, User, Camera, Loader2, ChevronLeft, Check, X, MapPin, Calendar, Heart, MessageSquare, Globe } from "lucide-react";
-import { useSocket } from "../context/SocketContext";
+import { Camera, Check, ChevronLeft, ChevronRight, Globe, HelpCircle, Loader2, LogOut, MessageSquare, Settings, ShieldCheck, User, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
 
 const Profile = () => {
@@ -137,8 +137,8 @@ const Profile = () => {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await apiFetch(`${API_URL}/api/auth/complete-profile`, {
-        method: "POST",
+      const response = await apiFetch(`${API_URL}/api/users/profile/update`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -147,11 +147,14 @@ const Profile = () => {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        const updatedUser = { ...user, ...editData, isProfileComplete: true };
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        setUser(updatedUser);
+        const updatedUser = await response.json();
+        const mergedUser = { ...user, ...updatedUser };
+        localStorage.setItem("user", JSON.stringify(mergedUser));
+        setUser(mergedUser);
         setIsEditing(false);
+      } else {
+        const errorData = await response.json().catch(() => null);
+        console.error("Save profile failed", errorData);
       }
     } catch (err) {
       console.error("Save error:", err);
@@ -175,15 +178,16 @@ const Profile = () => {
       });
       const result = await response.json();
       if (response.ok) {
-        const updateRes = await apiFetch(`${API_URL}/api/auth/complete-profile`, {
-          method: "POST",
+        const updateRes = await apiFetch(`${API_URL}/api/users/profile/update`, {
+          method: "PATCH",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
           body: JSON.stringify({ profilePic: result.url }),
         });
         if (updateRes.ok) {
-          const updatedUser = { ...user, profilePic: result.url };
-          localStorage.setItem("user", JSON.stringify(updatedUser));
-          setUser(updatedUser);
+          const updatedUser = await updateRes.json();
+          const mergedUser = { ...user, ...updatedUser };
+          localStorage.setItem("user", JSON.stringify(mergedUser));
+          setUser(mergedUser);
         }
       }
     } catch (err) {
@@ -252,15 +256,15 @@ const Profile = () => {
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-8 lg:p-10 max-w-4xl mx-auto w-full scrollbar-hide">
               {activeTab === "profile" && (
-                <div className="space-y-6 sm:space-y-10">
-                  <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="space-y-5">
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
                     <div className="relative group">
-                      <div className="w-32 h-32 rounded-full border-4 border-purple-500/20 overflow-hidden relative shadow-2xl">
+                      <div className="w-28 h-28 rounded-full border-2 border-purple-500/20 overflow-hidden relative shadow-2xl">
                         {user?.profilePic ? (
                           <img src={user.profilePic} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-[#151923] flex items-center justify-center">
-                            <User className="w-12 h-12 text-gray-600" />
+                            <User className="w-10 h-10 text-gray-600" />
                           </div>
                         )}
                         {uploading && (
@@ -269,18 +273,20 @@ const Profile = () => {
                           </div>
                         )}
                       </div>
-                      <label className="absolute bottom-1 right-1 w-10 h-10 bg-white text-black rounded-full border-4 border-[#0B0E14] flex items-center justify-center cursor-pointer hover:scale-110 transition shadow-lg">
-                        <Camera className="w-5 h-5" />
-                        <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" disabled={uploading} />
-                      </label>
+                      {isEditing && (
+                        <label className="absolute bottom-1 right-1 w-9 h-9 bg-white text-black rounded-full border-2 border-[#0B0E14] flex items-center justify-center cursor-pointer hover:scale-110 transition shadow-lg">
+                          <Camera className="w-4 h-4" />
+                          <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" disabled={uploading} />
+                        </label>
+                      )}
                     </div>
                     <div className="text-center sm:text-left">
-                      <h1 className="text-3xl font-black text-white mb-1 uppercase tracking-tighter">{user?.fullName || user?.username}</h1>
-                      <p className="text-purple-400 font-bold uppercase tracking-[0.2em] text-[10px]">@{user?.username}</p>
+                      <h1 className="text-2xl font-black text-white mb-1 uppercase tracking-tight">{user?.fullName || user?.username}</h1>
+                      <p className="text-purple-400 font-semibold uppercase tracking-[0.25em] text-[10px]">@{user?.username}</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <EditField
                       label="Full Name"
                       value={editData.fullName}
@@ -303,13 +309,13 @@ const Profile = () => {
                       onChange={(val) => setEditData({ ...editData, age: val })}
                       placeholder="Your age"
                     />
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-1">Gender</label>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] ml-1">Gender</label>
                       {isEditing ? (
                         <select
                           value={editData.gender}
                           onChange={(e) => setEditData({ ...editData, gender: e.target.value })}
-                          className="w-full bg-[#151923] border border-[#1e293b] p-5 rounded-2xl text-white font-black uppercase tracking-tight focus:outline-none focus:border-purple-500/50 appearance-none"
+                          className="w-full bg-[#151923] border border-[#1e293b] p-3 rounded-2xl text-white font-semibold uppercase tracking-tight text-sm focus:outline-none focus:border-purple-500/50 appearance-none"
                         >
                           <option value="Male">Male</option>
                           <option value="Female">Female</option>
@@ -317,13 +323,13 @@ const Profile = () => {
                           <option value="Prefer not to say">Prefer not to say</option>
                         </select>
                       ) : (
-                        <div className="bg-[#151923] border border-[#1e293b] p-5 rounded-2xl text-white font-black uppercase tracking-tight shadow-inner">{user?.gender || "Not set"}</div>
+                        <div className="bg-[#151923] border border-[#1e293b] p-3 rounded-2xl text-white font-semibold uppercase tracking-tight text-sm shadow-inner">{user?.gender || "Not set"}</div>
                       )}
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-1">Interests</label>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] ml-1">Interests</label>
                     <div className="flex flex-wrap gap-2">
                       {isEditing ? (
                         ['Travel', 'Music', 'Gaming', 'Fitness', 'Art', 'Tech', 'Food', 'Movies'].map(tag => (
@@ -336,30 +342,30 @@ const Profile = () => {
                                 interests: exists ? editData.interests.filter(i => i !== tag) : [...editData.interests, tag]
                               });
                             }}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${editData.interests.includes(tag) ? 'bg-purple-600 border-purple-500 text-white' : 'bg-[#151923] border-[#1e293b] text-gray-400'}`}
+                            className={`px-3 py-1.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.25em] transition-all border ${editData.interests.includes(tag) ? 'bg-purple-600 border-purple-500 text-white' : 'bg-[#151923] border-[#1e293b] text-gray-400'}`}
                           >
                             {tag}
                           </button>
                         ))
                       ) : (
                         user?.interests?.map(i => (
-                          <span key={i} className="px-5 py-2 bg-[#151923] border border-[#1e293b] text-white rounded-xl text-xs font-black uppercase tracking-wider">{i}</span>
+                          <span key={i} className="px-3 py-1.5 bg-[#151923] border border-[#1e293b] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em]">{i}</span>
                         )) || <span className="text-gray-500 italic text-sm">No interests added</span>
                       )}
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-1">Bio</label>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] ml-1">Bio</label>
                     {isEditing ? (
                       <textarea
                         value={editData.bio}
                         onChange={(e) => setEditData({ ...editData, bio: e.target.value })}
                         placeholder="Tell the world about yourself..."
-                        className="w-full bg-[#151923] p-6 rounded-[32px] border border-[#1e293b] text-white text-sm leading-relaxed font-medium focus:outline-none focus:border-purple-500/50 min-h-[120px]"
+                        className="w-full bg-[#151923] p-4 rounded-3xl border border-[#1e293b] text-white text-sm leading-relaxed font-medium focus:outline-none focus:border-purple-500/50 min-h-[110px]"
                       />
                     ) : (
-                      <div className="bg-[#151923] p-6 rounded-[32px] border border-[#1e293b] text-gray-300 text-sm leading-relaxed font-medium shadow-inner">
+                      <div className="bg-[#151923] p-4 rounded-3xl border border-[#1e293b] text-gray-300 text-sm leading-relaxed font-medium shadow-inner">
                         {user?.bio || "Tell the world about yourself..."}
                       </div>
                     )}
@@ -480,10 +486,9 @@ const Profile = () => {
                             onClick={async () => {
                               try {
                                 const token = localStorage.getItem("token");
-                                await apiFetch(`${API_URL}/api/users/unblock`, {
+                                await apiFetch(`${API_URL}/api/users/unblock/${u._id}`, {
                                   method: "POST",
-                                  headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                                  body: JSON.stringify({ unblockUserId: u._id })
+                                  headers: { "Authorization": `Bearer ${token}` }
                                 });
                                 setBlockedUsers(blockedUsers.filter(user => user._id !== u._id));
                               } catch (_) { }
@@ -840,18 +845,18 @@ const TabButton = ({ active, onClick, icon, label }) => (
 );
 
 const EditField = ({ label, value, isEditing, onChange, type = "text", placeholder }) => (
-  <div className="space-y-3">
-    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-1">{label}</label>
+  <div className="space-y-2">
+    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] ml-1">{label}</label>
     {isEditing ? (
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-[#151923] border border-[#1e293b] p-3 sm:p-5 rounded-xl sm:rounded-2xl text-white font-black uppercase tracking-tight focus:outline-none focus:border-purple-500/50"
+        className="w-full bg-[#151923] border border-[#1e293b] p-3 rounded-2xl text-white font-semibold uppercase tracking-tight text-sm focus:outline-none focus:border-purple-500/50"
       />
     ) : (
-      <div className="bg-[#151923] border border-[#1e293b] p-3 sm:p-5 rounded-xl sm:rounded-2xl text-white font-black uppercase tracking-tight shadow-inner">{value || "Not set"}</div>
+      <div className="bg-[#151923] border border-[#1e293b] p-3 rounded-2xl text-white font-semibold uppercase tracking-tight text-sm shadow-inner">{value || "Not set"}</div>
     )}
   </div>
 );

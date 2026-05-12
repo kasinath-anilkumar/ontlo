@@ -1,5 +1,5 @@
 import { Bell, MessageSquare, X } from 'lucide-react';
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import API_URL, { apiFetch } from '../utils/api';
 
@@ -16,13 +16,15 @@ export const SocketProvider = ({ children }) => {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  const [counts, setCounts] = useState({ messages: 0, notifications: 0, perChat: {} });
+  const [counts, setCounts] = useState({ messages: 0, notifications: 0, connections: 0, likes: 0, perChat: {} });
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [connections, setConnections] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const isFetchingRef = useRef(false);
   const lastFetchRef = useRef({ connections: 0, notifications: 0 });
+  const connectionsRef = useRef([]);
+  const messageCacheRef = useRef(new Map());
 
   // Toast Notification State
   const [toast, setToast] = useState(null);
@@ -36,6 +38,69 @@ export const SocketProvider = ({ children }) => {
   };
 
   const [isConnected, setIsConnected] = useState(false);
+
+  const normalizeConnectionId = (connectionId) => connectionId?.toString?.() || connectionId;
+
+  const mergeConnection = useCallback((incoming) => {
+    if (!incoming?.id) return;
+
+    setConnections((prev) => {
+      const nextId = normalizeConnectionId(incoming.id);
+      const existingIndex = prev.findIndex((conn) => normalizeConnectionId(conn.id) === nextId);
+      const nextConnection = {
+        ...(existingIndex >= 0 ? prev[existingIndex] : {}),
+        ...incoming,
+        id: nextId
+      };
+
+      const next = existingIndex >= 0
+        ? prev.map((conn, index) => (index === existingIndex ? nextConnection : conn))
+        : [nextConnection, ...prev];
+
+      return [...next].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+    });
+  }, []);
+
+  const removeConnection = useCallback((connectionId) => {
+    const id = normalizeConnectionId(connectionId);
+    if (!id) return;
+
+    setConnections((prev) => prev.filter((conn) => normalizeConnectionId(conn.id) !== id));
+    messageCacheRef.current.delete(id);
+  }, []);
+
+  const updateConnectionFromMessage = useCallback((msg) => {
+    const connectionId = normalizeConnectionId(msg.connectionId || msg.roomId);
+    if (!connectionId) return;
+
+    const createdAt = msg.createdAt || new Date().toISOString();
+    const text = msg.text || (msg.imageUrl ? 'Image' : '');
+
+    setConnections((prev) => {
+      const existingIndex = prev.findIndex((conn) => normalizeConnectionId(conn.id) === connectionId);
+      if (existingIndex === -1) {
+        fetchGlobalConnections(true);
+        return prev;
+      }
+
+      const next = prev.map((conn, index) => (
+        index === existingIndex
+          ? {
+              ...conn,
+              lastMessage: {
+                ...(conn.lastMessage || {}),
+                text,
+                sender: msg.sender,
+                createdAt
+              },
+              updatedAt: createdAt
+            }
+          : conn
+      ));
+
+      return [...next].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+    });
+  }, []);
 
   // 1. Auth Check & Initial Data Fetch
   useEffect(() => {
@@ -107,6 +172,10 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
+  useEffect(() => {
+    connectionsRef.current = connections;
+  }, [connections]);
+
   const fetchGlobalNotifications = async (force = false) => {
     // Cache for 2 minutes unless forced
     if (!force && notifications.length > 0 && Date.now() - lastFetchRef.current.notifications < 120000) return;
@@ -144,13 +213,14 @@ export const SocketProvider = ({ children }) => {
 
     // Global Listeners
     newSocket.on('counts-update', (data) => {
-  setCounts({
-    messages: data.messages || 0,
-    notifications: data.notifications || 0,
-    connections: data.connections || 0,
-    perChat: data.perChat || {}
-  });
-});
+      setCounts({
+        messages: data.messages || 0,
+        notifications: data.notifications || 0,
+        connections: data.connections || 0,
+        likes: data.likes || 0,
+        perChat: data.perChat || {}
+      });
+    });
     newSocket.on('counts-delta', (delta) => {
       setCounts((prev) => {
         const perChat = { ...(prev?.perChat || {}) };
@@ -161,9 +231,10 @@ export const SocketProvider = ({ children }) => {
         }
 
         return {
-          messages: prev.messages + (delta.messages || 0),
-          notifications: prev.notifications + (delta.notifications || 0),
-          connections: prev.connections + (delta.connections || 0),
+          messages: Math.max(0, (prev.messages || 0) + (delta.messages || 0)),
+          notifications: Math.max(0, (prev.notifications || 0) + (delta.notifications || 0)),
+          connections: Math.max(0, (prev.connections || 0) + (delta.connections || 0)),
+          likes: Math.max(0, (prev.likes || 0) + (delta.likes || 0)),
           perChat
         };
       });
@@ -171,24 +242,76 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('online-users-update', (data) => setOnlineUsers(data));
 
     newSocket.on('online-status-change', ({ userId, isOnline }) => {
-      setConnections(prev => prev.map(conn => 
-        conn.user._id === userId 
-          ? { ...conn, user: { ...conn.user, onlineStatus: isOnline ? 'online' : 'offline' } } 
-          : conn
-      ));
-    });
+      const normalizedId = userId?.toString();
 
-    newSocket.on('chat-message', (msg) => {
-      setConnections(prev => {
-        const updated = prev.map(conn => 
-          conn.id === msg.roomId 
-            ? { ...conn, lastMessage: { text: msg.text, createdAt: msg.createdAt }, updatedAt: msg.createdAt } 
-            : conn
+      setConnections((prev) =>
+        prev.map((conn) => {
+          const updatedUser = conn.user?._id?.toString() === normalizedId
+            ? { ...conn.user, onlineStatus: isOnline ? 'online' : 'offline' }
+            : conn.user;
+
+          const updatedUserDetails = conn.userDetails?.map((user) =>
+            user._id?.toString() === normalizedId
+              ? {
+                  ...user,
+                  onlineStatus: isOnline ? 'online' : 'offline'
+                }
+              : user
+          );
+
+          return {
+            ...conn,
+            user: updatedUser,
+            userDetails: updatedUserDetails
+          };
+        })
+      );
+
+      setOnlineUsers((prev) => {
+        if (!normalizedId) return prev;
+
+        if (!isOnline) {
+          return prev.filter(
+            (item) => item.user?._id?.toString() !== normalizedId
+          );
+        }
+
+        if (prev.some((item) => item.user?._id?.toString() === normalizedId)) {
+          return prev;
+        }
+
+        const matchedConnection = connectionsRef.current.find((conn) =>
+          conn.user?._id?.toString() === normalizedId ||
+          conn.userDetails?.some((user) => user._id?.toString() === normalizedId)
         );
-        // Re-sort so the conversation with the newest message is at the top
-        return [...updated].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+
+        if (!matchedConnection) {
+          return prev;
+        }
+
+        const user = matchedConnection.user ||
+          matchedConnection.userDetails?.find((u) => u._id?.toString() === normalizedId);
+
+        if (!user) {
+          return prev;
+        }
+
+        return [
+          ...prev,
+          {
+            connectionId: matchedConnection.id || matchedConnection._id || null,
+            user: {
+              ...user,
+              onlineStatus: 'online'
+            }
+          }
+        ];
       });
     });
+
+    const handleRealtimeMessage = (msg) => updateConnectionFromMessage(msg);
+    newSocket.on('chat-message', handleRealtimeMessage);
+    newSocket.on('new-message', handleRealtimeMessage);
 
     newSocket.on('messages-read', ({ connectionId }) => {
       setCounts(prev => {
@@ -200,16 +323,84 @@ export const SocketProvider = ({ children }) => {
         };
       });
     });
+
+    newSocket.on('notification-read', ({ id }) => {
+      setNotifications((prev) => prev.map((n) => (
+        normalizeConnectionId(n._id) === normalizeConnectionId(id)
+          ? { ...n, isRead: true }
+          : n
+      )));
+      setCounts((prev) => ({
+        ...prev,
+        notifications: Math.max(0, (prev.notifications || 0) - 1)
+      }));
+    });
+
+    newSocket.on('notifications-cleared', () => {
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setCounts((prev) => ({ ...prev, notifications: 0 }));
+    });
     
     // Rich Toast Notification Listener
     newSocket.on('new-notification', (notification) => {
       showToast(notification);
       // Append to cache
-      setNotifications(prev => [notification, ...prev].slice(0, 50));
+      setNotifications(prev => {
+        const id = normalizeConnectionId(notification._id || notification.id);
+        if (id && prev.some((n) => normalizeConnectionId(n._id || n.id) === id)) {
+          return prev;
+        }
+        return [{ ...notification, _id: id || `realtime-${Date.now()}`, isRead: notification.isRead ?? false }, ...prev].slice(0, 50);
+      });
     });
 
-    newSocket.on('new-match', () => {
+    newSocket.on('notification-update', (notification) => {
+      if (notification?.content) showToast(notification);
+      fetchGlobalNotifications(true);
+    });
+
+    newSocket.on('new-connection', mergeConnection);
+    newSocket.on('connection-updated', mergeConnection);
+    newSocket.on('connection-deleted', ({ connectionId }) => {
+      removeConnection(connectionId);
+    });
+
+    newSocket.on('new-like', () => {
       fetchGlobalConnections(true);
+    });
+
+    newSocket.on('new-match', (payload) => {
+      if (payload?.connection) {
+        mergeConnection(payload.connection);
+      }
+      fetchGlobalConnections(true);
+      fetchGlobalNotifications(true);
+    });
+
+    newSocket.on('profile-updated', ({ userId, user: updatedProfile }) => {
+      const updatedUserId = normalizeConnectionId(userId || updatedProfile?._id || updatedProfile?.id);
+      if (!updatedUserId) return;
+
+      setConnections((prev) => prev.map((conn) => {
+        const connUserId = normalizeConnectionId(conn.user?._id || conn.user?.id);
+        if (connUserId !== updatedUserId) return conn;
+
+        return {
+          ...conn,
+          user: {
+            ...conn.user,
+            ...updatedProfile,
+            _id: conn.user?._id || updatedProfile?._id
+          }
+        };
+      }));
+    });
+
+    newSocket.on('force-logout', () => {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      setUser(null);
+      newSocket.disconnect();
     });
 
     return () => {
@@ -217,12 +408,26 @@ export const SocketProvider = ({ children }) => {
       newSocket.off('disconnect');
       newSocket.off('connect_error');
       newSocket.off('counts-update');
+      newSocket.off('counts-delta');
       newSocket.off('online-users-update');
+      newSocket.off('online-status-change');
       newSocket.off('new-notification');
+      newSocket.off('notification-update');
+      newSocket.off('notification-read');
+      newSocket.off('notifications-cleared');
       newSocket.off('messages-read');
+      newSocket.off('chat-message', handleRealtimeMessage);
+      newSocket.off('new-message', handleRealtimeMessage);
+      newSocket.off('new-connection');
+      newSocket.off('connection-updated');
+      newSocket.off('connection-deleted');
+      newSocket.off('new-like');
+      newSocket.off('new-match');
+      newSocket.off('profile-updated');
+      newSocket.off('force-logout');
       newSocket.disconnect();
     };
-  }, [user?._id, user?.id]);
+  }, [user?._id, user?.id, mergeConnection, removeConnection, updateConnectionFromMessage]);
 
   return (
     <SocketContext.Provider value={{ 
@@ -238,9 +443,11 @@ export const SocketProvider = ({ children }) => {
       connections,
       setConnections,
       fetchGlobalConnections,
+      updateConnectionFromMessage,
       notifications,
       setNotifications,
-      fetchGlobalNotifications
+      fetchGlobalNotifications,
+      messageCacheRef
     }}>
       {children}
       

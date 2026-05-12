@@ -1,8 +1,8 @@
-import { X, Smile, Send, Loader2, MessageSquare, MoreHorizontal, Check, CheckCheck, Plus, ChevronLeft, UserX, ShieldAlert, Users, User } from "lucide-react";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { Check, CheckCheck, ChevronLeft, Loader2, MessageSquare, MoreHorizontal, Plus, Send, ShieldAlert, Smile, User, Users, UserX, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocket } from "../../context/SocketContext";
-import ProfileModal from "../profile/ProfileModal";
 import API_URL, { apiFetch } from "../../utils/api";
+import ProfileModal from "../profile/ProfileModal";
 
 const ICEBREAKERS = [
   "What's your favorite way to spend a weekend?",
@@ -15,7 +15,7 @@ const ICEBREAKERS = [
 ];
 
 const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessages, onSendMessage, isStandaloneChat }) => {
-  const { socket, user, isConnected } = useSocket();
+  const { socket, user, isConnected, messageCacheRef, updateConnectionFromMessage } = useSocket();
   const [internalMessages, setInternalMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -44,25 +44,39 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   }, []);
 
   const effectiveRoomId = roomId || connectionId;
+  const cacheKey = connectionId || roomId;
 
   // Use persisted messages (from parent/video mode) or internal messages (standalone mode)
   const messages = persistedMessages ?? internalMessages;
 
+  // Persist parent-provided chat data into the shared cache.
+  useEffect(() => {
+    if (!cacheKey || !persistedMessages) return;
+    messageCacheRef?.current?.set(cacheKey, persistedMessages);
+  }, [cacheKey, persistedMessages]);
+
   // ── Fetch message history (standalone / Messages page mode only) ──────────
   useEffect(() => {
     if (!connectionId) return;
+
+    const cachedMessages = cacheKey ? messageCacheRef?.current?.get(cacheKey) : null;
+    if (cachedMessages) {
+      setInternalMessages(cachedMessages);
+    } else {
+      setInternalMessages([]);
+    }
 
     // Use AbortController so the fetch is cancelled if the component unmounts
     const controller = new AbortController();
 
     const fetchHistory = async () => {
       if (!mountedRef.current) return;
-      setIsLoading(true);
+      if (!cachedMessages) setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
         const [response, readRes] = await Promise.all([
-          apiFetch(`${API_URL}/api/messages/${connectionId}`, {
+          apiFetch(`${API_URL}/api/messages/${connectionId}?limit=50`, {
             headers,
             signal: controller.signal,
           }),
@@ -74,7 +88,10 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
         ]);
         const data = await response.json();
         if (!mountedRef.current) return;
-        if (response.ok) setInternalMessages(data);
+        if (response.ok) {
+          setInternalMessages(data);
+          if (cacheKey) messageCacheRef?.current?.set(cacheKey, data);
+        }
         if (!readRes.ok && mountedRef.current) {
           console.warn("Mark read failed", readRes.status);
         }
@@ -108,8 +125,17 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     const handleMessage = persistedMessages
       ? null
       : (msg) => {
+        const currentUserId = user?.id || user?._id;
         if (!mountedRef.current) return;
-        setInternalMessages((prev) => [...prev, { ...msg, type: "remote" }]);
+        if (msg.sender?.toString() === currentUserId?.toString()) {
+          return;
+        }
+
+        setInternalMessages((prev) => {
+          const next = [...prev, { ...msg, type: "remote" }];
+          if (cacheKey) messageCacheRef?.current?.set(cacheKey, next);
+          return next;
+        });
 
         // Optimization: Mark as read immediately if chat is open
         if (connectionId) {
@@ -124,9 +150,14 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     // Named handlers for typing — so we can remove exactly these listeners
     const handleTyping = () => { if (mountedRef.current) setRemoteTyping(true); };
     const handleStopTyping = () => { if (mountedRef.current) setRemoteTyping(false); };
-    const handleMessagesRead = ({ connectionId: readConnId }) => {
-      if (readConnId === effectiveRoomId && mountedRef.current) {
-        setInternalMessages((prev) => prev.map((m) => (m.type === "self" ? { ...m, isRead: true } : m)));
+    const handleMessagesRead = ({ connectionId: readConnId, readBy }) => {
+      const currentUserId = user?.id || user?._id;
+      if (readConnId === effectiveRoomId && mountedRef.current && readBy && readBy.toString() !== currentUserId?.toString()) {
+        setInternalMessages((prev) => {
+          const next = prev.map((m) => (m.type === "self" ? { ...m, isRead: true } : m));
+          if (cacheKey) messageCacheRef?.current?.set(cacheKey, next);
+          return next;
+        });
       }
     };
 
@@ -180,10 +211,9 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     if (!window.confirm("Are you sure you want to block this user?")) return;
     try {
       const token = localStorage.getItem("token");
-      await apiFetch(`${API_URL}/api/users/block`, {
+      await apiFetch(`${API_URL}/api/users/block/${targetId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ blockedUserId: targetId })
+        headers: { "Authorization": `Bearer ${token}` }
       });
       onClose(); // Close chat after blocking
     } catch (err) {
@@ -215,11 +245,21 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     setIsTyping(false);
     clearTimeout(typingTimeoutRef.current);
     const newMsg = { text: inputValue, sender: "You", createdAt: new Date().toISOString(), type: "self" };
+    updateConnectionFromMessage?.({
+      ...newMsg,
+      roomId: effectiveRoomId,
+      connectionId: connectionId || effectiveRoomId,
+      sender: user?.id || user?._id
+    });
     if (onSendMessage) onSendMessage(newMsg);
-    else setInternalMessages((prev) => [...prev, newMsg]);
+    else setInternalMessages((prev) => {
+      const next = [...prev, newMsg];
+      if (cacheKey) messageCacheRef?.current?.set(cacheKey, next);
+      return next;
+    });
     setInputValue("");
     setShowEmojiPicker(false);
-  }, [inputValue, socket, effectiveRoomId, onSendMessage]);
+  }, [inputValue, socket, effectiveRoomId, onSendMessage, connectionId, updateConnectionFromMessage, user?.id, user?._id]);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -240,8 +280,19 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       if (res.ok) {
         socket.emit("chat-message", { imageUrl: result.url, roomId: effectiveRoomId });
         const newMsg = { imageUrl: result.url, sender: "You", createdAt: new Date().toISOString(), type: "self" };
+        updateConnectionFromMessage?.({
+          ...newMsg,
+          text: "Image",
+          roomId: effectiveRoomId,
+          connectionId: connectionId || effectiveRoomId,
+          sender: user?.id || user?._id
+        });
         if (onSendMessage) onSendMessage(newMsg);
-        else setInternalMessages((prev) => [...prev, newMsg]);
+        else setInternalMessages((prev) => {
+          const next = [...prev, newMsg];
+          if (cacheKey) messageCacheRef?.current?.set(cacheKey, next);
+          return next;
+        });
       }
     } catch (err) {
       console.error("Upload failed", err);
@@ -306,7 +357,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                     <User className="w-5 h-5 text-gray-600" />
                   </div>
                 )}
-                {remoteUser.onlineStatus && (
+                {remoteUser?.onlineStatus === 'online' && (
                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#0B0E14] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                 )}
               </div>
@@ -322,15 +373,9 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                   </span>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-widest ${remoteUser?.onlineStatus ? "text-green-500" : "text-gray-500"}`}>
-                      {remoteUser?.onlineStatus ? "Online now" : "Offline"}
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${remoteUser?.onlineStatus === 'online' ? "text-green-500" : "text-gray-500"}`}>
+                      {remoteUser?.onlineStatus === 'online' ? "Online now" : "Offline"}
                     </span>
-                    {isConnected && (
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-green-500/10 border border-green-500/20 rounded text-[8px] font-black text-green-500 uppercase tracking-tighter animate-pulse">
-                        <span className="w-1 h-1 bg-green-500 rounded-full"></span>
-                        Live
-                      </span>
-                    )}
                   </div>
                 )}
               </div>

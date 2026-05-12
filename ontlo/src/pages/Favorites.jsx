@@ -1,4 +1,4 @@
-import { Star, Heart, Loader2, ChevronLeft, MessageSquare, Trash2, UserPlus, Info, Sparkles } from "lucide-react";
+import { ChevronLeft, Loader2, MessageSquare, Sparkles, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
@@ -7,7 +7,7 @@ import API_URL, { apiFetch } from "../utils/api";
 const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useSocket();
+  const { user, socket } = useSocket();
   const navigate = useNavigate();
 
   const fetchFavorites = async () => {
@@ -28,6 +28,29 @@ const Favorites = () => {
   useEffect(() => {
     fetchFavorites();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleOnlineStatus = ({ userId, isOnline }) => {
+      const id = userId?.toString();
+      setFavorites((prev) => prev.map((fav) => (
+        fav._id?.toString() === id
+          ? { ...fav, onlineStatus: isOnline ? "online" : "offline" }
+          : fav
+      )));
+    };
+
+    const refreshFavorites = () => fetchFavorites();
+
+    socket.on("online-status-change", handleOnlineStatus);
+    socket.on("profile-updated", refreshFavorites);
+
+    return () => {
+      socket.off("online-status-change", handleOnlineStatus);
+      socket.off("profile-updated", refreshFavorites);
+    };
+  }, [socket]);
 
   const toggleFavorite = async (userId) => {
     try {
@@ -114,7 +137,7 @@ const Favorites = () => {
                 </div>
 
                 {/* Status Badge */}
-                {fav.onlineStatus && (
+                {fav.onlineStatus === 'online' && (
                   <div className="absolute top-4 left-4 px-2 py-1 bg-green-500/10 border border-green-500/30 rounded-full backdrop-blur-md">
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>

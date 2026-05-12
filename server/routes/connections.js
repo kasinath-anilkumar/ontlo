@@ -9,6 +9,15 @@ const auth = require('../middleware/auth');
 
 const validate = require('../middleware/validate');
 
+const User = require('../models/User');
+
+const {
+  emitConnectionDeleted,
+  emitCountsUpdate,
+  emitNotification,
+  formatConnectionForUser
+} = require('../utils/realtime');
+
 const {
   connectionIdParamSchema
 } = require('../validators/connection.validator');
@@ -51,6 +60,21 @@ router.get('/', auth, async (req, res) => {
 
     const userIdStr = req.userId.toString();
 
+    
+
+const onlineUsers = await User.find(
+  {
+    onlineStatus: 'online'
+  },
+  '_id'
+).lean();
+
+const onlineSet = new Set(
+  onlineUsers.map(
+    u => u._id.toString()
+  )
+);
+
     const formatted = connections
       .map((connection) => {
 
@@ -71,25 +95,19 @@ router.get('/', auth, async (req, res) => {
           return null;
         }
 
-        return {
-          id: connection._id,
-
-          user: {
-            _id: otherUser._id,
-            username: otherUser.username || 'User',
-            profilePic: otherUser.profilePic || '',
-            onlineStatus:
-              otherUser.onlineStatus || 'offline'
+        return formatConnectionForUser(
+          {
+            ...connection,
+            userDetails: connection.userDetails.map((user) => ({
+              ...user,
+              onlineStatus:
+                onlineSet.has(user._id.toString())
+                  ? 'online'
+                  : 'offline'
+            }))
           },
-
-          status: connection.status,
-
-          lastMessage: connection.lastMessage || null,
-
-          createdAt: connection.createdAt,
-
-          updatedAt: connection.updatedAt
-        };
+          req.userId
+        );
       })
       .filter(Boolean);
 
@@ -217,7 +235,7 @@ router.delete(
         _id: req.params.id,
         users: req.userId
       })
-        .select('_id')
+        .select('_id users')
         .lean();
 
       let isLike = false;
@@ -229,7 +247,7 @@ router.delete(
           _id: req.params.id,
           toUser: req.userId
         }).select('_id').lean();
-        
+
         if (connection) {
           isLike = true;
         }
@@ -250,11 +268,11 @@ router.delete(
         await Like.deleteOne({ _id: req.params.id });
       } else {
         await Connection.deleteOne({ _id: req.params.id });
-        
+
         // Cleanup orphaned messages
         const Message = require('../models/Message');
         await Message.deleteMany({ connectionId: req.params.id });
-        
+
         // Cleanup orphaned notifications
         const Notification = require('../models/Notification');
         await Notification.deleteMany({ relatedId: req.params.id });
@@ -266,17 +284,12 @@ router.delete(
 
       if (req.io) {
         if (isLike) {
-          req.io
-            .to(`user_${req.userId}`)
-            .emit('counts-delta', {
-              connections: -1
-            });
+          emitCountsUpdate(req.io, req.userId);
         } else {
-          req.io
-            .to(`user_${req.userId}`)
-            .emit('connection-deleted', {
-              connectionId: req.params.id
-            });
+          emitConnectionDeleted(req.io, req.params.id, connection.users);
+          connection.users.forEach((userId) => {
+            emitCountsUpdate(req.io, userId);
+          });
         }
       }
 
@@ -368,7 +381,7 @@ router.post(
 
       // Create Notification
       const Notification = require('../models/Notification');
-      await Notification.create({
+      const notification = await Notification.create({
         user: recipientId,
         type: 'ping',
         content: `${sender.username} waved at you! 👋`,
@@ -382,6 +395,9 @@ router.post(
 
       // Socket Event
       if (req.io) {
+        emitNotification(req.io, recipientId, notification);
+        emitCountsUpdate(req.io, recipientId);
+        /*
         req.io
           .to(`user_${recipientId}`)
           .emit('new-notification', {
@@ -394,6 +410,7 @@ router.post(
             },
             connectionId: connection._id
           });
+        */
       }
 
       res.json({

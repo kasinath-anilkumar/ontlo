@@ -12,6 +12,9 @@ const Connection =
 const Like =
   require('../models/Like');
 
+const User =
+  require('../models/User');
+
 
 
 // ======================================================
@@ -411,12 +414,11 @@ const getOnlineConnections =
 
                 {
                   users: userId,
-                  status: 'active',
-                  "userDetails.onlineStatus": "online"
+                  status: 'active'
                 },
 
                 `
-                userDetails
+                users
                 `
               )
                 .sort({
@@ -424,6 +426,30 @@ const getOnlineConnections =
                 })
                 .limit(100)
                 .lean();
+
+            const otherUserIds = connections
+              .map((conn) =>
+                conn.users
+                  .map((id) => id.toString())
+                  .find((id) => id !== userIdStr)
+              )
+              .filter(Boolean);
+
+            if (otherUserIds.length === 0) {
+              return [];
+            }
+
+            const onlineUsers = await User.find(
+              {
+                _id: { $in: otherUserIds },
+                onlineStatus: 'online'
+              },
+              'username profilePic onlineStatus'
+            ).lean();
+
+            const onlineMap = new Map(
+              onlineUsers.map((user) => [user._id.toString(), user])
+            );
 
             const durationOnline = Date.now() - startOnline;
             if (durationOnline > 300) {
@@ -434,33 +460,20 @@ const getOnlineConnections =
               connections
                 .map((conn) => {
 
+                  const otherUserId = conn.users
+                    .map((id) => id.toString())
+                    .find((id) => id !== userIdStr);
+
                   const otherUser =
-                    conn.userDetails?.find(
-                      u =>
-                        u._id.toString() !==
-                        userIdStr
-                    );
+                    otherUserId && onlineMap.get(otherUserId);
 
-                  if (
-                    !otherUser
-                  ) {
-                    return null;
-                  }
-
-                  if (
-                    otherUser.onlineStatus !==
-                    'online'
-                  ) {
+                  if (!otherUser) {
                     return null;
                   }
 
                   return {
-
-                    connectionId:
-                      conn._id,
-
-                    user:
-                      otherUser
+                    connectionId: conn._id,
+                    user: otherUser
                   };
                 })
                 .filter(Boolean);

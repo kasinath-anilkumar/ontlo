@@ -135,10 +135,10 @@ ConnectionSchema.index({
 });
 
 // Online filtering
-ConnectionSchema.index({
-  users: 1,
-  "userDetails.onlineStatus": 1
-});
+// ConnectionSchema.index({
+//   users: 1,
+//   "userDetails.onlineStatus": 1
+// });
 
 
 

@@ -1,11 +1,11 @@
-import { AlertTriangle, Camera, Check, Heart, Lock, MapPin, Maximize2, Mic, MoreVertical, Music, PhoneOff, RefreshCw, Settings, Shield, Timer, User, Video, X, MessageSquare } from "lucide-react";
+import { AlertTriangle, Camera, Check, Heart, Lock, MessageSquare, Mic, Music, PhoneOff, RefreshCw, Settings, Shield, Timer } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import ontloLogo from "../../assets/ontlo_Logo.webp";
 import { useSocket } from "../../context/SocketContext";
 import API_URL, { apiFetch } from "../../utils/api";
 import ChatPanel from "../chat/ChatPanel";
 import MatchSettingsModal from "./MatchSettingsModal";
-import ontloLogo  from "../../assets/ontlo_Logo.webp";
 
 const VideoContainer = () => {
   const { socket, isConnected, user, setUser } = useSocket();
@@ -404,9 +404,13 @@ const VideoContainer = () => {
       }
     };
 
-    const onChatMessage = (msg) => { 
-      setChatMessages(prev => [...prev, { ...msg, type: "remote" }]); 
-      if (!showChatRef.current) setHasNewMessage(true); 
+    const onChatMessage = (msg) => {
+      const currentUserId = user?.id || user?._id;
+      if (msg.sender?.toString() === currentUserId?.toString()) {
+        return;
+      }
+      setChatMessages(prev => [...prev, { ...msg, type: "remote" }]);
+      if (!showChatRef.current) setHasNewMessage(true);
       setIsPeerTyping(false);
     };
     const onPeerTyping = () => setIsPeerTyping(true);
@@ -474,10 +478,9 @@ const VideoContainer = () => {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ reportedUserId, reason: `LIVE_REPORT: Room ${roomIdRef.current}`, roomId: roomIdRef.current }),
       });
-      apiFetch(`${API_URL}/api/users/block`, {
+      apiFetch(`${API_URL}/api/users/block/${reportedUserId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ blockedUserId: reportedUserId }),
+        headers: { "Authorization": `Bearer ${token}` },
       });
     } catch (error) {
       console.error("Failed to log report/block", error);

@@ -1,29 +1,41 @@
-import { Video, MessageSquare, ChevronRight, User } from "lucide-react";
+import { ChevronRight, MessageSquare, User, Video } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
 
 const RightPanel = ({ onClose }) => {
-  const { onlineUsers, isInitialLoad } = useSocket();
-  const [recentConnections, setRecentConnections] = useState([]);
+  const { onlineUsers, isInitialLoad, connections, fetchGlobalConnections } = useSocket();
+  const [recentConnections, setRecentConnections] = useState(() => connections.slice(0, 5));
+  const [loadingRecent, setLoadingRecent] = useState(connections.length === 0);
   const navigate = useNavigate();
 
-  // We still fetch "Recent Connections" on mount, but we don't poll
   useEffect(() => {
-    const fetchRecent = async () => {
+    setRecentConnections(connections.slice(0, 5));
+    if (connections.length > 0) {
+      setLoadingRecent(false);
+    }
+  }, [connections]);
+
+  useEffect(() => {
+    if (connections.length > 0) return;
+
+    let active = true;
+    const loadRecent = async () => {
+      setLoadingRecent(true);
       try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-        const { apiFetch, API_URL } = await import("../../utils/api");
-        const res = await apiFetch(`${API_URL}/api/connections`);
-        const data = await res.json();
-        if (res.ok) setRecentConnections(data.slice(0, 5));
+        await fetchGlobalConnections();
       } catch (err) {
         console.error("Failed to fetch recent connections", err);
+      } finally {
+        if (active) {
+          setLoadingRecent(false);
+        }
       }
     };
-    fetchRecent();
-  }, []);
+
+    loadRecent();
+    return () => { active = false; };
+  }, [connections.length, fetchGlobalConnections]);
 
   const formatTimeAgo = (date) => {
     if (!date) return "";
@@ -38,7 +50,7 @@ const RightPanel = ({ onClose }) => {
 
   return (
     <div className="w-80 bg-[#0B0E14] border-l border-white/5 flex flex-col h-screen overflow-y-auto hidden xl:flex relative">
-      <div className="p-6 pb-2 flex justify-between items-center">
+      <div className="sticky top-0 z-20 p-6 pb-2 flex justify-between items-center bg-[#0B0E14]/95 backdrop-blur-xl border-b border-white/5">
          <h1 className="text-xl font-black text-white tracking-tighter">Dashboard</h1>
          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-gray-500 hover:text-white transition-all group">
             <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
@@ -93,7 +105,9 @@ const RightPanel = ({ onClose }) => {
           </div>
 
           <div className="space-y-4">
-            {recentConnections.length > 0 ? recentConnections.map((conn) => (
+            {loadingRecent ? (
+              <p className="text-[10px] text-gray-600 font-bold uppercase text-center py-4 tracking-widest animate-pulse">Loading recent connections...</p>
+            ) : recentConnections.length > 0 ? recentConnections.map((conn) => (
               <div key={conn._id || conn.id} className="flex items-center justify-between group cursor-pointer" onClick={() => navigate("/messages")}>
                 <div className="flex items-center gap-3">
                   {conn.user.profilePic ? (

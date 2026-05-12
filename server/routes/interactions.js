@@ -17,6 +17,12 @@ const Notification =
 const auth =
   require('../middleware/auth');
 
+const {
+  emitConnectionUpdate,
+  emitCountsUpdate,
+  emitNotification
+} = require('../utils/realtime');
+
 
 
 // ======================================================
@@ -217,7 +223,7 @@ router.post(
           const targetUserFull = await User.findById(targetUserId).select('username profilePic onlineStatus').lean();
           const currentUserFull = await User.findById(req.user.id).select('username profilePic onlineStatus').lean();
 
-          await Connection.create({
+          const newConn = await Connection.create({
             users: [req.user.id, targetUserId],
             pairKey,
             userDetails: [
@@ -269,9 +275,13 @@ router.post(
           // ======================================================
 
           if (req.io) {
+            emitConnectionUpdate(req.io, newConn, 'new-connection');
+            emitCountsUpdate(req.io, targetUserId);
+            emitCountsUpdate(req.io, req.user.id);
 
             // To Target
             req.io.to(`user_${targetUserId}`).emit('new-match', {
+              connectionId: newConn._id,
               user: {
                 _id: currentUserFull._id,
                 username: currentUserFull.username,
@@ -281,6 +291,7 @@ router.post(
 
             // To Current
             req.io.to(`user_${req.user.id}`).emit('new-match', {
+              connectionId: newConn._id,
               user: {
                 _id: targetUserFull._id,
                 username: targetUserFull.username,
@@ -407,6 +418,8 @@ router.post(
               connections: 1
             }
           );
+
+        emitCountsUpdate(req.io, targetUserId);
       }
 
       res.json({
@@ -525,7 +538,7 @@ router.post(
           });
         }
 
-        await Connection.create({
+        const newConn = await Connection.create({
           users: [req.userId, targetUserId],
           pairKey,
           userDetails: [
@@ -563,6 +576,9 @@ router.post(
         // ======================================================
 
         if (req.io) {
+          emitConnectionUpdate(req.io, newConn, 'new-connection');
+          emitCountsUpdate(req.io, targetUserId);
+          emitCountsUpdate(req.io, req.userId);
 
           // 🔥 Standard notification event for toasts
           req.io.to(`user_${targetUserId}`).emit('new-match', {

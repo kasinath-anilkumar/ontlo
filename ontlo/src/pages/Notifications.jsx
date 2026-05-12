@@ -6,7 +6,8 @@ import { useSocket } from "../context/SocketContext";
 
 const Notifications = () => {
   const { notifications, setNotifications, fetchGlobalNotifications } = useSocket();
-  const [loading, setLoading] = useState(notifications.length === 0);
+  const [loading, setLoading] =
+  useState(false);
   const navigate = useNavigate();
 
   const fetchNotifications = async () => {
@@ -15,13 +16,23 @@ const Notifications = () => {
     setLoading(false);
   };
 
-  useEffect(() => {
+useEffect(() => {
+
+  const load = async () => {
+
     if (notifications.length === 0) {
-      fetchGlobalNotifications();
-    } else {
+
+      setLoading(true);
+
+      await fetchGlobalNotifications(true);
+
       setLoading(false);
     }
-  }, []);
+  };
+
+  load();
+
+}, []);
 
   const markAsRead = async (id) => {
     try {
@@ -122,19 +133,31 @@ const Notifications = () => {
                   ${n.isRead ? 'bg-white/5 border-white/5' : 'bg-purple-500/20 border-purple-500/30'}
                 `}>
                   {n.fromUser && n.fromUser.profilePic ? (
-                    <img src={n.fromUser.profilePic} className="w-full h-full rounded-2xl object-cover" alt="" />
-                  ) : n.fromUser ? (
-                    <User className="w-5 h-5 text-gray-400" />
-                  ) : getIcon(n.type)}
+                    <img
+                      src={
+                        n.fromUser.profilePic.replace(
+                          "/upload/",
+                          "/upload/w_80,h_80,c_fill,q_auto,f_auto/"
+                        )
+                      }
+                      className="w-full h-full rounded-2xl object-cover"
+                      alt=""
+                      loading="lazy"
+                      width="48"
+                      height="48"
+                      decoding="async"
+                    />) : n.fromUser ? (
+                      <User className="w-5 h-5 text-gray-400" />
+                    ) : getIcon(n.type)}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`text-[8px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-md border ${n.type === 'announcement' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                          n.type === 'alert' || n.type === 'security' || n.type === 'safety' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                            n.type === 'info' || n.type === 'system' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                              'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                        n.type === 'alert' || n.type === 'security' || n.type === 'safety' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                          n.type === 'info' || n.type === 'system' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                            'bg-purple-500/10 text-purple-500 border-purple-500/20'
                         }`}>
                         {n.type === 'announcement' ? 'Announcement' :
                           n.type === 'alert' || n.type === 'security' || n.type === 'safety' ? 'Security Alert' :

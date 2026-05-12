@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import ChatPanel from "../components/chat/ChatPanel";
 import Skeleton from "../components/ui/Skeleton";
 import { useSocket } from "../context/SocketContext";
+import API_URL, { apiFetch } from "../utils/api";
 
 const Messages = () => {
   const { counts, socket, isConnected, connections, setConnections, fetchGlobalConnections } = useSocket();
@@ -38,6 +39,18 @@ const Messages = () => {
     }
   }, [location.state, connections.length]);
 
+  useEffect(() => {
+    if (!selectedConnection?.id) return;
+    const updated = connections.find(c => c.id === selectedConnection.id);
+    if (!updated) {
+      setSelectedConnection(null);
+      return;
+    }
+    if (updated !== selectedConnection) {
+      setSelectedConnection(updated);
+    }
+  }, [connections, selectedConnection]);
+
   const filteredConnections = useMemo(() => {
     return connections.filter(c => 
       c.user.username.toLowerCase().includes(searchQuery.toLowerCase())
@@ -46,7 +59,6 @@ const Messages = () => {
 
   const acceptConnection = async (userId) => {
     try {
-      const { apiFetch, API_URL } = await import("../utils/api");
       const response = await apiFetch(`${API_URL}/api/interactions/accept/${userId}`, {
         method: "POST"
       });
@@ -120,7 +132,7 @@ const Messages = () => {
               >
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className={`w-14 h-14 rounded-full p-0.5 ${conn.user.onlineStatus ? 'bg-gradient-to-b from-green-500 to-transparent' : 'bg-[#1e293b]'}`}>
+                    <div className={`w-14 h-14 rounded-full p-0.5 ${conn.user.onlineStatus === 'online' ? 'bg-gradient-to-b from-green-500 to-transparent' : 'bg-[#1e293b]'}`}>
                       {conn.user.profilePic ? (
                         <img src={conn.user.profilePic} alt={conn.user.username} loading="lazy" className="w-full h-full rounded-full object-cover border-2 border-[#0B0E14]" />
                       ) : (
@@ -136,7 +148,7 @@ const Messages = () => {
                     <p className={`text-xs truncate w-40 ${selectedConnection?.id === conn.id ? 'text-purple-400 font-bold' : (conn.status === 'pending' ? 'text-pink-500 font-bold' : 'text-gray-500 font-medium')}`}>
                       {conn.status === 'pending' 
                         ? 'New connection request' 
-                        : (conn.lastMessage?.text || (conn.user.onlineStatus ? 'Active now' : 'Tap to message'))
+                        : (conn.lastMessage?.text || (conn.user.onlineStatus === 'online' ? 'Active now' : 'Tap to message'))
                       }
                     </p>
                   </div>

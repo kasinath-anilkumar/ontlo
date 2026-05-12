@@ -31,6 +31,12 @@ const {
   attachMatchmakingProfile
 } = require('./utils/socketMatchProfile');
 
+const {
+  emitConnectionUpdate,
+  emitCountsUpdate,
+  emitNotification
+} = require('./utils/realtime');
+
 
 
 // ======================================================
@@ -274,6 +280,7 @@ module.exports = (io) => {
         // ======================================================
 
         if (!token) {
+          socket.disconnect(true);
           return;
         }
 
@@ -281,11 +288,17 @@ module.exports = (io) => {
         // VERIFY JWT
         // ======================================================
 
-        const decoded =
-          jwt.verify(
-            token,
-            JWT_SECRET
-          );
+        let decoded;
+        try {
+          decoded = jwt.verify(token, JWT_SECRET);
+        } catch (err) {
+          if (err.name === 'TokenExpiredError') {
+            console.warn('[SOCKET AUTH WARNING]: jwt expired for socket connection');
+            socket.disconnect(true);
+            return;
+          }
+          throw err;
+        }
 
         socket.userId =
           decoded.id;
@@ -300,6 +313,7 @@ module.exports = (io) => {
           );
 
         if (!user) {
+          socket.disconnect(true);
           return;
         }
 
@@ -613,39 +627,22 @@ module.exports = (io) => {
               // REALTIME MESSAGE
               // ======================================================
 
-              // Emit to both the chat room and the recipient's personal room for global updates
-              let target = io.to(roomId);
+              const payload = {
+                id: createdMessage._id,
+                roomId,
+                sender: socket.userId,
+                senderInfo: createdMessage.senderInfo,
+                text: finalMessage,
+                imageUrl: imageUrl || null,
+                createdAt: timestamp
+              };
+
+              // Send to both user rooms so chat panels and inbox previews stay
+              // synced without a manual refresh.
+              io.to(`user_${socket.userId}`).emit('chat-message', payload);
               if (recipientId) {
-                target = target.to(`user_${recipientId}`);
+                io.to(`user_${recipientId}`).emit('chat-message', payload);
               }
-
-              target.emit(
-                'chat-message',
-
-                {
-
-                  id:
-                    createdMessage._id,
-
-                  roomId,
-
-                  sender:
-                    socket.userId,
-
-                  senderInfo:
-                    createdMessage.senderInfo,
-
-                  text:
-                    finalMessage,
-
-                  imageUrl:
-                    imageUrl ||
-                    null,
-
-                  createdAt:
-                    timestamp
-                }
-              );
 
               // ======================================================
               // NOTIFICATION
@@ -655,7 +652,7 @@ module.exports = (io) => {
                 recipientId
               ) {
 
-                Notification.create({
+                const notification = await Notification.create({
 
                   user:
                     recipientId,
@@ -688,7 +685,7 @@ module.exports = (io) => {
 
                   relatedId:
                     roomId
-                }).catch(() => {});
+                });
 
                 // DELTA COUNTS
                 emitCountsDelta(
@@ -715,11 +712,27 @@ module.exports = (io) => {
                   'new-notification',
 
                   {
+                    _id:
+                      notification._id,
 
                     type:
-                      'message',
+                      notification.type,
 
                     content:
+                      notification.content,
+
+                    relatedId:
+                      roomId,
+
+                    roomId,
+
+                    isRead:
+                      false,
+
+                    createdAt:
+                      notification.createdAt,
+
+                    legacyContent:
                       finalMessage
                         ?.substring(
                           0,
@@ -747,9 +760,6 @@ module.exports = (io) => {
                 );
 
                 // 🔥 Update unread badge counts
-                io.to(`user_${recipientId}`).emit('counts-delta', {
-                  messages: 1
-                });
               }
 
             } catch (error) {
@@ -881,11 +891,14 @@ module.exports = (io) => {
 
           'messages-read',
 
-          async ({
-            roomId
-          }) => {
+          async (payload = {}) => {
 
             try {
+              const roomId =
+                payload.roomId ||
+                payload.connectionId;
+
+              if (!roomId) return;
 
               await Message.updateMany(
 
@@ -914,16 +927,26 @@ module.exports = (io) => {
                 }
               );
 
-              socket
-                .to(roomId)
-                .emit(
-                  'messages-read',
-                  {
-                    roomId,
-                    userId:
-                      socket.userId
-                  }
-                );
+              const connection =
+                await Connection.findById(
+                  roomId,
+                  'users'
+                ).lean();
+
+              const readPayload = {
+                roomId,
+                connectionId: roomId,
+                userId: socket.userId,
+                readBy: socket.userId
+              };
+
+              if (connection?.users?.length) {
+                connection.users.forEach((userId) => {
+                  io.to(`user_${userId}`).emit('messages-read', readPayload);
+                });
+              } else {
+                socket.to(roomId).emit('messages-read', readPayload);
+              }
 
             } catch (error) {
 
@@ -983,7 +1006,7 @@ module.exports = (io) => {
                 const currentUserFull = await User.findById(socket.userId).select('username profilePic onlineStatus').lean();
 
                 if (targetUserFull && currentUserFull) {
-                  await Connection.create({
+                  const newConn = await Connection.create({
                     users: [socket.userId, targetUserId],
                     pairKey,
                     userDetails: [
@@ -1012,7 +1035,7 @@ module.exports = (io) => {
 
                   // 🔥 Create persistent Notification in DB
                   const Notification = require('./models/Notification');
-                  await Notification.create([
+                  const notifications = await Notification.create([
                     {
                       user: targetUserId,
                       type: 'match',
@@ -1022,7 +1045,7 @@ module.exports = (io) => {
                         username: currentUserFull.username,
                         profilePic: currentUserFull.profilePic
                       },
-                      relatedId: existingConn ? existingConn._id : null
+                      relatedId: newConn._id
                     },
                     {
                       user: socket.userId,
@@ -1033,20 +1056,18 @@ module.exports = (io) => {
                         username: targetUserFull.username,
                         profilePic: targetUserFull.profilePic
                       },
-                      relatedId: existingConn ? existingConn._id : null
+                      relatedId: newConn._id
                     }
                   ]);
 
                   // Notify both clients of the new active connection
                   io.to(roomId).emit('connection-established');
-                  io.to(`user_${targetUserId}`).emit('counts-delta', { connections: 1, notifications: 1 });
-                  io.to(`user_${socket.userId}`).emit('counts-delta', { connections: 1, notifications: 1 });
+                  emitConnectionUpdate(io, newConn, 'new-connection');
+                  emitCountsUpdate(io, targetUserId);
+                  emitCountsUpdate(io, socket.userId);
                   
-                  io.to(`user_${targetUserId}`).emit('new-notification', {
-                    type: 'match',
-                    content: `You matched with ${currentUserFull.username}!`,
-                    fromUser: currentUserFull
-                  });
+                  emitNotification(io, targetUserId, notifications[0]);
+                  emitNotification(io, socket.userId, notifications[1]);
                   return; // Stop here, no need to create another Like
                 }
               }

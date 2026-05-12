@@ -9,6 +9,7 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
 const { Server } = require('socket.io');
+const User = require('./models/User');
 
 const { logger } = require('./utils/logger');
 const monitor = require('./utils/monitor');
@@ -613,6 +614,16 @@ const startServer =
       logger.info(
         '✅ MongoDB Connected'
       );
+      await User.updateMany(
+  {},
+  {
+    $set: {
+      onlineStatus: 'offline'
+    }
+  }
+);
+
+// console.log('🟢 Reset all users offline');
 
       // ======================================================
       // DEV ONLY INDEX CREATION

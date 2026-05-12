@@ -1,4 +1,4 @@
-import { X, MapPin, Calendar, Activity, ShieldAlert, Loader2, MessageSquare, Heart, Users, Star, Crown, User } from "lucide-react";
+import { Crown, Loader2, MapPin, MessageSquare, User, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import API_URL, { apiFetch } from "../../utils/api";
 
@@ -64,7 +64,7 @@ const ProfileModal = ({ userId, onClose, onMessage }) => {
                </div>
                
                {/* Online Badge */}
-               {profile.onlineStatus && (
+               {profile.onlineStatus === 'online' && (
                  <div className="mt-2 flex items-center gap-1.5 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full">
                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-green-500">Online now</span>

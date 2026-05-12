@@ -17,6 +17,7 @@ const NotificationSchema = new mongoose.Schema(
         'announcement',
         'system',
         'match',
+        'ping',
         'alert',
         'info'
       ],

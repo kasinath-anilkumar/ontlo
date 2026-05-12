@@ -7,6 +7,9 @@ const auth = require('../middleware/auth');
 
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const {
+  getUserCounts
+} = require('../utils/stats');
 
 
 
@@ -269,9 +272,7 @@ router.get('/counts', auth, async (req, res) => {
     const start = Date.now();
 
     // 🔥 INSTANT COUNT FROM USER MODEL
-    const user = await User.findById(req.userId)
-      .select('notificationCount')
-      .lean();
+    const counts = await getUserCounts(req.userId, true);
 
     const duration = Date.now() - start;
 
@@ -281,10 +282,7 @@ router.get('/counts', auth, async (req, res) => {
       );
     }
 
-    res.json({
-      notifications:
-        user?.notificationCount || 0
-    });
+    res.json(counts);
 
   } catch (err) {
     console.error('[COUNT ERROR]:', err);

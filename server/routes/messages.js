@@ -299,16 +299,25 @@ router.get(
     try {
 
       const mongoose = require('mongoose');
-      const messages = await Message.find(
-        {
-          connectionId:
-            req.params.connectionId,
+      const limit = Math.min(
+        100,
+        Math.max(20, Number(req.query.limit) || 50)
+      );
+      const query = {
+        connectionId: req.params.connectionId,
+        deletedFor: {
+          $ne: new mongoose.Types.ObjectId(req.userId)
+        }
+      };
 
-          deletedFor: {
-            $ne: new mongoose.Types.ObjectId(req.userId)
-          }
-        },
+      if (req.query.before) {
+        const beforeDate = new Date(req.query.before);
+        if (!Number.isNaN(beforeDate.getTime())) {
+          query.createdAt = { $lt: beforeDate };
+        }
+      }
 
+      const messages = await Message.find(query,
         `
         text
         imageUrl
@@ -320,18 +329,19 @@ router.get(
         `
       )
         .sort({
-          createdAt: 1
+          createdAt: -1
         })
-        .limit(100)
+        .limit(limit)
         .maxTimeMS(3000)
         .lean();
 
-      console.log(`[DEBUG] Found ${messages.length} messages for connection ${req.params.connectionId}`);
+      const orderedMessages = messages.reverse();
+      console.log(`[DEBUG] Found ${orderedMessages.length} messages for connection ${req.params.connectionId}`);
 
       const userIdStr =
         req.userId.toString();
 
-      const formatted = messages.map(
+      const formatted = orderedMessages.map(
         (m) => {
 
           const isSelf =

@@ -7,11 +7,11 @@ import API_URL, { apiFetch } from "../utils/api";
 const WhoLikedYou = () => {
   const [likes, setLikes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useSocket();
+  const { user, socket } = useSocket();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchLikes = async () => {
+  const fetchLikes = async (showLoader = false) => {
+    if (showLoader) setLoading(true);
       try {
         const token = localStorage.getItem("token");
         const res = await apiFetch(`${API_URL}/api/interactions/received`, {
@@ -24,9 +24,24 @@ const WhoLikedYou = () => {
       } finally {
         setLoading(false);
       }
-    };
-    fetchLikes();
+  };
+
+  useEffect(() => {
+    fetchLikes(true);
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const refreshLikes = () => fetchLikes(false);
+    socket.on("new-like", refreshLikes);
+    socket.on("new-match", refreshLikes);
+
+    return () => {
+      socket.off("new-like", refreshLikes);
+      socket.off("new-match", refreshLikes);
+    };
+  }, [socket]);
 
   return (
     <div className="h-full bg-[#0B0E14] relative overflow-hidden flex flex-col">

@@ -10,6 +10,11 @@ const Notification = require('../models/Notification');
 
 const auth = require('../middleware/auth');
 
+const {
+  emitConnectionDeleted,
+  emitCountsUpdate
+} = require('../utils/realtime');
+
 
 
 // ======================================================
@@ -203,6 +208,27 @@ router.get('/me', auth, async (req, res) => {
       error
     );
 
+    res.status(500).json({
+      error: 'Server error'
+    });
+  }
+});
+
+
+
+// ======================================================
+// GET BLOCKED USERS
+// ======================================================
+
+router.get('/blocked/list', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId, 'blockedUsers')
+      .populate('blockedUsers', 'username profilePic')
+      .lean();
+
+    res.json(user?.blockedUsers || []);
+  } catch (error) {
+    console.error('[BLOCKED LIST ERROR]:', error);
     res.status(500).json({
       error: 'Server error'
     });
@@ -446,6 +472,33 @@ router.patch('/profile/update', auth, async (req, res) => {
       }
     ).catch(() => {});
 
+    if (req.io) {
+      const affectedConnections = await Connection.find(
+        {
+          users: req.userId,
+          status: 'active'
+        },
+        'users'
+      ).lean();
+
+      const notifiedUserIds = new Set();
+      affectedConnections.forEach((connection) => {
+        connection.users.forEach((userId) => {
+          const userIdStr = userId.toString();
+          if (userIdStr !== req.userId.toString()) {
+            notifiedUserIds.add(userIdStr);
+          }
+        });
+      });
+
+      notifiedUserIds.forEach((userId) => {
+        req.io.to(`user_${userId}`).emit('profile-updated', {
+          userId: req.userId,
+          user: updatedUser
+        });
+      });
+    }
+
     res.json(updatedUser);
 
   } catch (error) {
@@ -574,7 +627,7 @@ router.post('/block/:id', auth, async (req, res) => {
           req.params.id
         ]
       }
-    }).select('_id').lean();
+    }).select('_id users').lean();
 
     const connectionIds = connectionsToRemove.map(c => c._id);
 
@@ -589,6 +642,13 @@ router.post('/block/:id', auth, async (req, res) => {
       // 3. Delete Notifications
       const Notification = require('../models/Notification');
       await Notification.deleteMany({ relatedId: { $in: connectionIds } });
+
+      if (req.io) {
+        connectionsToRemove.forEach((connection) => {
+          emitConnectionDeleted(req.io, connection._id, connection.users);
+          connection.users.forEach((userId) => emitCountsUpdate(req.io, userId));
+        });
+      }
     }
 
     res.json({

@@ -1,9 +1,9 @@
-import { Heart, MessageSquare, Loader2, MoreVertical, ShieldAlert, UserX, X, MapPin, Calendar, Users, Activity, User } from "lucide-react";
+import { Heart, Loader2, MessageSquare, MoreVertical, ShieldAlert, User, Users, UserX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProfileModal from "../components/profile/ProfileModal";
-import API_URL, { apiFetch } from "../utils/api";
 import { useSocket } from "../context/SocketContext";
+import API_URL, { apiFetch } from "../utils/api";
 
 const Connections = () => {
   const { socket, connections, setConnections, fetchGlobalConnections } = useSocket();
@@ -63,10 +63,9 @@ const Connections = () => {
     
     try {
       const token = localStorage.getItem("token");
-      await apiFetch(`${API_URL}/api/users/block`, {
+      await apiFetch(`${API_URL}/api/users/block/${userId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ blockedUserId: userId })
+        headers: { "Authorization": `Bearer ${token}` }
       });
       fetchConnections();
     } catch (err) {
@@ -112,7 +111,7 @@ const Connections = () => {
           >
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className={`w-14 h-14 rounded-full p-0.5 ${conn.user.onlineStatus ? 'bg-gradient-to-b from-green-500 to-transparent' : 'bg-[#1e293b]'}`}>
+                <div className={`w-14 h-14 rounded-full p-0.5 ${conn.user.onlineStatus === 'online' ? 'bg-gradient-to-b from-green-500 to-transparent' : 'bg-[#1e293b]'}`}>
                   {conn.user.profilePic ? (
                     <img src={conn.user.profilePic} alt={conn.user.username} loading="lazy" className="w-full h-full rounded-full object-cover border-2 border-[#0B0E14]" />
                   ) : (
@@ -121,13 +120,13 @@ const Connections = () => {
                     </div>
                   )}
                 </div>
-                {conn.user.onlineStatus && <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0B0E14] rounded-full"></div>}
+                {conn.user.onlineStatus === 'online' && <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0B0E14] rounded-full"></div>}
               </div>
               <div>
                 <h3 className="text-white font-black uppercase tracking-tight mb-0.5">{conn.user.username}</h3>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-bold uppercase tracking-widest ${conn.user.onlineStatus ? 'text-green-500' : 'text-gray-500'}`}>
-                    {conn.user.onlineStatus ? "Online now" : "Offline"}
+                  <span className={`text-[10px] font-bold uppercase tracking-widest ${conn.user.onlineStatus === 'online' ? 'text-green-500' : 'text-gray-500'}`}>
+                    {conn.user.onlineStatus === 'online' ? "Online now" : "Offline"}
                   </span>
                   {conn.status === 'pending' && (
                     <span className="px-1.5 py-0.5 rounded bg-pink-500/10 text-pink-500 text-[8px] font-black uppercase tracking-tighter border border-pink-500/20">
