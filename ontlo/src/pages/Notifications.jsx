@@ -80,16 +80,17 @@ useEffect(() => {
   };
 
   return (
-    <div className="h-screen w-f bg-transparent flex flex-col w-full mx-auto px-2 sm:scrollbar:hidden md:scrollbar:visible">
+    <div className="h-screen w-f bg-transparent flex flex-col w-full mx-auto px-2 sm:scrollbar:hidden md:scrollbar:visible overflowx-hidden ">
 
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-4 -mx-4 px-4 sm:-mx-8 sm:px-8 mb-4 flex items-center justify-between border-b border-white/5">
+      <div className="sticky top-0 z-[999] w-full bg-[#0B0E14]/90 backdrop-blur-xl py-4 px-4 sm:px-8 mb-4 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-full transition md:hidden">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-2xl sm:p-0 md:p-4 font-black text-white tracking-tighter uppercase italic italic">Notifications</h1>
-        </div>
+<h1 className="text-lg sm:text-xl md:text-2xl p-0 md:p-4 font-black text-white tracking-tighter uppercase">
+  Notifications
+</h1>        </div>
 
         {notifications.some(n => !n.isRead) && (
           <button

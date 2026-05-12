@@ -71,20 +71,20 @@ const Messages = () => {
   };
 
   return (
-    <div className="h-full flex bg-transparent overflow-hidden relative" translate="no">
+    <div className="h-full flex bg-transparent overflow-x-hidden relative" translate="no">
       <div className="absolute top-0 left-0 w-64 h-64 bg-purple-600/5 blur-[100px] pointer-events-none"></div>
 
       <div className={`w-full md:w-96 flex flex-col h-full bg-[#0B0E14] z-10 transition-all duration-300 ${selectedConnection ? 'hidden md:flex' : 'flex'}`}>
-        <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl p-6 pb-4 border-b border-white/5">
+        <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl p-6 pb-4 border-b border-white/5 overflow-x-hidden">
           <div className="flex items-center justify-between mb-4">
             <div className="flex flex-col">
               <h1 className="text-3xl font-black text-white tracking-tight">Messages</h1>
-              <div className="flex items-center gap-1.5 mt-0.5">
+              {/* <div className="flex items-center gap-1.5 mt-0.5">
                 <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-orange-500 animate-pulse'}`}></div>
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
                   {isConnected ? 'Real-time Connected' : 'Connecting...'}
                 </span>
-              </div>
+              </div> */}
             </div>
             <button onClick={() => navigate("/video")} className="w-10 h-10 rounded-full bg-[#151923] border border-[#1e293b] flex items-center justify-center text-white hover:bg-[#1e293b] transition shadow-lg">
               <Plus className="w-5 h-5" />
@@ -141,10 +141,10 @@ const Messages = () => {
                         </div>
                       )}
                     </div>
-                    {/* {conn.user.onlineStatus && <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0B0E14] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>} */}
+                    {conn.user.onlineStatus && <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0B0E14] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>}
                   </div>
                   <div className="overflow-hidden">
-                    <h3 className="text-white font-black mb-0.5 truncate uppercase tracking-tight">{conn.user.username}</h3>
+                    <h3 className="text-white font-black mb-0.5 truncate font-normal sm:text-sm md:text-lg tracking-tight">{conn.user.username}</h3>
                     <p className={`text-xs truncate w-40 ${selectedConnection?.id === conn.id ? 'text-purple-400 font-bold' : (conn.status === 'pending' ? 'text-pink-500 font-bold' : 'text-gray-500 font-medium')}`}>
                       {conn.status === 'pending' 
                         ? 'New connection request' 
