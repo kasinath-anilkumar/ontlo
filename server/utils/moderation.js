@@ -84,15 +84,11 @@ const refreshKeywords =
 
       const config =
         await AppConfig.findOne(
-
           {},
-
-          `
-          bannedKeywords
-          autoModerate
-          toxicityThreshold
-          `
-        ).lean();
+          'bannedKeywords autoModerate toxicityThreshold'
+        )
+        .set('bufferCommands', false)
+        .lean();
 
       if (!config) {
 
@@ -160,10 +156,11 @@ const refreshKeywords =
 
 
 // ======================================================
-// INITIAL LOAD
+// INITIAL LOAD (Delayed to allow DB connection)
 // ======================================================
-
-refreshKeywords(true);
+setTimeout(() => {
+  refreshKeywords(true).catch(() => {});
+}, 5000);
 
 
 

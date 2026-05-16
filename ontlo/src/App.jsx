@@ -27,20 +27,20 @@ const PageLoader = () => (
 
 const ProtectedRoute = ({ children, requiresProfile = true }) => {
   const { user, isInitialLoad } = useSocket();
+  const token = localStorage.getItem('token');
   
-  if (isInitialLoad) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#0B0E14]">
-        <div className="w-10 h-10 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-      </div>
-    );
+  // While initializing, we allow rendering so skeletons can show.
+  // We only redirect if we are SURE the user is not logged in (isInitialLoad === false && !user)
+  // or if we don't even have a token to begin with.
+  if (isInitialLoad && token) {
+    return children;
   }
   
-  if (!user) {
+  if (!isInitialLoad && !user) {
     return <Navigate to="/auth" replace />;
   }
   
-  if (requiresProfile && !user.isProfileComplete) {
+  if (!isInitialLoad && requiresProfile && !user?.isProfileComplete) {
     return <Navigate to="/onboarding" replace />;
   }
   

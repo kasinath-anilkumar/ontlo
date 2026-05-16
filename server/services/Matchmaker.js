@@ -332,6 +332,121 @@ class Matchmaker {
           const isWildcard =
             Math.random() < 0.1;
 
+          if (!isWildcard) {
+
+            // ======================================================
+            // GENDER HARD FILTER
+            // ======================================================
+
+            // Check User 1's preference for User 2
+            if (
+              u1.matchPreferences?.gender &&
+              u1.matchPreferences.gender !== 'All'
+            ) {
+              if (
+                u1.matchPreferences.gender !== u2.gender
+              ) {
+                continue;
+              }
+            }
+
+            // Check User 2's preference for User 1
+            if (
+              u2.matchPreferences?.gender &&
+              u2.matchPreferences.gender !== 'All'
+            ) {
+              if (
+                u2.matchPreferences.gender !== u1.gender
+              ) {
+                continue;
+              }
+            }
+
+            // ======================================================
+            // AGE HARD FILTER
+            // ======================================================
+
+            // Check User 1's preference for User 2
+            if (
+              u1.matchPreferences?.ageRange &&
+              u2.age
+            ) {
+              if (
+                u2.age < u1.matchPreferences.ageRange.min ||
+                u2.age > u1.matchPreferences.ageRange.max
+              ) {
+                continue;
+              }
+            }
+
+            // Check User 2's preference for User 1
+            if (
+              u2.matchPreferences?.ageRange &&
+              u1.age
+            ) {
+              if (
+                u1.age < u2.matchPreferences.ageRange.min ||
+                u1.age > u2.matchPreferences.ageRange.max
+              ) {
+                continue;
+              }
+            }
+
+            // ======================================================
+            // DISTANCE HARD FILTER
+            // ======================================================
+
+            const distance =
+              this.getDistance(
+                u1.coordinates?.[1],
+                u1.coordinates?.[0],
+                u2.coordinates?.[1],
+                u2.coordinates?.[0]
+              );
+
+            if (
+              u1.matchPreferences?.distance &&
+              distance > u1.matchPreferences.distance
+            ) {
+              continue;
+            }
+
+            if (
+              u2.matchPreferences?.distance &&
+              distance > u2.matchPreferences.distance
+            ) {
+              continue;
+            }
+
+            // ======================================================
+            // INTEREST HARD FILTER
+            // ======================================================
+
+            // Check if User 2 has any interest that User 1 is looking for
+            if (
+              u1.matchPreferences?.interests?.length > 0
+            ) {
+              const hasMatch = u1.matchPreferences.interests.some(
+                interest => (u2.interests || []).includes(interest)
+              );
+              if (!hasMatch) {
+                continue;
+              }
+            }
+
+            // Check if User 1 has any interest that User 2 is looking for
+            if (
+              u2.matchPreferences?.interests?.length > 0
+            ) {
+              const hasMatch = u2.matchPreferences.interests.some(
+                interest => (u1.interests || []).includes(interest)
+              );
+              if (!hasMatch) {
+                continue;
+              }
+            }
+          }
+
           let score = 0;
 
           if (isWildcard) {
@@ -350,7 +465,7 @@ class Matchmaker {
               score += 15;
             }
 
-            // Distance
+            // Distance scoring
             const distance =
               this.getDistance(
 
@@ -373,7 +488,11 @@ class Matchmaker {
             }
           }
 
-          // Interests
+          // ======================================================
+          // INTEREST SCORING
+          // ======================================================
+
+          // 1. Similarity (Both have same interests)
           const commonInterests =
             (u1.interests || []).filter(
               interest =>
@@ -384,6 +503,22 @@ class Matchmaker {
 
           score +=
             commonInterests.length * 10;
+
+          // 2. Preferred (U2 has interests U1 is looking for)
+          if (u1.matchPreferences?.interests?.length > 0) {
+            const preferredMatch = (u1.matchPreferences.interests).filter(
+              interest => (u2.interests || []).includes(interest)
+            );
+            score += preferredMatch.length * 25; // Higher boost for specific preferences
+          }
+
+          // 3. Preferred (U1 has interests U2 is looking for)
+          if (u2.matchPreferences?.interests?.length > 0) {
+            const preferredMatch = (u2.matchPreferences.interests).filter(
+              interest => (u1.interests || []).includes(interest)
+            );
+            score += preferredMatch.length * 25;
+          }
 
           // Age gap
           if (

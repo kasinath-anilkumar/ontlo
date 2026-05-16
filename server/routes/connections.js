@@ -29,105 +29,68 @@ const {
 // ======================================================
 
 router.get('/', auth, async (req, res) => {
+  const label = `connections_${Date.now()}`;
+  console.time(label);
   try {
-
-    const start = Date.now();
-
-    const connections = await Connection.find(
-      {
-        users: req.userId,
-        status: 'active'
-      },
-
-      // 🔥 FETCH ONLY NEEDED FIELDS
-      `
-      users
-      userDetails
-      lastMessage
-      createdAt
-      updatedAt
-      status
-      `
-    )
-      .sort({ updatedAt: -1 })
-      .limit(20)
-      .hint({
-        users: 1,
-        updatedAt: -1
-      })
-      .maxTimeMS(5000)
-      .lean();
-
     const userIdStr = req.userId.toString();
+    const limit = Math.min(50, Number(req.query.limit) || 20);
 
-    
+    // 1. Parallel Data Fetching
+    const [connections, matchRequests] = await Promise.all([
+      Connection.find(
+        { users: req.userId, status: 'active' },
+        'users userDetails lastMessage createdAt updatedAt status'
+      )
+        .sort({ updatedAt: -1 })
+        .limit(limit)
+        .lean(),
 
-const onlineUsers = await User.find(
-  {
-    onlineStatus: 'online'
-  },
-  '_id'
-).lean();
-
-const onlineSet = new Set(
-  onlineUsers.map(
-    u => u._id.toString()
-  )
-);
-
-    const formatted = connections
-      .map((connection) => {
-
-        // ======================================================
-        // FIND OTHER USER
-        // ======================================================
-
-        const otherUser = (connection.userDetails || [])
-          .find(
-            (u) =>
-              u &&
-              u._id &&
-              u._id.toString() !== userIdStr
-          );
-
-        // Invalid connection
-        if (!otherUser) {
-          return null;
-        }
-
-        return formatConnectionForUser(
-          {
-            ...connection,
-            userDetails: connection.userDetails.map((user) => ({
-              ...user,
-              onlineStatus:
-                onlineSet.has(user._id.toString())
-                  ? 'online'
-                  : 'offline'
-            }))
-          },
-          req.userId
-        );
+      require('../models/Like').find({
+        toUser: req.userId
       })
+        .select('fromUser createdAt isRead')
+        .populate('fromUser', 'username profilePic onlineStatus')
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean()
+    ]);
+
+    // explain query if requested
+    if (req.query.explain) {
+      const explanation = await Connection.find({ users: req.userId, status: 'active' }).explain('executionStats');
+      return res.json(explanation);
+    }
+
+    // 2. Targeted Online Check (Only for the users we are returning)
+    const otherUserIds = connections
+      .map(c => c.users.find(u => u.toString() !== userIdStr))
       .filter(Boolean);
 
-    // ======================================================
-    // FETCH PENDING REQUESTS (Doc Section 17.5)
-    // ======================================================
+    const onlineUsers = await User.find(
+      { _id: { $in: otherUserIds }, onlineStatus: 'online' },
+      '_id'
+    ).lean();
 
-    const Like = require('../models/Like');
+    const onlineSet = new Set(onlineUsers.map(u => u._id.toString()));
 
-    const matchRequests = await Like.find({
-      toUser: req.userId
-    })
-      .populate('fromUser', 'username profilePic onlineStatus')
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
+    // 3. Formatting
+    const formatted = connections.map((connection) => {
+      const otherUser = (connection.userDetails || [])
+        .find(u => u && u._id && u._id.toString() !== userIdStr);
+
+      if (!otherUser) return null;
+
+      return formatConnectionForUser({
+        ...connection,
+        userDetails: connection.userDetails.map(u => ({
+          ...u,
+          onlineStatus: onlineSet.has(u._id.toString()) ? 'online' : 'offline'
+        }))
+      }, req.userId);
+    }).filter(Boolean);
 
     const requestFormatted = matchRequests.map((r) => {
       if (!r.fromUser) return null;
-
       return {
         id: r._id,
         user: {
@@ -142,58 +105,26 @@ const onlineSet = new Set(
       };
     }).filter(Boolean);
 
-    const duration = Date.now() - start;
+    console.timeEnd(label);
 
-    if (duration > 500) {
-      console.warn(
-        `[CONNECTIONS SLOW] took ${duration}ms`
-      );
-    }
-
-    // Merge and return
     res.json([
       ...requestFormatted,
       ...formatted
     ]);
 
-    // ======================================================
-    // ASYNC MARK READ
-    // ======================================================
-
+    // Async Mark Read (Fire and forget)
     if (matchRequests.length > 0) {
-
-      const unreadIds = matchRequests
-        .filter(r => !r.isRead)
-        .map(r => r._id);
-
+      const unreadIds = matchRequests.filter(r => !r.isRead).map(r => r._id);
       if (unreadIds.length > 0) {
-
-        Like.updateMany(
-          {
-            _id: { $in: unreadIds }
-          },
-          {
-            $set: {
-              isRead: true,
-              readAt: new Date()
-            }
-          }
-        ).catch(err => {
-          console.error('[MARK LIKES READ ERROR]:', err);
-        });
+        require('../models/Like').updateMany(
+          { _id: { $in: unreadIds } },
+          { $set: { isRead: true, readAt: new Date() } }
+        ).catch(err => console.error('[MARK LIKES READ ERROR]:', err));
       }
     }
-
   } catch (error) {
-
-    console.error(
-      '[CONNECTION FETCH ERROR]:',
-      error
-    );
-
-    res.status(500).json({
-      error: 'Server error'
-    });
+    console.error('[CONNECTION FETCH ERROR]:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

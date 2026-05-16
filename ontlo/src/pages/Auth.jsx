@@ -139,9 +139,9 @@ const Auth = () => {
           </div>
 
           <h1 className="text-5xl xl:text-6xl font-black mb-4 leading-tight tracking-tighter uppercase italic">
-            YOU’RE NOT ALONE.<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 animate-gradient-x">STARTS Start a.</span>
-            <br />Conversation.
+            Start From Here.<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 animate-gradient-x">Find Your Peoples</span>
+            <br />
           </h1>
 
           <p className="text-gray-400 text-base mb-8 leading-relaxed font-medium max-w-md">
@@ -310,20 +310,20 @@ const Auth = () => {
           <div className="mt-8 text-center space-x-4">
             <button 
               onClick={() => navigate('/privacy')}
-              className="text-[8px] font-black text-gray-700 hover:text-indigo-400 uppercase tracking-[0.3em] transition-all"
+              className="text-[8px] font-black text-white hover:text-indigo-400 uppercase tracking-[0.3em] transition-all"
             >
               Privacy Policy
             </button>
             <span className="text-gray-800">•</span>
             <button 
               onClick={() => navigate('/terms')}
-              className="text-[8px] font-black text-gray-700 hover:text-indigo-400 uppercase tracking-[0.3em] transition-all"
+              className="text-[8px] font-black text-white hover:text-indigo-400 uppercase tracking-[0.3em] transition-all"
             >
               Terms of Service
             </button>
           </div>
           
-          <p className="text-center text-[8px] text-gray-800 font-black uppercase tracking-[0.4em] mt-8 leading-relaxed opacity-40">
+          <p className="text-center text-[8px] text-white font-black uppercase tracking-[0.4em] mt-8 leading-relaxed opacity-40">
             Ontlo Universal Identity Layer<br/>Quantum-Safe Authentication
           </p>
         </div>

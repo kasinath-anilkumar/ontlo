@@ -46,7 +46,7 @@ const BottomNav = () => {
                   <span className={`absolute -top-2 -right-2 min-w-[16px] h-[16px] px-1 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-full flex items-center justify-center text-[9px] font-black text-white border border-[#0B0E14] shadow-lg transition-all duration-300 ${
                     item.badge > 0 ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'
                   }`}>
-                    {item.badge > 99 ? "99+" : item.badge}
+                    <span>{item.badge > 99 ? "99+" : item.badge}</span>
                   </span>
                 </div>
                 <span className={`text-[9px] mt-1 font-black uppercase tracking-widest transition-all duration-300 ${isActive ? "opacity-100 translate-y-0" : "opacity-40"}`}>

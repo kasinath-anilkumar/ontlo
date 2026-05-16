@@ -83,18 +83,29 @@ const NotificationSchema = new mongoose.Schema(
 // 🔥 INDEXES
 // ======================================================
 
-// Main notification fetch
+// Main notification fetch (Heavily used for dashboard)
 NotificationSchema.index({
   user: 1,
-  createdAt: -1,
-  isRead: 1
-});
+  createdAt: -1
+}, { background: true });
+
+// Unread status sorting
+NotificationSchema.index({
+  isRead: 1,
+  updatedAt: -1
+}, { background: true });
 
 // Faster unread counts
 NotificationSchema.index({
   user: 1,
   isRead: 1
-});
+}, { background: true });
+
+// Type filtering
+NotificationSchema.index({
+  user: 1,
+  type: 1
+}, { background: true });
 
 // TTL cleanup
 NotificationSchema.index(
@@ -102,7 +113,8 @@ NotificationSchema.index(
     expiresAt: 1
   },
   {
-    expireAfterSeconds: 0
+    expireAfterSeconds: 0,
+    background: true
   }
 );
 

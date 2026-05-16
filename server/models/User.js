@@ -417,7 +417,12 @@ UserSchema.index({
 
 UserSchema.index({
   locationCoordinates: '2dsphere'
-});
+}, { background: true });
+
+// Optimized Refresh Token Lookup
+UserSchema.index({
+  "refreshTokens.token": 1
+}, { background: true });
 
 
 

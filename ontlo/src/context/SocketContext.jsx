@@ -1,33 +1,33 @@
 import { Bell, MessageSquare, X } from 'lucide-react';
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import * as React from 'react';
 import { io } from 'socket.io-client';
 import API_URL, { apiFetch } from '../utils/api';
 
-const SocketContext = createContext();
+const SocketContext = React.createContext();
 
 export const useSocket = () => {
-  return useContext(SocketContext);
+  return React.useContext(SocketContext);
 };
 
 export const SocketProvider = ({ children }) => {
-  const [socket, setSocket] = useState(null);
-  const [user, setUser] = useState(() => {
+  const [socket, setSocket] = React.useState(null);
+  const [user, setUser] = React.useState(() => {
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  const [counts, setCounts] = useState({ messages: 0, notifications: 0, connections: 0, likes: 0, perChat: {} });
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const [connections, setConnections] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const isFetchingRef = useRef(false);
-  const lastFetchRef = useRef({ connections: 0, notifications: 0 });
-  const connectionsRef = useRef([]);
-  const messageCacheRef = useRef(new Map());
+  const [counts, setCounts] = React.useState({ messages: 0, notifications: 0, connections: 0, likes: 0, perChat: {} });
+  const [onlineUsers, setOnlineUsers] = React.useState([]);
+  const [connections, setConnections] = React.useState([]);
+  const [notifications, setNotifications] = React.useState([]);
+  const [isInitialLoad, setIsInitialLoad] = React.useState(true);
+  const isFetchingRef = React.useRef(false);
+  const lastFetchRef = React.useRef({ connections: 0, notifications: 0 });
+  const connectionsRef = React.useRef([]);
+  const messageCacheRef = React.useRef(new Map());
 
   // Toast Notification State
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = React.useState(null);
 
   const showToast = (notification) => {
     setToast(notification);
@@ -37,11 +37,11 @@ export const SocketProvider = ({ children }) => {
     }, 5000);
   };
 
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = React.useState(false);
 
   const normalizeConnectionId = (connectionId) => connectionId?.toString?.() || connectionId;
 
-  const mergeConnection = useCallback((incoming) => {
+  const mergeConnection = React.useCallback((incoming) => {
     if (!incoming?.id) return;
 
     setConnections((prev) => {
@@ -61,7 +61,7 @@ export const SocketProvider = ({ children }) => {
     });
   }, []);
 
-  const removeConnection = useCallback((connectionId) => {
+  const removeConnection = React.useCallback((connectionId) => {
     const id = normalizeConnectionId(connectionId);
     if (!id) return;
 
@@ -69,12 +69,31 @@ export const SocketProvider = ({ children }) => {
     messageCacheRef.current.delete(id);
   }, []);
 
-  const updateConnectionFromMessage = useCallback((msg) => {
+  const updateConnectionFromMessage = React.useCallback((msg) => {
     const connectionId = normalizeConnectionId(msg.connectionId || msg.roomId);
     if (!connectionId) return;
 
     const createdAt = msg.createdAt || new Date().toISOString();
     const text = msg.text || (msg.imageUrl ? 'Image' : '');
+    const currentUserId = user?.id || user?._id;
+
+    // Background Cache Update: Pre-fill the chat history
+    if (messageCacheRef.current) {
+      const existing = messageCacheRef.current.get(connectionId) || [];
+      // Prevent duplicates (e.g. if we get chat-message and new-message for same msg)
+      const isDuplicate = existing.some(m => (m.id === msg.id || m._id === msg._id) && (m.id || m._id));
+      
+      if (!isDuplicate) {
+        const cachedMsg = {
+          ...msg,
+          id: msg.id || msg._id,
+          type: msg.sender?.toString() === currentUserId?.toString() ? 'self' : 'remote',
+          createdAt
+        };
+        const nextCache = [...existing, cachedMsg].slice(-100); // Keep last 100
+        messageCacheRef.current.set(connectionId, nextCache);
+      }
+    }
 
     setConnections((prev) => {
       const existingIndex = prev.findIndex((conn) => normalizeConnectionId(conn.id) === connectionId);
@@ -100,44 +119,47 @@ export const SocketProvider = ({ children }) => {
 
       return [...next].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
     });
-  }, []);
+  }, [user?.id, user?._id]);
 
   // 1. Auth Check & Initial Data Fetch
-  useEffect(() => {
+  React.useEffect(() => {
     if (isFetchingRef.current) return;
     
     const initAppData = async () => {
       const token = localStorage.getItem('token');
-      // If no token, we still try once to see if we have a session cookie
-      // The ProtectedRoute will wait for this check to finish.
-
       isFetchingRef.current = true;
+      
       try {
+        // 1. Get User First (Fastest path to responsive UI)
         const meRes = await apiFetch(`${API_URL}/api/auth/me`);
         
         if (meRes.ok) {
           const meData = await meRes.json();
           setUser(meData);
           localStorage.setItem('user', JSON.stringify(meData));
+          setIsInitialLoad(false); // Mark as loaded once user is found
 
-          // Only fetch secondary data if authenticated
-          const [countsRes, onlineRes] = await Promise.all([
-            apiFetch(`${API_URL}/api/notifications/counts`),
-            apiFetch(`${API_URL}/api/connections/online`)
-          ]);
+          // 2. Fetch non-critical data in background
+          if (token) {
+            const [countsRes, onlineRes] = await Promise.all([
+              apiFetch(`${API_URL}/api/notifications/counts`).catch(() => null),
+              apiFetch(`${API_URL}/api/connections/online`).catch(() => null)
+            ]);
 
-          if (countsRes.ok) setCounts(await countsRes.json());
-          if (onlineRes.ok) setOnlineUsers(await onlineRes.json());
+            if (countsRes?.ok) setCounts(await countsRes.json());
+            if (onlineRes?.ok) setOnlineUsers(await onlineRes.json());
+          }
         } else if (meRes.status === 401) {
           setUser(null);
           localStorage.removeItem('user');
           localStorage.removeItem('token');
+          setIsInitialLoad(false);
         }
       } catch (err) {
         console.error("Initial app data fetch failed", err);
+        setIsInitialLoad(false);
       } finally {
         isFetchingRef.current = false;
-        setIsInitialLoad(false);
       }
     };
 
@@ -172,7 +194,7 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     connectionsRef.current = connections;
   }, [connections]);
 
@@ -193,7 +215,7 @@ export const SocketProvider = ({ children }) => {
   };
 
   // 2. Real-time Socket Updates
-  useEffect(() => {
+  React.useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token || !user) return;
     
@@ -343,6 +365,10 @@ export const SocketProvider = ({ children }) => {
     
     // Rich Toast Notification Listener
     newSocket.on('new-notification', (notification) => {
+      // Filter out unwanted types (message, like, ping) as per user request
+      const allowedTypes = ['match', 'announcement', 'alert', 'system', 'info', 'security'];
+      if (!allowedTypes.includes(notification.type)) return;
+
       showToast(notification);
       // Append to cache
       setNotifications(prev => {
@@ -453,7 +479,7 @@ export const SocketProvider = ({ children }) => {
       
       {/* Premium Toast Notification */}
       {toast && (
-        <div className="fixed top-4 right-4 z-[1000] animate-in fade-in slide-in-from-top-4 duration-300">
+        <div key={toast.id || toast._id || `toast-${Date.now()}`} className="fixed top-4 right-4 z-[1000] animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="bg-[#151923]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl flex items-start gap-4 min-w-[320px] max-w-[400px]">
             <div className="relative shrink-0">
               {toast.fromUser?.profilePic ? (

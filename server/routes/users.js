@@ -15,6 +15,8 @@ const {
   emitCountsUpdate
 } = require('../utils/realtime');
 
+const cacheUtil = require('../utils/cache');
+
 
 
 // ======================================================
@@ -33,84 +35,108 @@ router.get('/discover', auth, async (req, res) => {
       interests
       blockedUsers
       matchPreferences
+      locationCoordinates
       `
     ).lean();
-
+ 
     if (!currentUser) {
       return res.status(404).json({
         error: 'User not found'
       });
     }
-
+ 
     const recentTime = new Date(
       Date.now() - 1000 * 60 * 60 * 24
     );
-
+ 
     const query = {
-
+ 
       _id: {
         $nin: [
           req.userId,
           ...(currentUser.blockedUsers || [])
         ]
       },
-
+ 
       role: 'user',
-
+ 
       status: 'active',
-
+ 
       isShadowBanned: false,
-
+ 
       lastSeen: {
         $gte: recentTime
       }
     };
-
+ 
     // ======================================================
     // GENDER FILTER
     // ======================================================
-
+ 
     if (
       currentUser.matchPreferences?.gender &&
       currentUser.matchPreferences.gender !== 'All'
     ) {
-
+ 
       query.gender =
         currentUser.matchPreferences.gender;
     }
-
+ 
     // ======================================================
     // AGE FILTER
     // ======================================================
-
+ 
     if (
       currentUser.matchPreferences?.ageRange
     ) {
-
+ 
       query.age = {
         $gte:
           currentUser.matchPreferences
             .ageRange.min,
-
+ 
         $lte:
           currentUser.matchPreferences
             .ageRange.max
       };
     }
-
+ 
     // ======================================================
     // INTEREST FILTER
     // ======================================================
-
+ 
     if (
       currentUser.matchPreferences
         ?.interests?.length > 0
     ) {
-
+ 
       query.interests = {
         $in:
           currentUser.matchPreferences
             .interests
+      };
+    }
+
+    // ======================================================
+    // DISTANCE FILTER (GEOSPATIAL)
+    // ======================================================
+
+    if (
+      currentUser.matchPreferences?.distance &&
+      currentUser.locationCoordinates?.coordinates?.[0] !== 0 &&
+      currentUser.locationCoordinates?.coordinates?.[1] !== 0
+    ) {
+      
+      const distanceInRadians = 
+        currentUser.matchPreferences.distance / 6371;
+
+      query.locationCoordinates = {
+        $geoWithin: {
+          $centerSphere: [
+            currentUser.locationCoordinates.coordinates,
+            distanceInRadians
+          ]
+        }
       };
     }
 
@@ -163,35 +189,13 @@ router.get('/me', auth, async (req, res) => {
 
   try {
 
-    const user = await User.findById(
-
-      req.userId,
-
-      `
-      username
-      email
-      profilePic
-      fullName
-      age
-      dob
-      gender
-      location
-      interests
-      bio
-      isProfileComplete
-      onlineStatus
-      isVerified
-      isPremium
-      premiumExpiresAt
-      boosts
-      settings
-      notificationPreferences
-      matchPreferences
-      notificationCount
-      favorites
-      createdAt
-      `
-    ).lean();
+    const cacheKey = `user_me_${req.userId}`;
+    const user = await cacheUtil.getOrSet(cacheKey, async () => {
+      return await User.findById(
+        req.userId,
+        'username email profilePic fullName isProfileComplete onlineStatus isVerified isPremium notificationCount role'
+      ).maxTimeMS(2000).lean();
+    }, 30);
 
     if (!user) {
       return res.status(404).json({
@@ -270,6 +274,7 @@ router.get('/:id', auth, async (req, res) => {
       onlineStatus
       isPremium
       lastSeen
+      location
       `
     ).lean();
 
@@ -346,7 +351,8 @@ router.patch('/profile/update', auth, async (req, res) => {
       'settings',
       'notificationPreferences',
       'matchPreferences',
-      'lowBandwidth'
+      'lowBandwidth',
+      'locationCoordinates'
     ];
 
     const updates = {};
@@ -409,6 +415,8 @@ router.patch('/profile/update', auth, async (req, res) => {
         gender
         bio
         interests
+        location
+        locationCoordinates
         isProfileComplete
         `
       );

@@ -103,27 +103,44 @@ const MessageSchema = new mongoose.Schema(
 // INDEXES
 // ======================================================
 
-// Chat history
+// 1. Optimized Chat history (Matching the sort order in routes)
 MessageSchema.index({
   connectionId: 1,
-  createdAt: 1
-});
+  createdAt: -1
+}, { background: true });
 
-// Unread messages
+// 2. Optimized Mark-as-read (Targeted update)
 MessageSchema.index({
   connectionId: 1,
+  sender: 1,
   isRead: 1
-});
+}, { background: true });
 
-// Sender messages
+// 3. Optimized Soft delete filtering
 MessageSchema.index({
-  sender: 1
-});
+  connectionId: 1,
+  deletedFor: 1
+}, { background: true });
 
-// Recent messages
+// 4. Global Recent messages
 MessageSchema.index({
   createdAt: -1
-});
+}, { background: true });
+
+// 5. Sender tracking
+MessageSchema.index({
+  sender: 1,
+  createdAt: -1
+}, { background: true });
+
+// 6. Fast unread lookup per user and connection (for counts)
+MessageSchema.index({
+  connectionId: 1,
+  isRead: 1,
+  sender: 1
+}, { background: true });
+
+
 
 
 

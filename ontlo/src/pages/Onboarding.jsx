@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Camera, User, Sparkles, Upload, Loader2, ChevronRight, ChevronLeft, Globe, Calendar, MapPin } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
+import LocationAutocomplete from "../components/common/LocationAutocomplete";
 
 const Onboarding = () => {
   const [step, setStep] = useState(1);
@@ -310,110 +311,5 @@ const InputField = ({ label, value, onChange, placeholder, type = "text", icon }
   </div>
 );
 
-const LocationAutocomplete = ({ value, onChange }) => {
-  const [query, setQuery] = useState(value);
-  const [suggestions, setSuggestions] = useState([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    setQuery(value);
-  }, [value]);
-
-  useEffect(() => {
-    if (!query || query.length < 3) {
-      setSuggestions([]);
-      setIsOpen(false);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`);
-        const data = await response.json();
-        
-        const results = data.map(item => {
-          const addr = item.address;
-          const city = addr.city || addr.town || addr.village || addr.suburb || addr.municipality;
-          const state = addr.state;
-          const country = addr.country;
-          
-          const name = city ? `${city}${state ? ', ' + state : ''}${country ? ', ' + country : ''}` : item.display_name.split(',').slice(0, 3).join(',');
-
-          return {
-            name,
-            lat: parseFloat(item.lat),
-            lon: parseFloat(item.lon)
-          };
-        });
-        
-        // Remove duplicates based on name
-        const uniqueResults = results.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i);
-        
-        setSuggestions(uniqueResults);
-        setIsOpen(true);
-      } catch (err) {
-        console.error("Error fetching locations:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 600); // 600ms debounce
-
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const handleInputChange = (e) => {
-    const val = e.target.value;
-    setQuery(val);
-    onChange(val, null, null); // Clear coords when typing
-  };
-
-  const handleSelect = (city) => {
-    setQuery(city.name);
-    onChange(city.name, city.lat, city.lon);
-    setIsOpen(false);
-  };
-
-  return (
-    <div className="space-y-2 relative">
-      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">Location</label>
-      <div className="relative group">
-        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-purple-400 transition-colors">
-          <Globe className="w-4 h-4" />
-        </div>
-        <input
-          type="text"
-          value={query}
-          onChange={handleInputChange}
-          onFocus={() => { if (suggestions.length > 0) setIsOpen(true); }}
-          onBlur={() => setTimeout(() => setIsOpen(false), 250)}
-          className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] sm:rounded-[24px] pl-12 sm:pl-14 pr-12 py-3.5 sm:py-4 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all text-xs sm:text-sm font-medium placeholder:text-gray-700"
-          placeholder="Type your city..."
-          required
-        />
-        {isLoading && (
-          <div className="absolute right-5 top-1/2 -translate-y-1/2">
-            <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
-          </div>
-        )}
-      </div>
-      {isOpen && suggestions.length > 0 && (
-        <div className="absolute top-[100%] left-0 right-0 mt-2 bg-[#0D1117] border border-white/10 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.8)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-          {suggestions.map((city, i) => (
-            <div
-              key={i}
-              onClick={() => handleSelect(city)}
-              className="px-5 py-3.5 hover:bg-white/10 cursor-pointer text-[11px] sm:text-xs font-bold text-white transition-colors border-b border-white/5 last:border-0 flex items-center gap-3"
-            >
-              <MapPin className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-              <span className="truncate">{city.name}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 export default Onboarding;

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
+import LocationAutocomplete from "../components/common/LocationAutocomplete";
 
 const Profile = () => {
   const { user, setUser, socket } = useSocket();
@@ -31,7 +32,8 @@ const Profile = () => {
     age: "",
     gender: "",
     bio: "",
-    interests: []
+    interests: [],
+    locationCoordinates: { type: "Point", coordinates: [0, 0] }
   });
 
   const [settings, setSettings] = useState({
@@ -55,7 +57,8 @@ const Profile = () => {
         age: user.age || "",
         gender: user.gender || "",
         bio: user.bio || "",
-        interests: user.interests || []
+        interests: user.interests || [],
+        locationCoordinates: user.locationCoordinates || { type: "Point", coordinates: [0, 0] }
       });
 
       if (user.settings) {
@@ -294,11 +297,20 @@ const Profile = () => {
                       onChange={(val) => setEditData({ ...editData, fullName: val })}
                       placeholder="Enter your name"
                     />
-                    <EditField
+                    <LocationAutocomplete
                       label="Location"
                       value={editData.location}
                       isEditing={isEditing}
-                      onChange={(val) => setEditData({ ...editData, location: val })}
+                      onChange={(val, lat, lng) => {
+                        const updates = { ...editData, location: val };
+                        if (lat !== null && lng !== null) {
+                          updates.locationCoordinates = {
+                            type: "Point",
+                            coordinates: [lng, lat]
+                          };
+                        }
+                        setEditData(updates);
+                      }}
                       placeholder="e.g. New York, USA"
                     />
                     <EditField
@@ -438,12 +450,11 @@ const Profile = () => {
                             if (res.ok) {
                               const blob = await res.blob();
                               const url = window.URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `ontlo_my_data.json`;
-                              document.body.appendChild(a);
-                              a.click();
-                              a.remove();
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `ontlo_my_data.json`;
+                                a.click();
+                                window.URL.revokeObjectURL(url);
                             }
                           } catch (err) {
                             console.error("Export error:", err);

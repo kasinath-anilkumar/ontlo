@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocket } from "../../context/SocketContext";
 import API_URL, { apiFetch } from "../../utils/api";
 import ProfileModal from "../profile/ProfileModal";
+import Skeleton from "../ui/Skeleton";
 
 const ICEBREAKERS = [
   "What's your favorite way to spend a weekend?",
@@ -21,10 +22,13 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   const [isTyping, setIsTyping] = useState(false);
   const [remoteTyping, setRemoteTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const unreadMessageRef = useRef(null);
@@ -78,41 +82,50 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
 
     const fetchHistory = async () => {
       if (!mountedRef.current) return;
+      
+      // Only show loader if we have NO cached messages
       if (!cachedMessages) setIsLoading(true);
+
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
-        const [response, readRes] = await Promise.all([
-          apiFetch(`${API_URL}/api/messages/${connectionId}?limit=50`, {
-            headers,
-            signal: controller.signal,
-          }),
+
+        // 1. Fetch History (Priority)
+        const response = await apiFetch(`${API_URL}/api/messages/${connectionId}?limit=20`, {
+          headers,
+          signal: controller.signal,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (mountedRef.current) {
+            setInternalMessages(data);
+            setHasMore(data.length === 20);
+            if (cacheKey) messageCacheRef?.current?.set(cacheKey, data);
+            
+            // Hide loader as soon as history is ready
+            setIsLoading(false);
+          }
+        }
+
+        // 2. Mark as read in background (Non-blocking)
+        if (mountedRef.current) {
           apiFetch(`${API_URL}/api/messages/${connectionId}/read`, {
             method: "POST",
             headers,
-            signal: controller.signal,
-          }),
-        ]);
-        const data = await response.json();
-        if (!mountedRef.current) return;
-        if (response.ok) {
-          setInternalMessages(data);
-          if (cacheKey) messageCacheRef?.current?.set(cacheKey, data);
-        }
-        if (!readRes.ok && mountedRef.current) {
-          console.warn("Mark read failed", readRes.status);
-        }
-        if (!mountedRef.current) return;
-        if (socket) {
-          socket.emit("notification-update", { type: "read", connectionId });
-          socket.emit("messages-read", { connectionId });
+          }).then(res => {
+            if (res.ok && socket) {
+              socket.emit("notification-update", { type: "read", connectionId });
+              socket.emit("messages-read", { connectionId });
+            }
+          }).catch(() => {});
         }
 
       } catch (err) {
-        if (err.name === "AbortError") return; // expected on unmount
+        if (err.name === "AbortError") return;
         console.error("Failed to fetch message history", err);
       } finally {
-        if (mountedRef.current) setIsLoading(false);
+        if (mountedRef.current && !cachedMessages) setIsLoading(false);
       }
     };
 
@@ -183,17 +196,75 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     };
   }, [socket, effectiveRoomId, persistedMessages]);
 
+  // ── Infinite Scroll / Load More ───────────────────────────────────────────
+  const loadMore = async () => {
+    if (!connectionId || isLoadingMore || !hasMore || messages.length === 0) return;
+
+    setIsLoadingMore(true);
+    const oldestMessage = messages[0];
+    const before = oldestMessage.createdAt;
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiFetch(`${API_URL}/api/messages/${connectionId}?limit=20&before=${before}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (mountedRef.current) {
+          if (data.length === 0) {
+            setHasMore(false);
+          } else {
+            // Store current scroll height to preserve position
+            const container = messagesContainerRef.current;
+            const previousScrollHeight = container.scrollHeight;
+
+            setInternalMessages((prev) => {
+              const next = [...data, ...prev];
+              if (cacheKey) messageCacheRef?.current?.set(cacheKey, next);
+              return next;
+            });
+
+            setHasMore(data.length === 20);
+
+            // Wait for DOM update, then restore scroll position
+            setTimeout(() => {
+              if (container && mountedRef.current) {
+                container.scrollTop = container.scrollHeight - previousScrollHeight;
+              }
+            }, 0);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load more messages", err);
+    } finally {
+      if (mountedRef.current) setIsLoadingMore(false);
+    }
+  };
+
+  const handleScroll = (e) => {
+    const { scrollTop } = e.currentTarget;
+    // If we are near the top (e.g. within 50px), load more
+    if (scrollTop < 50 && hasMore && !isLoadingMore && !isLoading) {
+      loadMore();
+    }
+  };
+
   // ── Auto scroll ────────────────────────────────────────────────────────────
   useEffect(() => {
+    // If we just loaded more messages, don't auto-scroll to bottom
+    if (isLoadingMore) return;
+
     // If there is an unread message and it's the first render of these messages, scroll to it
     if (unreadMessageRef.current) {
       unreadMessageRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Clear it after scrolling so we don't snap back to it on new messages
       unreadMessageRef.current = null;
     } else {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, remoteTyping]);
+  }, [messages, remoteTyping, isLoadingMore]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleRemoveConnection = async () => {
@@ -438,11 +509,28 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-2 pb-8 md:pb-6 space-y-4 scrollbar-hide bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] bg-fixed">
+      <div 
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-2 pb-8 md:pb-6 space-y-4 scrollbar-hide bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] bg-fixed"
+      >
+        {isLoadingMore && (
+          <div className="flex justify-center py-2">
+            <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
+          </div>
+        )}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
-            <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-white">Loading Messages...</p>
+          <div className="flex-1 space-y-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={`chat-skeleton-${i}`} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"} animate-in fade-in duration-500`} style={{ animationDelay: `${i * 100}ms` }}>
+                <div className={`flex flex-col ${i % 2 === 0 ? "items-start" : "items-end"} w-[70%]`}>
+                  <Skeleton 
+                    className={`h-12 ${i % 2 === 0 ? "rounded-tl-none w-[80%]" : "rounded-tr-none w-[60%]"} opacity-${100 - (i * 15)}`} 
+                  />
+                  <Skeleton className="w-12 h-2 mt-2 opacity-20" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -472,7 +560,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
               messages.findIndex(m => m.type === "remote" && !m.isRead) === idx;
 
             return (
-              <div key={idx} className="space-y-4" ref={isFirstUnread ? unreadMessageRef : null}>
+              <div key={msg._id || msg.id || `msg-${idx}-${msg.createdAt}`} className="space-y-4" ref={isFirstUnread ? unreadMessageRef : null}>
                 {showDate && (
                   <div className="flex justify-center my-6">
                     <span className="px-3 py-1 bg-[#151923] rounded-full text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 border border-[#1e293b]/30">
@@ -484,12 +572,14 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                   <div className={`flex flex-col ${msg.type === "self" ? "items-end" : "items-start"} max-w-[85%] sm:max-w-[70%]`}>
                     <div className={`px-4 py-2.5 rounded-[20px] shadow-2xl relative ${msg.type === "self"
                       ? "bg-gradient-to-br from-purple-600 via-pink-600 to-red-500 text-white rounded-tr-none shadow-purple-900/20"
-                      : "bg-[#1e293b]/60 backdrop-blur-md border border-white/5 text-white rounded-tl-none shadow-black/20"
+                      : msg.type === "system"
+                        ? "bg-white/5 border border-white/10 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] text-center !rounded-full mx-auto"
+                        : "bg-[#1e293b]/60 backdrop-blur-md border border-white/5 text-white rounded-tl-none shadow-black/20"
                       } ${msg.imageUrl ? "p-1" : ""}`}>
                       {msg.imageUrl ? (
                         <img src={msg.imageUrl} className="max-w-full rounded-[16px] object-cover max-h-60" loading="lazy" alt="sent" />
                       ) : (
-                        <p className="text-[15px] leading-relaxed font-medium tracking-tight whitespace-pre-wrap">
+                        <p className={`${msg.type === 'system' ? 'px-2' : 'text-[15px] leading-relaxed font-medium tracking-tight whitespace-pre-wrap'}`}>
                           {msg.text}
                         </p>
                       )}
@@ -551,9 +641,9 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
           <div className="flex-1 bg-[#151923] border border-[#1e293b] rounded-[24px] sm:rounded-full px-5 py-2 flex items-center shadow-inner focus-within:border-purple-500/50 transition-all relative">
             {showEmojiPicker && (
               <div className="absolute bottom-16 left-0 w-64 bg-[#151923] border border-[#1e293b] rounded-3xl p-4 shadow-2xl grid grid-cols-5 gap-2 animate-in slide-in-from-bottom-4 duration-200 z-30">
-                {COMMON_EMOJIS.map((emoji, i) => (
+                {COMMON_EMOJIS.map((emoji) => (
                   <button
-                    key={i}
+                    key={emoji}
                     type="button"
                     onClick={() => setInputValue(prev => prev + emoji)}
                     className="text-xl hover:scale-125 transition active:scale-95 p-1"

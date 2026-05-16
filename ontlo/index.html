@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="../ontlo/src/assets/ontlo_Logo.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="google" content="notranslate" />
 
   <!-- Primary Meta Tags -->
   <title>Ontlo | Instant Video Connections & Real Human Interactions</title>
@@ -28,18 +29,31 @@
     content="Authentic real-time human interactions. Match instantly and talk via video." />
   <meta property="twitter:image" content="/og-image.png" />
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-
-  <!-- CSP for development -->
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; media-src 'self' https://assets.mixkit.co blob:; connect-src 'self' https: wss: http://localhost:* ws://localhost:*; img-src 'self' data: blob: https:">
+  <!-- PWA & Mobile Optimization -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0B0E14" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Ontlo" />
+  <link rel="apple-touch-icon" href="/src/assets/ontlo_Logo.png" />
 
   <style>
     body {
       font-family: 'Inter', sans-serif;
+      /* Prevent elastic scrolling/bounce on mobile */
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    /* True Fullscreen for standalone PWA */
+    @media (display-mode: standalone) {
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
     }
   </style>
 </head>

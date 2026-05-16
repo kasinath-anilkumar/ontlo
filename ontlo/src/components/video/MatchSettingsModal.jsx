@@ -248,7 +248,7 @@ const MatchSettingsModal = ({ onClose, currentPreferences, onSave }) => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
         }

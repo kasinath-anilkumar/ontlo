@@ -100,7 +100,13 @@ LikeSchema.index({
 
 LikeSchema.index({
   createdAt: -1
-});
+}, { background: true });
+
+// Optimized Pending Requests Fetch
+LikeSchema.index({
+  toUser: 1,
+  createdAt: -1
+}, { background: true });
 
 
 

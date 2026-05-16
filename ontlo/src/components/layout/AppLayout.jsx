@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import BottomNav from "../navigation/BottomNav";
 import Sidebar from "../navigation/Sidebar";
 import VideoContainer from "../video/VideoContainer";
-import RightPanel from "./RightPanel";
+
+const RightPanel = lazy(() => import("./RightPanel"));
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
@@ -52,7 +53,9 @@ const AppLayout = ({ children }) => {
         
         {isRightPanelOpen && !isFullscreenPage && location.pathname !== '/video' && (
           <div className="hidden xl:block animate-in slide-in-from-right duration-300">
-            <RightPanel onClose={() => setIsRightPanelOpen(false)} />
+            <Suspense fallback={<div className="w-80 h-full bg-[#0B0E14] border-l border-white/5 animate-pulse"></div>}>
+              <RightPanel onClose={() => setIsRightPanelOpen(false)} />
+            </Suspense>
           </div>
         )}
       </div>

@@ -1,0 +1,31 @@
+{
+  "short_name": "Ontlo",
+  "name": "Ontlo - Connect & Chat",
+  "description": "Premium real-time connectivity and chat platform.",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0B0E14",
+  "background_color": "#0B0E14",
+  "orientation": "portrait-primary",
+  "categories": ["social", "chat"],
+  "screenshots": []
+}

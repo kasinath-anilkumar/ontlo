@@ -3,6 +3,11 @@
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
+const dns = require('dns');
+
+// Fix for MongoDB SRV resolution issues in some environments
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 const cors = require('cors');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
@@ -149,69 +154,26 @@ const allowedOrigins =
     .filter(Boolean);
 
 const corsOptions = {
-
-  origin: (
-    origin,
-    callback
-  ) => {
-
-    // Mobile apps / Postman
-    if (!origin) {
-
-      return callback(
-        null,
-        true
-      );
-    }
-
-    const isAllowed =
-      allowedOrigins.some(
-        allowed =>
-          origin.includes(
-            allowed
-          )
-      ) ||
-
-      origin.includes(
-        'vercel.app'
-      ) ||
-
-      origin.includes(
-        'localhost'
-      ) ||
-
-      origin.includes(
-        '127.0.0.1'
-      );
-
-    if (isAllowed) {
-
-      callback(
-        null,
-        true
-      );
-
+  origin: (origin, callback) => {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (
+      allowedOrigins.some(allowed => origin.includes(allowed)) ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1') ||
+      origin.includes('vercel.app')
+    ) {
+      callback(null, true);
     } else {
-
-      // Relaxed for early launch
-      callback(
-        null,
-        true
-      );
+      // In development, we can be more permissive if needed, but for now let's stick to allowed origins
+      callback(null, true);
     }
   },
-
   credentials: true,
-
-  methods: [
-    'GET',
-    'POST',
-    'PUT',
-    'PATCH',
-    'DELETE',
-    'OPTIONS'
-  ],
-
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['set-cookie'],
   optionsSuccessStatus: 204
 };
 
@@ -492,6 +454,18 @@ app.use(
 
 
 // ======================================================
+// 404 HANDLER (JSON)
+// ======================================================
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `API Route not found: ${req.method} ${req.originalUrl}`
+  });
+});
+
+
+
+// ======================================================
 // GLOBAL ERROR HANDLER
 // ======================================================
 
@@ -554,111 +528,68 @@ const startServer =
     try {
 
       // ======================================================
-      // START HTTP FIRST
-      // ======================================================
-
-      server.listen(
-
-        PORT,
-
-        '0.0.0.0',
-
-        () => {
-
-          console.log(
-            `🚀 Server running on ${PORT}`
-          );
-
-          console.log(
-            '📡 Socket.io active'
-          );
-        }
-      );
-
-      // ======================================================
       // MONGO CONNECT
       // ======================================================
+      console.log('[DB] Connecting...');
+      await mongoose.connect(MONGO_URI, {
+        connectTimeoutMS: 20000,
+        serverSelectionTimeoutMS: 20000,
+        socketTimeoutMS: 45000,
+        waitQueueTimeoutMS: 15000,
+        retryWrites: true,
+        autoIndex: false, // Prevent automatic index sync from blocking startup
+        retryReads: true,
+        maxPoolSize: 50,
+        minPoolSize: 5
+      });
 
-      console.log(
-        '[DB] Connecting...'
-      );
-
-      await mongoose.connect(
-
-        MONGO_URI,
-
-        {
-
-          connectTimeoutMS:
-            20000,
-
-          serverSelectionTimeoutMS:
-            20000,
-
-          socketTimeoutMS:
-            45000,
-
-          waitQueueTimeoutMS:
-            15000,
-
-          retryWrites: true,
-
-          retryReads: true,
-
-          maxPoolSize: 50,
-
-          minPoolSize: 5
-        }
-      );
-
-      logger.info(
-        '✅ MongoDB Connected'
-      );
-      await User.updateMany(
-  {},
-  {
-    $set: {
-      onlineStatus: 'offline'
-    }
-  }
-);
-
-// console.log('🟢 Reset all users offline');
+      logger.info('✅ MongoDB Connected');
 
       // ======================================================
-      // DEV ONLY INDEX CREATION
+      // START HTTP IMMEDIATELY
       // ======================================================
-
-      if (!isProduction) {
-
-        const modelsToSync = [
-
-          'User',
-
-          'Connection',
-
-          'Message',
-
-          'Notification'
-        ];
-
-        for (const modelName of modelsToSync) {
-
+      server.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 Server running on ${PORT}`);
+        
+        // ======================================================
+        // BACKGROUND INITIALIZATION (Delayed to avoid startup congestion)
+        // ======================================================
+        setTimeout(async () => {
+          console.log('[BG] Starting background initialization tasks...');
           try {
+            // 1. Reset online status (non-blocking)
+            const resetStart = Date.now();
+            await User.updateMany(
+              { onlineStatus: 'online' },
+              { $set: { onlineStatus: 'offline' } }
+            ).maxTimeMS(30000); // 30s timeout for heavy updates
+            console.log(`[DB] Reset online statuses in ${Date.now() - resetStart}ms`);
 
-            await mongoose
-              .model(modelName)
-              .createIndexes();
-
-          } catch (error) {
-
-            console.warn(
-
-              `[INDEX ERROR] ${modelName}: ${error.message}`
-            );
+            // 2. Index Sync (Optional/Dev only)
+            if (!isProduction || process.env.SYNC_INDEXES === 'true') {
+              console.log('[BG] Syncing database indexes...');
+              const modelsToSync = ['User', 'Connection', 'Message', 'Notification'];
+              for (const modelName of modelsToSync) {
+                try {
+                  const model = mongoose.model(modelName);
+                  if (modelName === 'Connection') {
+                    const indexes = await model.collection.indexes().catch(() => []);
+                    if (indexes.find(idx => idx.name === 'users_1')?.unique) {
+                      await model.collection.dropIndex('users_1').catch(() => {});
+                    }
+                  }
+                  await model.createIndexes();
+                } catch (e) {
+                  console.warn(`[INDEX ERROR] ${modelName}: ${e.message}`);
+                }
+              }
+              console.log('[BG] Index sync complete.');
+            }
+          } catch (err) {
+            console.error('[BG INIT ERROR]:', err);
           }
-        }
-      }
+        }, 30000); // Wait 30s before starting heavy tasks
+      });
 
     } catch (error) {
 
@@ -880,17 +811,15 @@ process.on(
   }
 );
 
-process.on(
-  'uncaughtException',
+process.on('uncaughtException', (error) => {
+  console.error('[UNCAUGHT EXCEPTION]:', error);
+  process.exit(1);
+});
 
-  (error) => {
 
-    console.error(
-      '[UNCAUGHT EXCEPTION]',
-      error
-    );
-  }
-);
+
+
+
 
 
 

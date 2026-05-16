@@ -61,64 +61,49 @@ router.get('/test/count', async (req, res) => {
 // ======================================================
 
 router.get('/', auth, async (req, res) => {
+  const label = `notifications_${Date.now()}`;
+  console.time(label);
   try {
-    const start = Date.now();
+    const limit = Math.min(50, Math.max(10, Number(req.query.limit) || 20));
+    
+    const query = { 
+      user: new mongoose.Types.ObjectId(req.userId),
+      type: { $in: ['match', 'announcement', 'alert', 'system', 'info', 'security'] }
+    };
 
-    const notifications = await Notification.find(
-      { user: req.userId },
-
-      // 🔥 FETCH ONLY NEEDED FIELDS
-      `
-      type
-      content
-      fromUser
-      relatedId
-      isRead
-      readAt
-      createdAt
-      `
-    )
-      .sort({ createdAt: -1 })
-      .limit(30)
-      .lean();
-
-    // ======================================================
-    // FORMAT RESPONSE
-    // ======================================================
-
-    const formatted = notifications.map((n) => {
-
-      // Ensure fromUser object structure for consistency
-      if (
-        n.fromUser &&
-        typeof n.fromUser === 'string'
-      ) {
-        n.fromUser = {
-          _id: n.fromUser,
-          username: 'User',
-          profilePic: ''
-        };
-      }
-
-      return n;
-    });
-
-    const duration = Date.now() - start;
-
-    if (duration > 500) {
-      console.warn(
-        `[NOTIFY SLOW] Fetch took ${duration}ms`
-      );
+    // Debugging: Explain query if requested
+    if (req.query.explain) {
+      const explanation = await Notification.find(query).sort({ createdAt: -1 }).limit(limit).explain('executionStats');
+      return res.json(explanation);
     }
 
-    res.json(formatted);
+    // Benchmark: Raw MongoDB Driver (.toArray())
+    if (req.query.benchmark) {
+      const rawResults = await Notification.collection.find({ 
+        user: new mongoose.Types.ObjectId(req.userId) 
+      })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .toArray();
+      console.timeEnd(label);
+      return res.json({ benchmark: true, count: rawResults.length, data: rawResults });
+    }
+
+    // Main query (Heavily Optimized)
+    const notifications = await Notification.find(query)
+      .select('type content fromUser relatedId isRead createdAt')
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .maxTimeMS(2000)
+      .lean();
+
+    // formatting is fast since fromUser is embedded
+    console.timeEnd(label);
+    res.json(notifications);
 
   } catch (err) {
     console.error('[NOTIFY ERROR]:', err);
-
-    res.status(500).json({
-      error: 'Server error'
-    });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -271,8 +256,8 @@ router.get('/counts', auth, async (req, res) => {
   try {
     const start = Date.now();
 
-    // 🔥 INSTANT COUNT FROM USER MODEL
-    const counts = await getUserCounts(req.userId, true);
+    // Use cache (TTL 15s) to prevent hammering the DB on every initial load
+    const counts = await getUserCounts(req.userId, false);
 
     const duration = Date.now() - start;
 
@@ -290,6 +275,91 @@ router.get('/counts', auth, async (req, res) => {
     res.status(500).json({
       error: 'Server error'
     });
+  }
+});
+
+
+
+// ======================================================
+// DELETE ONE
+// ======================================================
+
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid ID' });
+    }
+
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      user: req.userId
+    });
+
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    const wasUnread = !notification.isRead;
+    await notification.deleteOne();
+
+    if (wasUnread) {
+      await User.updateOne(
+        { _id: req.userId },
+        { $inc: { notificationCount: -1 } }
+      );
+    }
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error('[DELETE ERROR]:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+
+// ======================================================
+// BULK DELETE
+// ======================================================
+
+router.post('/bulk-delete', auth, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'No IDs provided' });
+    }
+
+    // Filter valid object IDs
+    const validIds = ids.filter(id => mongoose.Types.ObjectId.isValid(id));
+
+    // Find unread count in selection for counter sync
+    const unreadCount = await Notification.countDocuments({
+      _id: { $in: validIds },
+      user: req.userId,
+      isRead: false
+    });
+
+    const result = await Notification.deleteMany({
+      _id: { $in: validIds },
+      user: req.userId
+    });
+
+    if (unreadCount > 0) {
+      await User.updateOne(
+        { _id: req.userId },
+        { $inc: { notificationCount: -unreadCount } }
+      );
+    }
+
+    res.json({ 
+      success: true, 
+      deletedCount: result.deletedCount 
+    });
+
+  } catch (err) {
+    console.error('[BULK DELETE ERROR]:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

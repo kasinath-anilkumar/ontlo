@@ -69,7 +69,7 @@ const Sidebar = () => {
                 <span className={`relative z-10 text-[9px] min-w-[18px] h-[18px] flex items-center justify-center font-black px-1 rounded-full transition-all duration-300 ${
                   item.badge > 0 ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'
                 } ${isActive ? 'bg-white text-purple-600 shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'bg-gradient-to-tr from-purple-600 to-pink-500 text-white shadow-[0_0_10px_rgba(168,85,247,0.3)]'}`}>
-                  {item.badge > 99 ? '99+' : item.badge}
+                  <span>{item.badge > 99 ? '99+' : item.badge}</span>
                 </span>
                 
                 {isActive && (

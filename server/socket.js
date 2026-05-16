@@ -423,10 +423,40 @@ module.exports = (io) => {
 
         socket.on(
           'leave-room',
-
+ 
           (roomId) => {
-
+ 
             socket.leave(roomId);
+          }
+        );
+ 
+ 
+ 
+        // ======================================================
+        // UPDATE MATCH PREFERENCES
+        // ======================================================
+ 
+        socket.on(
+          'update-match-preferences',
+ 
+          (newPreferences) => {
+ 
+            if (!newPreferences) return;
+ 
+            socket.matchPreferences = {
+              ...socket.matchPreferences,
+              ...newPreferences
+            };
+ 
+            // Also update the matchProfile payload used by the Matchmaker
+            if (socket.matchProfile) {
+              socket.matchProfile.preferences =
+                socket.matchPreferences;
+            }
+ 
+            console.log(
+              `[SOCKET] Updated match preferences for ${socket.userId}`
+            );
           }
         );
 
@@ -483,291 +513,126 @@ module.exports = (io) => {
         // ======================================================
 
         socket.on(
-
           'chat-message',
 
-          async ({
-            roomId,
-            message,
-            imageUrl
-          }) => {
-
+          async ({ roomId, message, imageUrl }) => {
+            const start = Date.now();
             try {
+              if ((!message || !message.trim()) && !imageUrl) return;
 
-              // ======================================================
-              // CONNECTION & MEMBERSHIP CHECK
-              // ======================================================
+              // 1. Membership Check (Support both DB Connections and Live Random Rooms)
+              let connection = null;
+              let isAuthorized = false;
 
-              const connection =
-                await Connection.findById(
-                  roomId,
-                  'users userDetails'
-                ).lean();
-
-              if (
-                !connection ||
-                !connection.users.some(
-                  (u) =>
-                    u.toString() ===
-                    socket.userId.toString()
-                )
-              ) {
-                return;
-              }
-
-              // Auto-join if not in room (failsafe)
-              if (!socket.rooms.has(roomId)) {
-                socket.join(roomId);
-              }
-
-              // ======================================================
-              // VALIDATION
-              // ======================================================
-
-              if (
-                (!message ||
-                  !message.trim()) &&
-                !imageUrl
-              ) {
-
-                return;
-              }
-
-              // ======================================================
-              // MODERATION
-              // ======================================================
-
-              const moderation =
-                moderateText(
-                  message || ''
-                );
-
-              const finalMessage =
-                moderation.text;
-
-              const timestamp =
-                new Date();
-
-              // ======================================================
-              // CREATE MESSAGE
-              // ======================================================
-
-              const createdMessage =
-                await Message.create({
-
-                  connectionId:
-                    roomId,
-
-                  sender:
-                    socket.userId,
-
-                  senderInfo: {
-
-                    _id:
-                      socket.user._id,
-
-                    username:
-                      socket.user
-                        .username,
-
-                    profilePic:
-                      socket.user
-                        .profilePic
-                  },
-
-                  text:
-                    finalMessage,
-
-                  imageUrl:
-                    imageUrl ||
-                    null
-                });
-
-              console.log(`[DEBUG] Saved message ${createdMessage._id} to connection ${roomId}`);
-
-              // ======================================================
-              // UPDATE CONNECTION
-              // ======================================================
-
-              Connection.updateOne(
-                {
-                  _id: roomId
-                },
-                {
-                  $set: {
-
-                    lastMessage: {
-
-                      text:
-                        finalMessage ||
-                        '📷 Image',
-
-                      createdAt:
-                        timestamp
-                    },
-
-                    updatedAt:
-                      timestamp
-                  }
+              // Check if it's a permanent connection (MongoDB ID)
+              if (roomId.match(/^[0-9a-fA-F]{24}$/)) {
+                connection = await Connection.findById(roomId, 'users').lean();
+                if (connection && connection.users.some(u => u.toString() === socket.userId.toString())) {
+                  isAuthorized = true;
                 }
-              ).catch(() => {});
-
-              // ======================================================
-              // RECIPIENT
-              // ======================================================
-
-              const recipientId =
-                connection.users.find(
-                  (u) =>
-                    u.toString() !==
-                    socket.userId.toString()
-                );
-
-              // ======================================================
-              // REALTIME MESSAGE
-              // ======================================================
-
-              const payload = {
-                id: createdMessage._id,
-                roomId,
-                sender: socket.userId,
-                senderInfo: createdMessage.senderInfo,
-                text: finalMessage,
-                imageUrl: imageUrl || null,
-                createdAt: timestamp
-              };
-
-              // Send to both user rooms so chat panels and inbox previews stay
-              // synced without a manual refresh.
-              io.to(`user_${socket.userId}`).emit('chat-message', payload);
-              if (recipientId) {
-                io.to(`user_${recipientId}`).emit('chat-message', payload);
               }
 
-              // ======================================================
-              // NOTIFICATION
-              // ======================================================
+              // If not a DB connection, check if it's an active random call room
+              if (!isAuthorized) {
+                const activeMatch = matchmaker.activeMatches.get(roomId);
+                if (activeMatch && (activeMatch.user1Id.toString() === socket.userId.toString() || 
+                                    activeMatch.user2Id.toString() === socket.userId.toString())) {
+                  isAuthorized = true;
+                  // In random calls, we don't persist to DB unless it becomes a permanent connection later
+                }
+              }
 
-              if (
-                recipientId
-              ) {
+              if (!isAuthorized) return;
 
-                const notification = await Notification.create({
+              // 2. Parallel Processing (Only for persistent connections)
+              const moderation = moderateText(message || '');
+              const timestamp = new Date();
 
-                  user:
-                    recipientId,
-
-                  type:
-                    'message',
-
-                  content:
-                    finalMessage
-                      ?.substring(
-                        0,
-                        80
-                      ) ||
-                    '📷 Image',
-
-                  fromUser: {
-
-                    _id:
-                      socket.user
-                        ._id,
-
-                    username:
-                      socket.user
-                        .username,
-
-                    profilePic:
-                      socket.user
-                        .profilePic
+              if (connection) {
+                const [createdMessage] = await Promise.all([
+                Message.create({
+                  connectionId: roomId,
+                  sender: socket.userId,
+                  senderInfo: {
+                    _id: socket.user._id,
+                    username: socket.user.username,
+                    profilePic: socket.user.profilePic
                   },
-
-                  relatedId:
-                    roomId
-                });
-
-                // DELTA COUNTS
-                emitCountsDelta(
-
-                  recipientId.toString(),
-
+                  text: moderation.text,
+                  imageUrl: imageUrl || null,
+                  createdAt: timestamp
+                }),
+                Connection.updateOne(
+                  { _id: roomId },
                   {
-
-                    messages: 1,
-
-                    notifications: 1,
-
-                    perChat: {
-                      [roomId]: 1
-                    }
+                    $set: {
+                      'lastMessage.text': moderation.text || '📷 Image',
+                      'lastMessage.sender': socket.userId,
+                      'lastMessage.createdAt': timestamp,
+                      updatedAt: timestamp
+                    },
+                    $inc: { messageCount: 1 }
                   }
-                );
+                )
+              ]);
 
-                // REALTIME NOTIFICATION
-                io.to(
-                  `user_${recipientId}`
-                ).emit(
+                // 3. Emit Immediately (Low Latency)
+                const recipientId = connection.users.find(u => u.toString() !== socket.userId.toString());
+                const payload = {
+                  id: createdMessage._id,
+                  roomId,
+                  sender: socket.userId,
+                  senderInfo: createdMessage.senderInfo,
+                  text: moderation.text,
+                  imageUrl: imageUrl || null,
+                  createdAt: timestamp
+                };
 
-                  'new-notification',
+                io.to(`user_${socket.userId}`).emit('chat-message', payload);
+                if (recipientId) {
+                  io.to(`user_${recipientId}`).emit('chat-message', payload);
+                }
 
-                  {
-                    _id:
-                      notification._id,
-
-                    type:
-                      notification.type,
-
-                    content:
-                      notification.content,
-
-                    relatedId:
-                      roomId,
-
-                    roomId,
-
-                    isRead:
-                      false,
-
-                    createdAt:
-                      notification.createdAt,
-
-                    legacyContent:
-                      finalMessage
-                        ?.substring(
-                          0,
-                          80
-                        ) ||
-                      '📷 Image',
-
-                    roomId,
-
-                    fromUser: {
-
-                      _id:
-                        socket.user
-                          ._id,
-
-                      username:
-                        socket.user
-                          .username,
-
-                      profilePic:
-                        socket.user
-                          .profilePic
+                // 4. Background Side-effects (Non-blocking)
+                if (recipientId) {
+                  // Non-awaited for faster response
+                  (async () => {
+                    try {
+                      emitCountsDelta(recipientId.toString(), {
+                        messages: 1,
+                        perChat: { [roomId]: 1 }
+                      });
+                    } catch (e) {
+                      console.error('[ASYNC NOTIFICATION ERROR]:', e);
                     }
-                  }
-                );
+                  })();
+                }
+              } else {
+                // Handle Random Call Chat (Not persisted in DB)
+                const payload = {
+                  id: `temp_${Date.now()}`,
+                  roomId,
+                  sender: socket.userId,
+                  senderInfo: {
+                    _id: socket.user._id,
+                    username: socket.user.username,
+                    profilePic: socket.user.profilePic
+                  },
+                  text: moderation.text,
+                  imageUrl: imageUrl || null,
+                  createdAt: timestamp
+                };
 
-                // 🔥 Update unread badge counts
+                // In random calls, we emit to the entire room
+                io.to(roomId).emit('chat-message', payload);
               }
 
+              const duration = Date.now() - start;
+              if (duration > 150) {
+                console.warn(`[SOCKET PERFORMANCE] chat-message took ${duration}ms`);
+              }
             } catch (error) {
-
-              console.error(
-                '[CHAT MESSAGE ERROR]:',
-                error
-              );
+              console.error('[CHAT MESSAGE ERROR]:', error);
             }
           }
         );
@@ -1082,6 +947,24 @@ module.exports = (io) => {
 
           } catch (error) {
             console.error('[ACTION-CONNECT ERROR]:', error);
+          }
+        });
+
+        socket.on('action-decline', async ({ roomId }) => {
+          try {
+            if (!roomId || !socket.userId) return;
+            const match = matchmaker.activeMatches.get(roomId);
+            if (!match) return;
+
+            const targetUserId = match.user1Id.toString() === socket.userId.toString()
+              ? match.user2Id
+              : match.user1Id;
+
+            if (targetUserId) {
+              io.to(`user_${targetUserId}`).emit('peer-declined-connection', { roomId });
+            }
+          } catch (error) {
+            console.error('[ACTION-DECLINE ERROR]:', error);
           }
         });
 

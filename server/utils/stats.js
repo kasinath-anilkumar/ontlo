@@ -171,66 +171,46 @@ const getUserCounts = async (
           // ======================================================
           // PARALLEL COUNTS
           // ======================================================
+          const countLabel = `Counts_${userIdStr}_${Date.now()}`;
+          console.time(countLabel);
 
           const [
-
             notifications,
-
             likes,
-
             perChatResults
-
           ] = await Promise.all([
 
             Notification.countDocuments({
               user: oid,
               isRead: false
-            }),
+            }).maxTimeMS(1000),
 
             Like.countDocuments({
               toUser: oid,
               isRead: false
-            }),
+            }).maxTimeMS(1000),
 
             connectionIds.length === 0
-
               ? Promise.resolve([])
-
               : Message.aggregate([
-
                   {
                     $match: {
-
                       connectionId: {
-                        $in:
-                          connectionIds
+                        $in: connectionIds.slice(0, 500) // Cap to avoid huge queries
                       },
-
                       isRead: false,
-
-                      sender: {
-                        $ne: oid
-                      }
+                      sender: { $ne: oid }
                     }
                   },
-
                   {
                     $group: {
-
-                      _id:
-                        '$connectionId',
-
-                      count: {
-                        $sum: 1
-                      }
+                      _id: '$connectionId',
+                      count: { $sum: 1 }
                     }
                   }
-
-                ]).hint({
-                  connectionId: 1,
-                  isRead: 1
-                })
+                ]).option({ maxTimeMS: 2000 })
           ]);
+          console.timeEnd(countLabel);
 
           // ======================================================
           // BUILD MESSAGE STATS

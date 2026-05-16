@@ -44,113 +44,136 @@ const Home = () => {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-          <div className="bg-[#151923]/60 backdrop-blur-md border border-[#1e293b] rounded-xl px-3 py-1.5 flex items-center gap-2 flex-shrink-0 shadow-lg">
-            <Users className="w-3.5 h-3.5 text-purple-400" />
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-[10px] sm:text-xs font-bold text-gray-300 tracking-tight">
-              {onlineCount.toLocaleString()} <span className="hidden xxs:inline uppercase">Online</span>
-            </span>
-          </div>
+          {isInitialLoad ? (
+            <Skeleton className="w-24 h-8 rounded-xl" />
+          ) : (
+            <div className="bg-[#151923]/60 backdrop-blur-md border border-[#1e293b] rounded-xl px-3 py-1.5 flex items-center gap-2 flex-shrink-0 shadow-lg">
+              <Users className="w-3.5 h-3.5 text-purple-400" />
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+              <span className="text-[10px] sm:text-xs font-bold text-gray-300 tracking-tight">
+                {onlineCount.toLocaleString()} <span className="hidden xxs:inline uppercase">Online</span>
+              </span>
+            </div>
+          )}
+          
           <button onClick={() => navigate("/notifications")} className="relative w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all">
             <Bell className="h-4 w-4" />
-            <span className={`absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] px-1 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-full flex items-center justify-center text-[8px] font-black text-white border border-[#0B0E14] shadow-lg transition-all duration-300 ${
-              counts.notifications > 0 ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'
-            }`}>
-              {counts.notifications > 99 ? "99+" : counts.notifications}
-            </span>
-          </button>
-          <button onClick={() => navigate("/profile")} className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-purple-500/20 overflow-hidden transition-all hover:scale-105 shadow-lg bg-[#151923] flex items-center justify-center">
-            {user?.profilePic ? (
-              <img src={user.profilePic} alt={user?.username} className="w-full h-full object-cover" />
-            ) : (
-              <User className="w-5 h-5 text-gray-500" />
+            {!isInitialLoad && counts.notifications > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] px-1 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-full flex items-center justify-center text-[8px] font-black text-white border border-[#0B0E14] shadow-lg transition-all duration-300">
+                {counts.notifications > 99 ? "99+" : counts.notifications}
+              </span>
             )}
           </button>
+
+          {isInitialLoad ? (
+            <Skeleton circle={true} className="w-8 h-8 sm:w-9 sm:h-9" />
+          ) : (
+            <button onClick={() => navigate("/profile")} className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-purple-500/20 overflow-hidden transition-all hover:scale-105 shadow-lg bg-[#151923] flex items-center justify-center">
+              {user?.profilePic ? (
+                <img src={user.profilePic} alt={user?.username} className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-5 h-5 text-gray-500" />
+              )}
+            </button>
+          )}
         </div>
       </header>
 
       {/* Hero Section */}
       <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 relative z-10 pt-0 sm:pt-0 md:pt-6 mt-0">
         <div className="mb-5 sm:mb-6">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-black text-white mb-0.5 tracking-tight">{getDynamicGreeting()}, {user?.fullName?.split(' ')[0] || user?.username} 👋</h1>
-          <p className="text-[11px] sm:text-xs md:text-sm text-gray-400 font-medium tracking-tight">Ready to meet someone new?</p>
-        </div>
-        <div className="relative rounded-[24px] overflow-hidden bg-gradient-to-br from-[#0B0F1F] via-[#0E1330] to-[#140F2E] p-5 md:p-8 transition-all duration-500 min-h-[320px]">
-          
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(168,85,247,0.15),transparent_40%)] pointer-events-none" />
-
-          <div className="relative grid md:grid-cols-2 gap-8 items-center z-20">
-            <div className="space-y-4">
-              <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2.5">
-                <div className="flex items-center gap-2.5 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full w-fit border border-white/5">
-                  <Globe className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">
-                    <span className="text-white">{onlineCount.toLocaleString()}</span> Active Matches
-                  </span>
-                </div>
-              </div>
-
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
-                Start a{" "}
-                <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent italic">
-                  Video Chat
-                </span>
-              </h1>
-
-              <p className="text-white/60 max-w-sm text-xs sm:text-sm font-medium leading-relaxed">
-                Jump into a conversation and see where it leads. Meet real people instantly.
-              </p>
-
-              <button 
-                onClick={() => navigate("/video")}
-                className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-105 transition active:scale-95"
-              >
-                <Video size={16} className="fill-current" />
-                <span>Start Discovery</span>
-              </button>
-
-              <div className="pt-2">
-                <p className="text-[10px] sm:text-xs text-white/50 flex items-center gap-2 font-medium">
-                  ⚡ Instant match • No waiting • Real people
-                </p>
-              </div>
+          {isInitialLoad ? (
+            <div className="space-y-2">
+              <Skeleton className="w-48 h-6 sm:h-8 rounded-lg" />
+              <Skeleton className="w-32 h-4 rounded-lg" />
             </div>
+          ) : (
+            <>
+              <h1 className="text-lg sm:text-xl md:text-2xl font-black text-white mb-0.5 tracking-tight">{getDynamicGreeting()}, {user?.fullName?.split(' ')[0] || user?.username} 👋</h1>
+              <p className="text-[11px] sm:text-xs md:text-sm text-gray-400 font-medium tracking-tight">Ready to meet someone new?</p>
+            </>
+          )}
+        </div>
 
-            <div className="relative flex justify-center items-center hidden md:flex h-full py-6">
-              <div className="relative z-10 rotate-[-6deg] bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl transition-transform hover:rotate-0 duration-500">
-                <img src={banner1} className="w-48 lg:w-56 h-[280px] lg:h-[320px] object-cover rounded-xl" alt="Live 1" />
-                <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full flex items-center gap-2 border border-white/10">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,1)]" />
-                  Live
+        {isInitialLoad ? (
+          <Skeleton className="w-full h-[320px] rounded-[24px]" />
+        ) : (
+          <div className="relative rounded-[24px] overflow-hidden bg-gradient-to-br from-[#0B0F1F] via-[#0E1330] to-[#140F2E] p-5 md:p-8 transition-all duration-500 min-h-[320px]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(168,85,247,0.15),transparent_40%)] pointer-events-none" />
+
+            <div className="relative grid md:grid-cols-2 gap-8 items-center z-20">
+              <div className="space-y-4">
+                <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full w-fit border border-white/5">
+                    <Globe className="w-3.5 h-3.5 text-purple-400" />
+                    <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">
+                      <span className="text-white">{onlineCount.toLocaleString()}</span> Active Matches
+                    </span>
+                  </div>
+                </div>
+
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight tracking-tight">
+                  Start a{" "}
+                  <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent italic">
+                    Video Chat
+                  </span>
+                </h1>
+
+                <p className="text-white/60 max-w-sm text-xs sm:text-sm font-medium leading-relaxed">
+                  Jump into a conversation and see where it leads. Meet real people instantly.
+                </p>
+
+                <button 
+                  onClick={() => navigate("/video")}
+                  className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-105 transition active:scale-95"
+                >
+                  <Video size={16} className="fill-current" />
+                  <span>Start Discovery</span>
+                </button>
+
+                <div className="pt-2">
+                  <p className="text-[10px] sm:text-xs text-white/50 flex items-center gap-2 font-medium">
+                    ⚡ Instant match • No waiting • Real people
+                  </p>
                 </div>
               </div>
 
-              <div className="absolute right-0 translate-x-8 rotate-[8deg] bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl transition-transform hover:rotate-0 duration-500">
-                <img src={banner2} className="w-48 lg:w-56 h-[280px] lg:h-[320px] object-cover rounded-xl" alt="Live 2" />
-                <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full flex items-center gap-2 border border-white/10">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,1)]" />
-                  Live
+              <div className="relative flex justify-center items-center hidden md:flex h-full py-6">
+                <div className="relative z-10 rotate-[-6deg] bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl transition-transform hover:rotate-0 duration-500">
+                  <img src={banner1} className="w-48 lg:w-56 h-[280px] lg:h-[320px] object-cover rounded-xl" alt="Live 1" />
+                  <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full flex items-center gap-2 border border-white/10">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,1)]" />
+                    Live
+                  </div>
                 </div>
-              </div>
 
-              <div className="absolute bottom-[-10px] left-1/2 -translate-x-1/2 flex gap-3 z-30">
-                <div className="w-11 h-11 flex items-center justify-center rounded-full bg-pink-500 shadow-xl border-[3px] border-[#0E1330] hover:scale-110 transition cursor-pointer">
-                  <Heart size={18} className="text-white fill-current" />
+                <div className="absolute right-0 translate-x-8 rotate-[8deg] bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl transition-transform hover:rotate-0 duration-500">
+                  <img src={banner2} className="w-48 lg:w-56 h-[280px] lg:h-[320px] object-cover rounded-xl" alt="Live 2" />
+                  <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full flex items-center gap-2 border border-white/10">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,1)]" />
+                    Live
+                  </div>
                 </div>
-                <div className="w-11 h-11 flex items-center justify-center rounded-full bg-purple-500 shadow-xl border-[3px] border-[#0E1330] hover:scale-110 transition cursor-pointer">
-                  <Video size={18} className="text-white fill-current" />
-                </div>
-              </div>
 
-              <div className="absolute w-[280px] h-[280px] rounded-full border border-purple-500/10 animate-pulse pointer-events-none" />
-              <div className="absolute w-[380px] h-[380px] rounded-full border border-pink-500/5 pointer-events-none" />
+                <div className="absolute bottom-[-10px] left-1/2 -translate-x-1/2 flex gap-3 z-30">
+                  <div className="w-11 h-11 flex items-center justify-center rounded-full bg-pink-500 shadow-xl border-[3px] border-[#0E1330] hover:scale-110 transition cursor-pointer">
+                    <Heart size={18} className="text-white fill-current" />
+                  </div>
+                  <div className="w-11 h-11 flex items-center justify-center rounded-full bg-purple-500 shadow-xl border-[3px] border-[#0E1330] hover:scale-110 transition cursor-pointer">
+                    <Video size={18} className="text-white fill-current" />
+                  </div>
+                </div>
+
+                <div className="absolute w-[280px] h-[280px] rounded-full border border-purple-500/10 animate-pulse pointer-events-none" />
+                <div className="absolute w-[380px] h-[380px] rounded-full border border-pink-500/5 pointer-events-none" />
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Active Now */}
-      {contextOnlineUsers.length > 0 && (
+      {(isInitialLoad || contextOnlineUsers.length > 0) && (
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
           <div className="flex justify-between items-center mb-4 sm:mb-6 px-1">
             <h3 className="text-sm sm:text-base md:text-lg font-black text-white uppercase tracking-wider">Active Now</h3>
@@ -160,7 +183,7 @@ const Home = () => {
           <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 scrollbar-hide snap-x">
             {isInitialLoad ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-3 flex-shrink-0">
+                <div key={`home-skeleton-${i}`} className="flex flex-col items-center gap-3 flex-shrink-0">
                   <Skeleton circle={true} className="w-14 h-14 sm:w-16 sm:h-16" />
                   <Skeleton className="w-12 h-2 rounded-full" />
                 </div>
@@ -232,8 +255,8 @@ const ActionCard = ({ icon, title, desc, onClick, color }) => {
           {icon}
         </div>
         <div>
-          <h4 className="text-sm sm:text-base text-white font-black group-hover:text-purple-400 transition-colors uppercase tracking-tight">{title}</h4>
-          <p className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-widest">{desc}</p>
+          <h4 className="text-sm sm:text-base text-white font-black group-hover:text-purple-400 transition-colors uppercase tracking-tight"><span>{title}</span></h4>
+          <p className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-widest"><span>{desc}</span></p>
         </div>
       </div>
       <ChevronRight className="w-5 h-5 text-gray-700 group-hover:text-white transition-all transform group-hover:translate-x-1" />

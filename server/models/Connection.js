@@ -119,26 +119,40 @@ const ConnectionSchema = new mongoose.Schema(
 ConnectionSchema.index({
   users: 1,
   updatedAt: -1
-});
+}, { background: true });
 
 // Status filtering
 ConnectionSchema.index({
   users: 1,
   status: 1
-});
+}, { background: true });
+
+// Membership validation (Target: < 10ms)
+ConnectionSchema.index({
+  _id: 1,
+  users: 1
+}, { background: true });
+
+// Status-based sorting
+ConnectionSchema.index({
+  status: 1,
+  updatedAt: -1
+}, { background: true });
 
 // Pair lookup
 ConnectionSchema.index({
   pairKey: 1
 }, {
-  unique: true
+  unique: true,
+  background: true
 });
 
-// Online filtering
-// ConnectionSchema.index({
-//   users: 1,
-//   "userDetails.onlineStatus": 1
-// });
+// Activity Tracking
+ConnectionSchema.index({
+  "lastMessage.createdAt": -1
+}, { background: true });
+
+
 
 
 

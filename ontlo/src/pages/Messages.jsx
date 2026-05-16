@@ -109,7 +109,7 @@ const Messages = () => {
           {loading ? (
             <div className="space-y-4 px-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 p-4 mx-2">
+                <div key={`msg-skeleton-${i}`} className="flex items-center gap-4 p-4 mx-2">
                   <Skeleton circle={true} className="w-14 h-14" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="w-24 h-3 rounded-full" />
@@ -144,11 +144,22 @@ const Messages = () => {
                     {conn.user.onlineStatus && <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0B0E14] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>}
                   </div>
                   <div className="overflow-hidden">
-                    <h3 className="text-white font-black mb-0.5 truncate font-normal sm:text-sm md:text-lg tracking-tight">{conn.user.username}</h3>
-                    <p className={`text-xs truncate w-40 ${selectedConnection?.id === conn.id ? 'text-purple-400 font-bold' : (conn.status === 'pending' ? 'text-pink-500 font-bold' : 'text-gray-500 font-medium')}`}>
+                    <h3 className="text-white font-black mb-0.5 truncate font-normal sm:text-sm md:text-lg tracking-tight">
+                      <span>{conn.user.username}</span>
+                    </h3>
+                    <p className={`text-xs truncate w-40 ${
+                      counts.perChat?.[conn.id] > 0 && selectedConnection?.id !== conn.id
+                        ? 'text-pink-500 font-black' 
+                        : selectedConnection?.id === conn.id 
+                          ? 'text-purple-400 font-bold' 
+                          : 'text-gray-500 font-medium'
+                    }`}>
                       {conn.status === 'pending' 
                         ? 'New connection request' 
-                        : (conn.lastMessage?.text || (conn.user.onlineStatus === 'online' ? 'Active now' : 'Tap to message'))
+                        : (counts.perChat?.[conn.id] > 1 && selectedConnection?.id !== conn.id
+                            ? `${counts.perChat[conn.id]} new messages`
+                            : (conn.lastMessage?.text || (conn.user.onlineStatus === 'online' ? 'Active now' : 'Tap to message'))
+                          )
                       }
                     </p>
                   </div>

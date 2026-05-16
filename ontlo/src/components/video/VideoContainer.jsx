@@ -8,7 +8,7 @@ import ChatPanel from "../chat/ChatPanel";
 import MatchSettingsModal from "./MatchSettingsModal";
 
 const VideoContainer = () => {
-  const { socket, isConnected, user, setUser } = useSocket();
+  const { socket, isConnected, user, setUser, connections } = useSocket();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -55,6 +55,8 @@ const VideoContainer = () => {
   const [icebreaker, setIcebreaker] = useState(null);
   const [isWildcard, setIsWildcard] = useState(false);
   const [curiosityBlurTimer, setCuriosityBlurTimer] = useState(0);
+  const [declineTimer, setDeclineTimer] = useState(0);
+  const declineIntervalRef = useRef(null);
   const [localVideoPos, setLocalVideoPos] = useState({ x: 0, y: 0 });
   const [isDraggingState, setIsDraggingState] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
@@ -63,6 +65,13 @@ const VideoContainer = () => {
     ageRange: { min: 18, max: 100 },
     region: 'Global',
     interests: []
+  });
+
+  const isAlreadyMatched = connections?.some(conn => {
+    const remoteId = remoteUser?._id || remoteUser?.id;
+    if (!remoteId) return false;
+    return (conn.user?._id?.toString() === remoteId.toString() || 
+            conn.user?.id?.toString() === remoteId.toString());
   });
 
   // ── Camera Initialization ──
@@ -428,8 +437,47 @@ const VideoContainer = () => {
       setShowMatchSuccess(true);
       setTimeout(() => setShowMatchSuccess(false), 3000);
     };
-    const onMatchEnded = () => endCallLocally(true);
-    const onPeerDisconnected = () => console.log("Peer disconnected...");
+    const onMatchEnded = () => {
+      setChatMessages(prev => [...prev, {
+        id: `sys_${Date.now()}`,
+        text: "The call has ended.",
+        type: "system",
+        createdAt: new Date().toISOString()
+      }]);
+      // endCallLocally(true); // Don't wipe immediately, let them see the message if chat is open
+      // Actually, we need to end the WebRTC call
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      setInCall(false);
+      setRemoteUser(null);
+    };
+    
+    const onPeerDeclined = () => {
+      setConnectionStatus("declined");
+      setDeclineTimer(120);
+      if (declineIntervalRef.current) clearInterval(declineIntervalRef.current);
+      declineIntervalRef.current = setInterval(() => {
+        setDeclineTimer(prev => {
+          if (prev <= 1) {
+            clearInterval(declineIntervalRef.current);
+            setConnectionStatus(null);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    };
+
+    const onPeerDisconnected = () => {
+      setChatMessages(prev => [...prev, {
+        id: `sys_${Date.now()}`,
+        text: "The other user has disconnected.",
+        type: "system",
+        createdAt: new Date().toISOString()
+      }]);
+    };
 
     socket.on("match-found", onMatchFound);
     socket.on("chat-message", onChatMessage);
@@ -441,6 +489,7 @@ const VideoContainer = () => {
     socket.on("webrtc-answer", onAnswer);
     socket.on("webrtc-ice-candidate", onIceCandidate);
     socket.on("match-ended", onMatchEnded);
+    socket.on("peer-declined-connection", onPeerDeclined);
     socket.on("peer-disconnected", onPeerDisconnected);
 
     return () => {
@@ -454,6 +503,7 @@ const VideoContainer = () => {
       socket.off("webrtc-answer", onAnswer);
       socket.off("webrtc-ice-candidate", onIceCandidate);
       socket.off("match-ended", onMatchEnded);
+      socket.off("peer-declined-connection", onPeerDeclined);
       socket.off("peer-disconnected", onPeerDisconnected);
     };
   }, [socket, createPeerConnection, endCallLocally, user]);
@@ -462,6 +512,7 @@ const VideoContainer = () => {
   const skipMatch = () => { if (navigator.vibrate) navigator.vibrate(50); endCallLocally(true); };
   const connectUser = () => { if (socket && roomIdRef.current && user) { socket.emit("action-connect", { roomId: roomIdRef.current, userId: user.id }); setConnectionStatus("sent"); } };
   const acceptConnection = () => { if (socket && roomIdRef.current && user) { socket.emit("action-connect", { roomId: roomIdRef.current, userId: user.id }); setShowConnectRequest(false); setConnectionStatus("accepted"); } };
+  const declineConnection = () => { if (socket && roomIdRef.current) { socket.emit("action-decline", { roomId: roomIdRef.current }); setShowConnectRequest(false); setConnectionStatus(null); } };
   const toggleMic = () => { if (localStreamRef.current) { const t = localStreamRef.current.getAudioTracks()[0]; if (t) { t.enabled = !t.enabled; setMicEnabled(t.enabled); } } };
   const toggleCamera = () => { if (localStreamRef.current) { const t = localStreamRef.current.getVideoTracks()[0]; if (t) { t.enabled = !t.enabled; setCameraEnabled(t.enabled); } } };
   const toggleChat = () => { setShowChat(p => !p); setHasNewMessage(false); };
@@ -512,7 +563,7 @@ const VideoContainer = () => {
               </div>
               <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${isConnected ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20 animate-pulse'}`}>
                 <div className={`w-1 h-1 rounded-full ${isConnected ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.6)]' : 'bg-orange-400'}`}></div>
-                {isConnected ? 'LIVE' : 'CONNECTING...'}
+                <span>{isConnected ? 'LIVE' : 'CONNECTING...'}</span>
               </div>
             </div>
 
@@ -538,7 +589,7 @@ const VideoContainer = () => {
               {showMatchSuccess && (
                 <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none animate-in zoom-in-50 duration-500">
                   <div className="bg-gradient-to-br from-purple-600/95 via-pink-600/95 to-orange-500/95 backdrop-blur-2xl px-12 py-8 border border-white/30 shadow-[0_0_150px_rgba(168,85,247,0.6)] flex flex-col items-center">
-                    <h2 className="text-white text-5xl font-black uppercase tracking-[0.2em]">Match!</h2>
+                    <h2 className="text-white text-5xl font-black uppercase tracking-[0.2em]"><span>Match!</span></h2>
                   </div>
                 </div>
               )}
@@ -643,17 +694,28 @@ const VideoContainer = () => {
                         <button onClick={toggleCamera} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${cameraEnabled ? "bg-black/40 backdrop-blur-md border border-white/10 text-white" : "bg-red-500 text-white"}`}><Camera className="w-4 h-4" /></button>
                       </div>
                       <div className="flex gap-2">
-                        {connectionStatus !== 'accepted' && (
+                        {(connectionStatus !== 'accepted' || isAlreadyMatched) && (
                           <button 
-                            onClick={callDuration >= 10 ? connectUser : null} 
-                            disabled={callDuration < 10}
+                            onClick={isAlreadyMatched || connectionStatus === 'declined' ? null : (callDuration >= 10 ? connectUser : null)} 
+                            disabled={(!isAlreadyMatched && callDuration < 10) || connectionStatus === 'declined'}
                             className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                              callDuration < 10 
-                                ? 'bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed' 
-                                : 'bg-gradient-to-tr from-purple-600 to-pink-600 text-white shadow-lg hover:scale-110 active:scale-95'
+                              isAlreadyMatched 
+                                ? 'bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]'
+                                : connectionStatus === 'declined'
+                                  ? 'bg-gray-800 text-gray-500 border border-white/5 cursor-not-allowed'
+                                  : callDuration < 10 
+                                    ? 'bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed' 
+                                    : 'bg-gradient-to-tr from-purple-600 to-pink-600 text-white shadow-lg hover:scale-110 active:scale-95'
                             }`}
                           >
-                            {callDuration < 10 ? (
+                            {isAlreadyMatched ? (
+                              <Check className="w-5 h-5" />
+                            ) : connectionStatus === 'declined' ? (
+                              <div className="flex flex-col items-center">
+                                <Timer className="w-3.5 h-3.5 mb-0.5" />
+                                <span className="text-[7px] font-black">{Math.floor(declineTimer / 60)}:{ (declineTimer % 60).toString().padStart(2, '0') }</span>
+                              </div>
+                            ) : callDuration < 10 ? (
                               <>
                                 <Lock className="w-3.5 h-3.5" />
                                 <span className="absolute -bottom-1 -right-1 bg-black text-[7px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white/10">
@@ -665,7 +727,7 @@ const VideoContainer = () => {
                             )}
                           </button>
                         )}
-                        <button onClick={skipMatch} className="bg-white text-black px-6 h-10 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-2">Next <RefreshCw className="w-3 h-3" /></button>
+                        <button onClick={skipMatch} className="bg-white text-black px-6 h-10 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-2"><span>Next</span> <RefreshCw className="w-3 h-3" /></button>
                         <button onClick={toggleChat} className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all ${showChat ? 'bg-purple-600 text-white' : 'bg-black/40 backdrop-blur-md border border-white/10 text-white hover:bg-white/10'}`}>
                           <MessageSquare className="w-4 h-4" />
                           {isPeerTyping && !showChat && (
@@ -690,7 +752,7 @@ const VideoContainer = () => {
                           <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center shadow-2xl mx-auto mb-6"><Heart className="w-10 h-10 text-white fill-current animate-pulse" /></div>
                           <h3 className="text-white font-black text-2xl mb-2 italic">Connect?</h3>
                           <p className="text-gray-400 text-sm mb-8">Keep the conversation going after the call.</p>
-                          <div className="flex gap-3"><button onClick={acceptConnection} className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl text-white font-black text-sm">Accept</button><button onClick={() => setShowConnectRequest(false)} className="flex-1 py-4 bg-white/5 rounded-2xl text-gray-400 font-bold text-sm">Dismiss</button></div>
+                          <div className="flex gap-3"><button onClick={acceptConnection} className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl text-white font-black text-sm">Accept</button><button onClick={declineConnection} className="flex-1 py-4 bg-white/5 rounded-2xl text-gray-400 font-bold text-sm">Decline</button></div>
                         </div>
                       </div>
                     )}
@@ -721,15 +783,16 @@ const VideoContainer = () => {
         />
       )}
 
-      <UnmountCleanup socket={socket} endCallLocally={endCallLocally} roomIdRef={roomIdRef} rejoinTimerRef={rejoinTimerRef} />
+      <UnmountCleanup socket={socket} endCallLocally={endCallLocally} roomIdRef={roomIdRef} rejoinTimerRef={rejoinTimerRef} declineIntervalRef={declineIntervalRef} />
     </div>
   );
 };
 
-const UnmountCleanup = ({ socket, endCallLocally, roomIdRef, rejoinTimerRef }) => {
+const UnmountCleanup = ({ socket, endCallLocally, roomIdRef, rejoinTimerRef, declineIntervalRef }) => {
   useEffect(() => {
     return () => {
       if (rejoinTimerRef.current) clearTimeout(rejoinTimerRef.current);
+      if (declineIntervalRef.current) clearInterval(declineIntervalRef.current);
       if (socket) {
         socket.emit("leave-queue");
         if (roomIdRef.current) socket.emit("leave-chat", { roomId: roomIdRef.current });

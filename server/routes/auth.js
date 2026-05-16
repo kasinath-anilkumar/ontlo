@@ -16,6 +16,9 @@ const validate =
 const auth =
   require('../middleware/auth');
 
+const cacheUtil =
+  require('../utils/cache');
+
 const rateLimit =
   require('express-rate-limit');
 
@@ -86,13 +89,9 @@ const registerRateLimit = rateLimit({
 // ======================================================
 
 const cookieOptions = {
-
   httpOnly: true,
-
-  secure: true,
-
-  sameSite: 'none',
-
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   path: '/'
 };
 
@@ -189,26 +188,16 @@ const generateTokens =
     );
 
     res.cookie(
-
       'refreshToken',
-
       refreshToken,
-
       {
-
         ...cookieOptions,
-
         path: '/',
-
-        maxAge:
-          7 *
-          24 *
-          60 *
-          60 *
-          1000
+        maxAge: 7 * 24 * 60 * 60 * 1000
       }
     );
 
+    console.log(`[Auth] Tokens generated and cookies set for user: ${user.username || user._id}`);
     return accessToken;
   };
 
@@ -373,49 +362,35 @@ router.get(
 
 router.get(
   '/me',
-
   auth,
-
-  async (
-    req,
-    res
-  ) => {
-
+  async (req, res) => {
+    const label = `me_${Date.now()}`;
+    console.time(label);
     try {
+      // explain query if requested
+      if (req.query.explain) {
+        const explanation = await User.findById(req.userId).select('-password -refreshTokens').explain('executionStats');
+        return res.json(explanation);
+      }
 
-      req._mark('DB Start');
-
-      const user =
-        await User.findById(
-
+      const cacheKey = `user_me_${req.userId}`;
+      const user = await cacheUtil.getOrSet(cacheKey, async () => {
+        return await User.findById(
           req.userId,
+          'username email profilePic fullName isProfileComplete onlineStatus isVerified isPremium notificationCount role'
+        ).maxTimeMS(2000).lean();
+      }, 30); // Cache for 30s
 
-          `
-          -password
-          -refreshTokens
-          `
-        ).lean();
-
-      req._mark('DB End');
+      console.timeEnd(label);
 
       if (!user) {
-
-        return res.status(404).json({
-
-          error:
-            'User not found'
-        });
+        return res.status(404).json({ error: 'User not found' });
       }
 
       res.json(user);
-
     } catch (error) {
-
-      res.status(500).json({
-
-        error:
-          'Server error'
-      });
+      console.error('[ME ERROR]:', error);
+      res.status(500).json({ error: 'Server error' });
     }
   }
 );
@@ -766,21 +741,16 @@ router.post(
           location:
             req.body.location,
 
-          coordinates:
-
-            req.body.lat &&
-            req.body.lng
-
+          locationCoordinates: 
+            req.body.lat && req.body.lng
               ? {
-
-                  lat:
-                    Number(req.body.lat),
-
-                  lng:
-                    Number(req.body.lng)
+                  type: 'Point',
+                  coordinates: [
+                    Number(req.body.lng),
+                    Number(req.body.lat)
+                  ]
                 }
-
-              : undefined,
+              : { type: 'Point', coordinates: [0, 0] },
 
           interests:
             Array.isArray(
@@ -872,6 +842,12 @@ router.post(
           bio:
             user.bio,
 
+          location:
+            user.location,
+
+          locationCoordinates:
+            user.locationCoordinates,
+
           isProfileComplete:
             user.isProfileComplete
         }
@@ -908,11 +884,18 @@ router.post(
 
 
 // ======================================================
-// REFRESH TOKEN
+// COMPLETE PROFILE
 // ======================================================
 
 router.post(
-  '/refresh-token',
+  '/complete-profile',
+
+  auth,
+
+  validate({
+    body:
+      completeProfileSchema
+  }),
 
   async (
     req,
@@ -921,98 +904,128 @@ router.post(
 
     try {
 
-      const {
-        refreshToken
-      } = req.cookies;
+      const updates = {};
+      const allowedFields = [
+        'fullName',
+        'age',
+        'dob',
+        'gender',
+        'location',
+        'interests',
+        'bio',
+        'profilePic'
+      ];
 
-      if (!refreshToken) {
+      allowedFields.forEach(field => {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      });
 
-        return res.status(401).json({
-
-          error:
-            'No refresh token provided'
-        });
+      // Handle coordinates
+      if (req.body.lat && req.body.lng) {
+        updates.locationCoordinates = {
+          type: 'Point',
+          coordinates: [
+            Number(req.body.lng),
+            Number(req.body.lat)
+          ]
+        };
       }
 
-      // Verify JWT
-      let decoded;
+      // Check if profile is now complete
+      const existingUser = await User.findById(req.userId).lean();
+      const mergedUser = { ...existingUser, ...updates };
 
-      try {
+      const requiredFields = [
+        'fullName',
+        'age',
+        'gender',
+        'location',
+        'profilePic'
+      ];
 
-        decoded =
-          jwt.verify(
-            refreshToken,
-            JWT_REFRESH_SECRET
-          );
+      const isComplete = requiredFields.every(field => !!mergedUser[field]);
+      updates.isProfileComplete = isComplete;
 
-      } catch (err) {
-
-        return res.status(401).json({
-
-          error:
-            'Invalid or expired refresh token'
-        });
-      }
-
-      // Load user with tokens
-      const user =
-        await User.findById(
-          decoded.id
-        ).select(
-          '+refreshTokens'
-        );
+      const user = await User.findByIdAndUpdate(
+        req.userId,
+        { $set: updates },
+        { new: true, runValidators: true }
+      ).select('-password -refreshTokens');
 
       if (!user) {
-
-        return res.status(401).json({
-
-          error:
-            'User not found'
-        });
+        return res.status(404).json({ error: 'User not found' });
       }
-
-      // Check if token exists in DB
-      const tokenExists =
-        user.refreshTokens.some(
-          t =>
-            t.token ===
-            refreshToken
-        );
-
-      if (!tokenExists) {
-
-        // Potential reuse attack or revoked token
-        return res.status(401).json({
-
-          error:
-            'Token is no longer valid'
-        });
-      }
-
-      // Rotate tokens
-      const accessToken =
-        await generateTokens(
-          user,
-          res
-        );
 
       res.json({
-        token:
-          accessToken
+        message: 'Profile updated successfully',
+        user
       });
 
     } catch (error) {
+      console.error('[COMPLETE PROFILE ERROR]:', error);
+      res.status(500).json({ error: 'Server error' });
+    }
+  }
+);
 
-      console.error(
-        '[REFRESH TOKEN ERROR]:',
-        error
-      );
 
-      res.status(500).json({
 
-        error:
-          'Internal server error'
-      });
+// ======================================================
+// REFRESH TOKEN (OPTIMIZED)
+// ======================================================
+router.post(
+  '/refresh-token',
+  async (req, res) => {
+    const label = `refresh_${Date.now()}`;
+    console.log(`[Auth] Refresh attempt - Cookies:`, req.cookies);
+    
+    console.time(label);
+    try {
+      const { refreshToken } = req.cookies;
+
+      if (!refreshToken) {
+        console.warn('[Auth] Refresh failed: No refresh token in cookies');
+        return res.status(401).json({ error: 'No refresh token provided' });
+      }
+
+      console.log('[Auth] Refresh token found, length:', refreshToken.length);
+
+      // 1. Verify JWT (Synchronous)
+      let decoded;
+      try {
+        decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+        console.log('[Auth] Refresh token verified for user:', decoded.id);
+      } catch (err) {
+        console.error('[Auth] JWT verification failed:', err.message);
+        return res.status(401).json({ error: 'Invalid or expired refresh token' });
+      }
+
+      // 2. Load user using the NEW index: { "refreshTokens.token": 1 }
+      const user = await User.findOne(
+        { 
+          _id: decoded.id, 
+          "refreshTokens.token": refreshToken 
+        },
+        "_id username"
+      ).lean();
+
+      if (!user) {
+        console.warn('[Auth] User not found or token not in database for user:', decoded.id);
+        return res.status(401).json({ error: 'Token is no longer valid or user not found' });
+      }
+
+      // 3. Rotate tokens
+      const accessToken = await generateTokens(user, res);
+      console.log('[Auth] Tokens rotated successfully for:', user.username);
+
+      console.timeEnd(label);
+      res.json({ token: accessToken });
+
+    } catch (error) {
+      console.error('[REFRESH TOKEN ERROR]:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   }
 );
@@ -1075,7 +1088,7 @@ router.post(
           settings
           isProfileComplete
           refreshTokens
-        `);
+        `); // Not using lean() here because we need methods/save()
 
       if (!user) {
 
@@ -1222,6 +1235,9 @@ router.post(
 
           location:
             user.location,
+
+          locationCoordinates:
+            user.locationCoordinates,
 
           interests:
             user.interests,
