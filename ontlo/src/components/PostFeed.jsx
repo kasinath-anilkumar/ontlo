@@ -58,8 +58,8 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
       });
       if (res.ok) {
         const data = await res.json();
-        setPosts(posts.map(post => 
-          post._id === postId 
+        setPosts(posts.map(post =>
+          post._id === postId
             ? { ...post, likes: data.isLiked ? [...post.likes, user._id] : post.likes.filter(id => id !== user._id) }
             : post
         ));
@@ -79,8 +79,8 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
       if (res.ok) {
         const newComment = await res.json();
         // Update local state instantly
-        setPosts(posts.map(post => 
-          post._id === postId 
+        setPosts(posts.map(post =>
+          post._id === postId
             ? { ...post, comments: [...(post.comments || []), newComment] }
             : post
         ));
@@ -98,8 +98,8 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
         method: 'DELETE'
       });
       if (res.ok) {
-        setPosts(posts.map(post => 
-          post._id === postId 
+        setPosts(posts.map(post =>
+          post._id === postId
             ? { ...post, comments: post.comments.filter(c => c._id !== commentId) }
             : post
         ));
@@ -133,16 +133,16 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
       });
       if (res.ok) {
         const newReply = await res.json();
-        setPosts(posts.map(post => 
-          post._id === postId 
-            ? { 
-                ...post, 
-                comments: post.comments.map(c => 
-                  c._id === commentId 
-                    ? { ...c, replies: [...(c.replies || []), newReply] }
-                    : c
-                )
-              }
+        setPosts(posts.map(post =>
+          post._id === postId
+            ? {
+              ...post,
+              comments: post.comments.map(c =>
+                c._id === commentId
+                  ? { ...c, replies: [...(c.replies || []), newReply] }
+                  : c
+              )
+            }
             : post
         ));
         return true;
@@ -195,8 +195,8 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
           <>
             {posts.map((post) => (
               <div key={post._id} id={`post-${post._id}`}>
-                <PostCard 
-                  post={post} 
+                <PostCard
+                  post={post}
                   onLike={() => handleLike(post._id)}
                   onComment={handleComment}
                   onDeleteComment={handleDeleteComment}
@@ -206,24 +206,24 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
                 />
               </div>
             ))}
-            
+
             {/* Premium "You're All Caught Up" Message */}
             <div className="w-full max-w-xl mx-auto px-6 flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4 duration-1000 ">
               <div className="relative mb-6">
                 {/* Glowing background ring */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 rounded-full blur-[20px] opacity-40 animate-pulse" />
-                
+
                 {/* Check circle */}
                 <div className="relative w-24 h-24 rounded-full bg-gradient-to-tr from-purple-600 via-pink-500 to-orange-500 flex items-center justify-center shadow-2xl overflow-hidden border border-white/20">
                   <div className="absolute inset-0 bg-black/10" />
                   <Check className="w-12 h-12 text-white relative z-10 animate-in zoom-in duration-700 delay-300 drop-shadow-md" strokeWidth={3} />
                 </div>
               </div>
-              
+
               <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">
                 You're All Caught Up
               </h2>
-              
+
               <p className="text-sm sm:text-base text-gray-400 font-medium max-w-sm leading-relaxed">
                 You've seen all new moments from your connections. Check back later for more!
               </p>
@@ -276,7 +276,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
     if (e.key === 'Enter' || e.type === 'click') {
       if (!commentText.trim() || isSubmitting) return;
       setIsSubmitting(true);
-      
+
       let success = false;
       if (replyingTo) {
         success = await onReply(post._id, replyingTo.commentId, commentText);
@@ -305,7 +305,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
     <div className="bg-transparent border-b border-white/[0.05] pb-8 mb-4 animate-in fade-in duration-700 w-full max-w-xl mx-auto flex flex-col my-4">
       {/* Author Header */}
       <div className="flex-none flex items-center justify-between p-2 pt-0 sm:px-2 md:px-0">
-        <div 
+        <div
           onClick={() => navigate("/profile", { state: { userProfile: post.user } })}
           className="flex items-center gap-3 cursor-pointer group"
         >
@@ -330,17 +330,17 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           </div>
         </div>
         <div className="relative">
-          <button 
+          <button
             onClick={() => setIsPostMenuOpen(!isPostMenuOpen)}
             className="text-gray-700 hover:text-white transition-colors p-2"
           >
             <MoreHorizontal size={20} />
           </button>
-          
+
           {isPostMenuOpen && (
             <div className="absolute right-0 top-10 z-50 bg-[#151923] border border-white/10 rounded-sm shadow-sm overflow-hidden min-w-[120px] animate-in fade-in zoom-in-95 duration-200">
               {currentUserId === post.user?._id && (
-                <button 
+                <button
                   onClick={() => {
                     onDeletePost(post._id);
                     setIsPostMenuOpen(false);
@@ -368,26 +368,26 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
       )}
 
       {/* Media */}
-      <div 
+      <div
         onDoubleClick={handleDoubleTap}
         className="w-full bg-[#151923]/30 relative flex items-center justify-center overflow-hidden my-3 group select-none touch-manipulation"
-        style={{ 
+        style={{
           aspectRatio: cropMode === 'cover' ? instagramRatio : originalRatio
         }}
       >
-        <img 
-          src={getOptimizedUrl(post.imageUrl, 2000)} 
-          className={`w-full h-full ${cropMode === 'cover' ? 'object-cover' : 'object-contain'} transition-all duration-500 ease-out pointer-events-none`} 
-          alt="Post Media" 
-          loading="lazy" 
+        <img
+          src={getOptimizedUrl(post.imageUrl, 2000)}
+          className={`w-full h-full ${cropMode === 'cover' ? 'object-cover' : 'object-contain'} transition-all duration-500 ease-out pointer-events-none`}
+          alt="Post Media"
+          loading="lazy"
         />
 
-{/* Double Tap Heart Animation Overlay */}
-{showHeartAnim && (
-  <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
-    <Heart
-      size={110}
-      className="
+        {/* Double Tap Heart Animation Overlay */}
+        {showHeartAnim && (
+          <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+            <Heart
+              size={110}
+              className="
         text-pink-500
         fill-pink-500
         opacity-0
@@ -395,14 +395,14 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
         animate-[heartPop_900ms_cubic-bezier(0.22,1,0.36,1)_forwards]
         drop-shadow-[0_0_12px_rgba(236,72,153,0.7)]
       "
-      style={{
-        filter:
-          'drop-shadow(0 0 12px rgba(236,72,153,0.7)) drop-shadow(0 0 30px rgba(236,72,153,0.35))',
-      }}
-    />
+              style={{
+                filter:
+                  'drop-shadow(0 0 12px rgba(236,72,153,0.7)) drop-shadow(0 0 30px rgba(236,72,153,0.35))',
+              }}
+            />
 
-    <style>
-      {`
+            <style>
+              {`
         @keyframes heartPop {
           0% {
             transform: scale(0.3);
@@ -428,10 +428,10 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           }
         }
       `}
-    </style>
-  </div>
-)}
-        
+            </style>
+          </div>
+        )}
+
         {/* Aspect Ratio / Crop Toggle Button */}
         {post.width && post.height && (
           <button
@@ -461,7 +461,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
         {filteredComments.length > 0 && (
           <div className="px-5 sm:px-4 md:px-0 pt-1 space-y-1.5">
             {filteredComments.length > 2 && (
-              <button 
+              <button
                 onClick={() => setShowFullComments(true)}
                 className="text-[12px] font-bold text-gray-600 hover:text-gray-400 transition-colors py-0.5"
               >
@@ -477,7 +477,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
                     </span>
                     {comment.text}
                   </p>
-                  <button 
+                  <button
                     onClick={() => {
                       setReplyingTo({ commentId: comment._id, username: typeof comment.user === 'object' ? comment.user?.username : 'User' });
                       setShowFullComments(true);
@@ -499,11 +499,11 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           {/* Modal Header */}
           <div className="flex items-center justify-between p-4 px-5 border-b border-white/5 bg-[#0B0E14] sticky top-0 z-10">
             <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Comments</h3>
-            <button 
+            <button
               onClick={() => {
                 setShowFullComments(false);
                 setReplyingTo(null);
-              }} 
+              }}
               className="p-2 text-gray-400 hover:text-white transition-colors"
             >
               <X size={24} />
@@ -531,7 +531,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
                           </p>
                           <div className="flex items-center gap-4">
                             <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{new Date(comment.createdAt).toLocaleDateString()}</span>
-                            <button 
+                            <button
                               onClick={() => setReplyingTo({ commentId: comment._id, username: typeof comment.user === 'object' ? comment.user?.username : 'User' })}
                               className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-purple-400"
                             >
@@ -560,10 +560,10 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
                       }).map((reply, ridx) => (
                         <div key={ridx} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300">
                           <div className="w-6 h-6 rounded-full overflow-hidden border border-white/5 flex-shrink-0 mt-0.5">
-                            <img 
-                              src={reply.user?.profilePic || 'https://via.placeholder.com/150'} 
-                              className="w-full h-full object-cover" 
-                              alt="User" 
+                            <img
+                              src={reply.user?.profilePic || 'https://via.placeholder.com/150'}
+                              className="w-full h-full object-cover"
+                              alt="User"
                             />
                           </div>
                           <div className="flex-1">
@@ -593,16 +593,16 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
               </div>
             )}
             <div className="flex items-center gap-3 bg-[#151923] rounded-2xl px-4 py-2 border border-white/[0.03] shadow-2xl">
-              <input 
-                type="text" 
-                value={commentText} 
-                onChange={(e) => setCommentText(e.target.value)} 
+              <input
+                type="text"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
                 onKeyDown={handleSubmitComment}
                 placeholder={replyingTo ? `Reply to ${replyingTo.username}...` : "Add a comment..."}
-                className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-700" 
+                className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-700"
               />
-              <button 
-                onClick={handleSubmitComment} 
+              <button
+                onClick={handleSubmitComment}
                 disabled={!commentText.trim()}
                 className={`p-2 transition-all ${commentText.trim() ? 'text-purple-400 scale-110' : 'text-gray-800'}`}
               >
@@ -635,20 +635,20 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
               <img src={currentUser?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="User" />
             </div>
             <div className="flex-1 relative">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 onKeyDown={handleSubmitComment}
                 disabled={isSubmitting}
-                placeholder={isSubmitting ? "Sending..." : (replyingTo ? `Reply to ${replyingTo.username}...` : "Add a comment...")} 
+                placeholder={isSubmitting ? "Sending..." : (replyingTo ? `Reply to ${replyingTo.username}...` : "Add a comment...")}
                 className="w-full bg-[#11141D] border border-white/[0.03] focus:border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder:text-gray-700 outline-none transition-all pr-14 disabled:opacity-50"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 <Smile size={16} className="text-gray-700 hover:text-purple-400 transition-colors cursor-pointer" />
                 <div className="min-w-[24px] flex justify-center">
                   {commentText.trim() && !isSubmitting && (
-                    <button 
+                    <button
                       onClick={handleSubmitComment}
                       className="p-1 text-purple-400 hover:text-purple-300 transition-colors animate-in fade-in zoom-in duration-300"
                     >
