@@ -382,44 +382,83 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           loading="lazy"
         />
 
-        {/* Double Tap Heart Animation Overlay */}
-        {showHeartAnim && (
-          <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
-            <Heart
-              size={110}
-              className="
+        {/* Ultra Premium Double Tap Heart Animation */}
+{showHeartAnim && (
+  <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none overflow-hidden">
+    
+    {/* Glow Ring */}
+    <div
+      className="
+        absolute
+        w-40 h-40
+        rounded-full
+        border border-pink-400/40
+        animate-[heartRing_900ms_cubic-bezier(0.16,1,0.3,1)_forwards]
+      "
+    />
+
+    {/* Blur Aura */}
+    <div
+      className="
+        absolute
+        w-28 h-28
+        rounded-full
+        bg-pink-500/30
+        blur-3xl
+        animate-[heartAura_900ms_ease-out_forwards]
+      "
+    />
+
+    {/* Main Heart */}
+    <Heart
+      size={120}
+      className="
         text-pink-500
         fill-pink-500
-        opacity-0
-        scale-50
-        animate-[heartPop_900ms_cubic-bezier(0.22,1,0.36,1)_forwards]
-        drop-shadow-[0_0_12px_rgba(236,72,153,0.7)]
+        animate-[heartCore_950ms_cubic-bezier(0.22,1,0.36,1)_forwards]
+        drop-shadow-[0_0_30px_rgba(236,72,153,0.9)]
       "
-              style={{
-                filter:
-                  'drop-shadow(0 0 12px rgba(236,72,153,0.7)) drop-shadow(0 0 30px rgba(236,72,153,0.35))',
-              }}
-            />
+    />
 
-            <style>
-              {`
-        @keyframes heartPop {
+    {/* Floating Particles */}
+    {[...Array(8)].map((_, i) => (
+      <div
+        key={i}
+        className="absolute w-2 h-2 rounded-full bg-pink-400"
+        style={{
+          animation: `particleFloat 1000ms cubic-bezier(0.22,1,0.36,1) forwards`,
+          animationDelay: `${i * 40}ms`,
+          transform: `rotate(${i * 45}deg) translateY(-60px)`,
+          opacity: 0,
+        }}
+      />
+    ))}
+
+    <style>
+      {`
+        @keyframes heartCore {
           0% {
-            transform: scale(0.3);
+            transform: scale(0.15) rotate(-12deg);
             opacity: 0;
+            filter: blur(12px);
           }
 
-          15% {
-            transform: scale(1.25);
+          18% {
+            transform: scale(1.45) rotate(8deg);
             opacity: 1;
+            filter: blur(0px);
           }
 
-          30% {
-            transform: scale(0.92);
+          32% {
+            transform: scale(0.88) rotate(-3deg);
           }
 
-          45% {
-            transform: scale(1.08);
+          48% {
+            transform: scale(1.12) rotate(2deg);
+          }
+
+          64% {
+            transform: scale(0.98);
           }
 
           100% {
@@ -427,10 +466,54 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
             opacity: 0;
           }
         }
+
+        @keyframes heartRing {
+          0% {
+            transform: scale(0.2);
+            opacity: 0.9;
+          }
+
+          100% {
+            transform: scale(2.4);
+            opacity: 0;
+          }
+        }
+
+        @keyframes heartAura {
+          0% {
+            transform: scale(0.3);
+            opacity: 0;
+          }
+
+          25% {
+            opacity: 1;
+          }
+
+          100% {
+            transform: scale(2);
+            opacity: 0;
+          }
+        }
+
+        @keyframes particleFloat {
+          0% {
+            opacity: 0;
+            transform: scale(0.2) translateY(0px);
+          }
+
+          20% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+            transform: scale(1.4) translateY(-120px);
+          }
+        }
       `}
-            </style>
-          </div>
-        )}
+    </style>
+  </div>
+)}
 
         {/* Aspect Ratio / Crop Toggle Button */}
         {post.width && post.height && (
