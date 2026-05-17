@@ -25,6 +25,14 @@ const Home = () => {
 
   useEffect(() => {
     fetchPosts();
+
+    const handleRefresh = () => {
+      fetchPosts();
+    };
+    window.addEventListener('app:refresh', handleRefresh);
+    return () => {
+      window.removeEventListener('app:refresh', handleRefresh);
+    };
   }, []);
 
   const fetchPosts = async () => {
@@ -64,8 +72,8 @@ const Home = () => {
               <span className="text-[10px] sm:text-xs font-bold text-gray-300 tracking-tight">{onlineCount.toLocaleString()}</span>
             </div>
           )}
-          <button 
-            onClick={() => navigate("/create-post")} 
+          <button
+            onClick={() => navigate("/create-post")}
             className="w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-purple-400 hover:text-white transition-all shadow-lg shadow-purple-500/10"
           >
             <Plus className="h-5 w-5" />
@@ -79,10 +87,15 @@ const Home = () => {
         </div>
       </header>
 
-      {hasPosts ? (
+      {postsLoading ? (
+        <FeedSkeleton />
+      ) : hasPosts ? (
         /* PURE FEED UI (Instagram Style) */
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-700">
-          <PostFeed initialPosts={posts} />
+          <PostFeed 
+            initialPosts={posts} 
+            onPostDeleted={(deletedId) => setPosts(prev => prev.filter(p => p._id !== deletedId))} 
+          />
         </div>
       ) : (
         /* DISCOVERY HUB UI (Standard Style) */
@@ -97,7 +110,7 @@ const Home = () => {
                 <p className="text-white/40 max-w-sm text-xs sm:text-sm font-medium leading-relaxed">
                   Jump into a conversation and see where it leads. Meet real people instantly.
                 </p>
-                <button 
+                <button
                   onClick={() => navigate("/video")}
                   className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl shadow-purple-500/20 hover:scale-105 transition"
                 >
@@ -137,7 +150,7 @@ const ActionCard = ({ icon, title, desc, onClick, color }) => {
   };
 
   return (
-    <div 
+    <div
       onClick={onClick}
       className={`bg-[#151923]/80 backdrop-blur-sm border border-[#1e293b] p-5 rounded-[24px] sm:rounded-[32px] flex items-center justify-between group cursor-pointer transition-all duration-500 shadow-xl ${colorMap[color] || "hover:border-purple-500/50"}`}
     >
@@ -154,5 +167,40 @@ const ActionCard = ({ icon, title, desc, onClick, color }) => {
     </div>
   );
 };
+
+const FeedSkeleton = () => (
+  <div className="space-y-12 animate-in fade-in duration-500 max-w-2xl mx-auto w-full pt-4">
+    {[1, 2].map((i) => (
+      <div key={i} className="bg-[#151923]/40  p-4 sm:p-6 space-y-4 shadow-xl backdrop-blur-sm">
+        {/* Author Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton circle className="w-10 h-10 shrink-0" />
+            <div className="space-y-2">
+              <Skeleton className="w-28 h-3.5" />
+              <Skeleton className="w-16 h-2.5 opacity-60" />
+            </div>
+          </div>
+          <Skeleton className="w-6 h-6 rounded-full opacity-40" />
+        </div>
+
+        {/* Caption */}
+        <div className="space-y-2 pt-2">
+          <Skeleton className="w-full h-3" />
+          <Skeleton className="w-3/4 h-3" />
+        </div>
+
+        {/* Media Box */}
+        <Skeleton className="w-full aspect-[4/5] rounded-2xl my-4" />
+
+        {/* Interaction bar */}
+        <div className="flex items-center gap-6 pt-2">
+          <Skeleton className="w-20 h-6 rounded-lg" />
+          <Skeleton className="w-24 h-6 rounded-lg" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 export default Home;

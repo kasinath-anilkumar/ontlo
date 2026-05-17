@@ -12,18 +12,18 @@ const WhoLikedYou = () => {
 
   const fetchLikes = async (showLoader = false) => {
     if (showLoader) setLoading(true);
-      try {
-        const token = localStorage.getItem("token");
-        const res = await apiFetch(`${API_URL}/api/interactions/received`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok) setLikes(data);
-      } catch (err) {
-        console.error("Failed to fetch likes", err);
-      } finally {
-        setLoading(false);
-      }
+    try {
+      const token = localStorage.getItem("token");
+      const res = await apiFetch(`${API_URL}/api/interactions/received`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) setLikes(data);
+    } catch (err) {
+      console.error("Failed to fetch likes", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -52,7 +52,7 @@ const WhoLikedYou = () => {
       {/* Header */}
       <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl p-6 md:p-10 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all"
           >
@@ -65,7 +65,7 @@ const WhoLikedYou = () => {
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-1">Discover your secret admirers</p>
           </div>
         </div>
-        
+
         {!user?.isPremium && (
           <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-full">
             <Sparkles className="w-4 h-4 text-purple-400" />
@@ -90,7 +90,7 @@ const WhoLikedYou = () => {
             <p className="text-gray-500 text-sm leading-relaxed font-medium mb-8">
               Don't worry! Keep being active and your profile will soon get the attention it deserves.
             </p>
-            <button 
+            <button
               onClick={() => navigate("/video")}
               className="px-8 py-3.5 bg-gradient-to-tr from-purple-600 to-pink-600 text-white font-black rounded-2xl shadow-xl shadow-purple-600/20 hover:scale-105 active:scale-95 transition-all uppercase text-xs tracking-widest"
             >
@@ -100,14 +100,14 @@ const WhoLikedYou = () => {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500">
             {likes.map((like) => (
-              <div 
+              <div
                 key={like._id}
                 className="group relative aspect-[3/4] rounded-[24px] md:rounded-[32px] overflow-hidden border border-white/10 bg-[#151923] shadow-2xl transition-all hover:scale-[1.02] active:scale-95"
               >
                 {/* Profile Pic with Blur if not premium */}
                 <div className="absolute inset-0">
-                  <img 
-                    src={like.fromUser.profilePic} 
+                  <img
+                    src={like.fromUser.profilePic}
                     alt="Admirer"
                     className={`w-full h-full object-cover transition-all duration-700 ${!user?.isPremium ? 'blur-[30px] grayscale brightness-50' : 'group-hover:scale-110'}`}
                   />

@@ -25,8 +25,7 @@ const uploadImage = (file, folder) => {
   const dataUri = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
   return cloudinary.uploader.upload(dataUri, {
     folder,
-    resource_type: 'image',
-    transformation: [{ width: 500, height: 500, crop: 'limit' }]
+    resource_type: 'image'
   });
 };
 

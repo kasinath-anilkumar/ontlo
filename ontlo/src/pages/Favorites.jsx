@@ -76,7 +76,7 @@ const Favorites = () => {
       {/* Header */}
       <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl p-6 md:p-10 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all"
           >
@@ -89,7 +89,7 @@ const Favorites = () => {
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-1">Your top connections, one tap away</p>
           </div>
         </div>
-        
+
         <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-yellow-500/5 border border-yellow-500/20 rounded-full">
           <Star className="w-3.5 h-3.5 text-yellow-500" />
           <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">{favorites.length} Saved</span>
@@ -112,7 +112,7 @@ const Favorites = () => {
             <p className="text-gray-500 text-sm leading-relaxed font-medium mb-8">
               Start matching and favorite the users you really like to keep them safe and accessible here.
             </p>
-            <button 
+            <button
               onClick={() => navigate("/video")}
               className="px-8 py-3.5 border border-white/10 text-white font-black rounded-2xl hover:bg-white hover:text-black transition-all uppercase text-xs tracking-widest"
             >
@@ -122,14 +122,14 @@ const Favorites = () => {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500">
             {favorites.map((fav) => (
-              <div 
+              <div
                 key={fav._id}
                 className="group relative aspect-[3/4] rounded-[24px] md:rounded-[32px] overflow-hidden border border-white/10 bg-[#151923] shadow-2xl transition-all hover:scale-[1.02] active:scale-95"
               >
                 {/* Profile Pic */}
                 <div className="absolute inset-0">
-                  <img 
-                    src={fav.profilePic} 
+                  <img
+                    src={fav.profilePic}
                     alt={fav.username}
                     className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                   />
@@ -147,7 +147,7 @@ const Favorites = () => {
                 )}
 
                 {/* Favorite Toggle */}
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); toggleFavorite(fav._id); }}
                   className="absolute top-4 right-4 p-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-yellow-500 hover:scale-110 active:scale-90 transition-all z-20"
                 >
@@ -162,9 +162,9 @@ const Favorites = () => {
                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-4">
                     {fav.gender} • {fav.location || 'Global'}
                   </p>
-                  
+
                   <div className="flex gap-2">
-                    <button 
+                    <button
                       onClick={() => navigate("/messages", { state: { selectId: fav._id } })}
                       className="flex-1 py-2.5 bg-white text-black font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-purple-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-xl"
                     >

@@ -82,7 +82,7 @@ export const SocketProvider = ({ children }) => {
       const existing = messageCacheRef.current.get(connectionId) || [];
       // Prevent duplicates (e.g. if we get chat-message and new-message for same msg)
       const isDuplicate = existing.some(m => (m.id === msg.id || m._id === msg._id) && (m.id || m._id));
-      
+
       if (!isDuplicate) {
         const cachedMsg = {
           ...msg,
@@ -105,15 +105,15 @@ export const SocketProvider = ({ children }) => {
       const next = prev.map((conn, index) => (
         index === existingIndex
           ? {
-              ...conn,
-              lastMessage: {
-                ...(conn.lastMessage || {}),
-                text,
-                sender: msg.sender,
-                createdAt
-              },
-              updatedAt: createdAt
-            }
+            ...conn,
+            lastMessage: {
+              ...(conn.lastMessage || {}),
+              text,
+              sender: msg.sender,
+              createdAt
+            },
+            updatedAt: createdAt
+          }
           : conn
       ));
 
@@ -124,15 +124,15 @@ export const SocketProvider = ({ children }) => {
   // 1. Auth Check & Initial Data Fetch
   React.useEffect(() => {
     if (isFetchingRef.current) return;
-    
+
     const initAppData = async () => {
       const token = localStorage.getItem('token');
       isFetchingRef.current = true;
-      
+
       try {
         // 1. Get User First (Fastest path to responsive UI)
         const meRes = await apiFetch(`${API_URL}/api/auth/me`);
-        
+
         if (meRes.ok) {
           const meData = await meRes.json();
           setUser(meData);
@@ -180,7 +180,7 @@ export const SocketProvider = ({ children }) => {
 
   const fetchGlobalConnections = React.useCallback(async (force = false) => {
     if (!force && lastFetchRef.current.connections && (Date.now() - lastFetchRef.current.connections < 120000)) return;
-    
+
     try {
       const res = await apiFetch(`${API_URL}/api/connections`);
       if (res.ok) {
@@ -219,14 +219,14 @@ export const SocketProvider = ({ children }) => {
   React.useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token || !user) return;
-    
+
     const newSocket = io(API_URL, {
       withCredentials: true,
       auth: { token },
       reconnectionAttempts: 5,
       reconnectionDelay: 2000
     });
-    
+
     setSocket(newSocket);
 
     // Connection Events
@@ -276,9 +276,9 @@ export const SocketProvider = ({ children }) => {
           const updatedUserDetails = conn.userDetails?.map((user) =>
             user._id?.toString() === normalizedId
               ? {
-                  ...user,
-                  onlineStatus: isOnline ? 'online' : 'offline'
-                }
+                ...user,
+                onlineStatus: isOnline ? 'online' : 'offline'
+              }
               : user
           );
 
@@ -363,7 +363,7 @@ export const SocketProvider = ({ children }) => {
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setCounts((prev) => ({ ...prev, notifications: 0 }));
     });
-    
+
     // Rich Toast Notification Listener
     newSocket.on('new-notification', (notification) => {
       // Filter out unwanted types (message, like, ping) as per user request
@@ -457,14 +457,14 @@ export const SocketProvider = ({ children }) => {
   }, [user?._id, user?.id, mergeConnection, removeConnection, updateConnectionFromMessage]);
 
   return (
-    <SocketContext.Provider value={{ 
-      socket, 
+    <SocketContext.Provider value={{
+      socket,
       isConnected,
-      counts, 
+      counts,
       setCounts,
-      onlineUsers, 
+      onlineUsers,
       setOnlineUsers,
-      user, 
+      user,
       setUser,
       isInitialLoad,
       connections,
@@ -477,7 +477,7 @@ export const SocketProvider = ({ children }) => {
       messageCacheRef
     }}>
       {children}
-      
+
       {/* Premium Toast Notification */}
       {toast && (
         <div key={toast.id || toast._id || `toast-${Date.now()}`} className="fixed top-4 right-4 z-[1000] animate-in fade-in slide-in-from-top-4 duration-300">
@@ -494,7 +494,7 @@ export const SocketProvider = ({ children }) => {
                 {toast.type === 'message' ? <MessageSquare className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
               </div>
             </div>
-            
+
             <div className="flex-1 overflow-hidden pt-0.5">
               <h4 className="text-white font-black text-sm uppercase tracking-tight truncate">
                 {toast.fromUser?.username || 'New Notification'}
@@ -503,8 +503,8 @@ export const SocketProvider = ({ children }) => {
                 {toast.content}
               </p>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => setToast(null)}
               className="text-gray-500 hover:text-white transition-colors p-1"
             >

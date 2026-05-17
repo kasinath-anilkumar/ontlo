@@ -43,6 +43,8 @@ const CreatePost = () => {
     setLoading(true);
     try {
       let imageUrl = null;
+      let width = null;
+      let height = null;
       if (image) {
         const formData = new FormData();
         formData.append('image', image);
@@ -53,12 +55,16 @@ const CreatePost = () => {
         if (!uploadRes.ok) throw new Error('Upload failed');
         const uploadData = await uploadRes.json();
         imageUrl = uploadData.url;
+        width = uploadData.width;
+        height = uploadData.height;
       }
 
       const postRes = await apiFetch(`${API_URL}/api/posts`, {
         method: 'POST',
         body: JSON.stringify({ 
           imageUrl, 
+          width,
+          height,
           caption, 
           visibility: visibility.toLowerCase() === 'everyone' ? 'connections' : visibility.toLowerCase() 
         })

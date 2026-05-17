@@ -14,6 +14,14 @@ const PostSchema = new mongoose.Schema(
       required: true
     },
 
+    width: {
+      type: Number
+    },
+
+    height: {
+      type: Number
+    },
+
     caption: {
       type: String,
       trim: true,

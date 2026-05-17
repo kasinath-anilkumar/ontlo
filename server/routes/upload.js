@@ -116,7 +116,9 @@ const handleImageUpload = (folder) => {
         // ======================================================
 
         res.json({
-          url: result.secure_url
+          url: result.secure_url,
+          width: result.width,
+          height: result.height
         });
 
       } catch (uploadError) {

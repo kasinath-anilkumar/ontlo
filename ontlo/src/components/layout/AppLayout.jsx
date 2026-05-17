@@ -35,22 +35,20 @@ const AppLayout = ({ children }) => {
         <div className="hidden md:flex">
           <Sidebar />
         </div>
-        
-        <div 
-          id="main-scroll-container" 
-          className={`flex-1 w-full h-full relative scroll-smooth ${
-            ['/messages', '/video', '/create-post'].includes(location.pathname) ? 'overflow-hidden' : 'overflow-y-auto'
-          } ${location.pathname === '/' ? 'scrollbar-hide md:scrollbar-default' : ''}`}
+
+        <div
+          id="main-scroll-container"
+          className={`flex-1 w-full h-full relative scroll-smooth ${['/messages', '/video', '/create-post'].includes(location.pathname) ? 'overflow-hidden' : 'overflow-y-auto'
+            } ${location.pathname === '/' ? 'scrollbar-hide md:scrollbar-default' : ''}`}
         >
-          <main className={`min-h-full animate-in fade-in slide-in-from-bottom-2 duration-500 ${
-            ['/messages', '/video', '/create-post'].includes(location.pathname) ? 'h-full' : 'pb-24 md:pb-0'
-          }`}>
+          <main className={`min-h-full animate-in fade-in slide-in-from-bottom-2 duration-500 ${['/messages', '/video', '/create-post'].includes(location.pathname) ? 'h-full' : 'pb-24 md:pb-0'
+            }`}>
             {children}
           </main>
-          
+
           <VideoContainer />
         </div>
-        
+
         {isRightPanelOpen && !isFullscreenPage && location.pathname !== '/video' && (
           <div className="hidden xl:block animate-in slide-in-from-right duration-300">
             <Suspense fallback={<div className="w-80 h-full bg-[#0B0E14] border-l border-white/5 animate-pulse"></div>}>
@@ -62,14 +60,14 @@ const AppLayout = ({ children }) => {
 
       {/* Toggle button if closed */}
       {!isRightPanelOpen && (
-        <button 
+        <button
           onClick={() => setIsRightPanelOpen(true)}
           className="hidden xl:flex fixed right-0 top-1/2 -translate-y-1/2 w-8 h-20 bg-[#151923] border border-[#1e293b] border-r-0 rounded-l-2xl items-center justify-center text-gray-500 hover:text-white hover:bg-purple-600 transition-all z-[60] group shadow-2xl"
         >
           <div className="rotate-180 flex flex-col items-center gap-1">
-             <div className="w-1 h-1 rounded-full bg-white/40 group-hover:bg-white"></div>
-             <div className="w-1 h-1 rounded-full bg-white/40 group-hover:bg-white"></div>
-             <div className="w-1 h-1 rounded-full bg-white/40 group-hover:bg-white"></div>
+            <div className="w-1 h-1 rounded-full bg-white/40 group-hover:bg-white"></div>
+            <div className="w-1 h-1 rounded-full bg-white/40 group-hover:bg-white"></div>
+            <div className="w-1 h-1 rounded-full bg-white/40 group-hover:bg-white"></div>
           </div>
         </button>
       )}

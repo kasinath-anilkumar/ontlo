@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, MoreHorizontal, Send, X, Users, Smile, Trash2, ChevronDown } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Send, X, Users, Smile, Trash2, ChevronDown, Camera, Maximize2, Minimize2, Check } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import Skeleton from './ui/Skeleton';
 import API_URL, { apiFetch } from '../utils/api';
+
+const getOptimizedUrl = (url, width = 1200) => {
+  if (!url || typeof url !== 'string' || !url.includes('/upload/')) return url;
+  if (url.includes('/upload/q_auto')) return url;
+  return url.replace('/upload/', `/upload/q_auto:good,f_auto,w_${width}/`);
+};
 
 const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostDeleted }) => {
   const navigate = useNavigate();
@@ -159,7 +165,7 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
                 <Skeleton className="w-16 h-2" />
               </div>
             </div>
-            <Skeleton className="w-full h-64 rounded-2xl" />
+            <Skeleton className="w-full aspect-[4/5] rounded-2xl" />
           </div>
         ))}
       </div>
@@ -167,7 +173,7 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
   }
 
   return (
-    <div className="w-full space-y-6 pb-24">
+    <div className="w-full space-y-6">
       {/* Feed Header - Conditionally Hidden for Profile View */}
       {/* {!hideHeader && (
         <div className="flex items-center justify-between px-1">
@@ -186,19 +192,43 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
             <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">Connect with more people to see their posts</p>
           </div>
         ) : (
-          posts.map((post) => (
-            <div key={post._id} id={`post-${post._id}`}>
-              <PostCard 
-                post={post} 
-                onLike={() => handleLike(post._id)}
-                onComment={handleComment}
-                onDeleteComment={handleDeleteComment}
-                onDeletePost={handleDeletePost}
-                onReply={handleReply}
-                currentUser={user}
-              />
+          <>
+            {posts.map((post) => (
+              <div key={post._id} id={`post-${post._id}`}>
+                <PostCard 
+                  post={post} 
+                  onLike={() => handleLike(post._id)}
+                  onComment={handleComment}
+                  onDeleteComment={handleDeleteComment}
+                  onDeletePost={handleDeletePost}
+                  onReply={handleReply}
+                  currentUser={user}
+                />
+              </div>
+            ))}
+            
+            {/* Premium "You're All Caught Up" Message */}
+            <div className="w-full max-w-xl mx-auto px-6 flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4 duration-1000 ">
+              <div className="relative mb-6">
+                {/* Glowing background ring */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 rounded-full blur-[20px] opacity-40 animate-pulse" />
+                
+                {/* Check circle */}
+                <div className="relative w-24 h-24 rounded-full bg-gradient-to-tr from-purple-600 via-pink-500 to-orange-500 flex items-center justify-center shadow-2xl overflow-hidden border border-white/20">
+                  <div className="absolute inset-0 bg-black/10" />
+                  <Check className="w-12 h-12 text-white relative z-10 animate-in zoom-in duration-700 delay-300 drop-shadow-md" strokeWidth={3} />
+                </div>
+              </div>
+              
+              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">
+                You're All Caught Up
+              </h2>
+              
+              <p className="text-sm sm:text-base text-gray-400 font-medium max-w-sm leading-relaxed">
+                You've seen all new moments from your connections. Check back later for more!
+              </p>
             </div>
-          ))
+          </>
         )}
       </div>
     </div>
@@ -214,6 +244,10 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
   const [isPostMenuOpen, setIsPostMenuOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null); // { commentId, username }
   const [showFullComments, setShowFullComments] = useState(false);
+  const [cropMode, setCropMode] = useState('cover'); // 'cover' or 'contain'
+
+  const originalRatio = post.width && post.height ? post.width / post.height : 1;
+  const instagramRatio = Math.min(Math.max(originalRatio, 0.8), 1.91);
 
   // Lock scroll when modal is open to stabilize DOM for external scripts
   useEffect(() => {
@@ -257,15 +291,15 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
   const previewComments = filteredComments.slice(-2);
 
   return (
-    <div className="bg-transparent border-b border-white/[0.05] pb-8 animate-in fade-in duration-700">
+    <div className="bg-transparent border-b border-white/[0.05] pb-8 mb-4 animate-in fade-in duration-700 w-full max-w-xl mx-auto flex flex-col my-4">
       {/* Author Header */}
-      <div className="flex items-center justify-between p-4 pt-0 px-5">
+      <div className="flex-none flex items-center justify-between p-2 pt-0 sm:px-2 md:px-0">
         <div 
           onClick={() => navigate("/profile", { state: { userProfile: post.user } })}
           className="flex items-center gap-3 cursor-pointer group"
         >
           <div className="w-9 h-9 rounded-full overflow-hidden border border-white/10 group-hover:border-purple-500 transition">
-            <img src={post.user?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="User" />
+            <img src={getOptimizedUrl(post.user?.profilePic, 200) || 'https://via.placeholder.com/150'} className="w-full h-full object-contain" alt="User" loading="lazy" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -293,19 +327,19 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           </button>
           
           {isPostMenuOpen && (
-            <div className="absolute right-0 top-10 z-50 bg-[#151923] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1 min-w-[120px] animate-in fade-in zoom-in-95 duration-200">
+            <div className="absolute right-0 top-10 z-50 bg-[#151923] border border-white/10 rounded-sm shadow-sm overflow-hidden min-w-[120px] animate-in fade-in zoom-in-95 duration-200">
               {currentUser?._id === post.user?._id && (
                 <button 
                   onClick={() => {
                     onDeletePost(post._id);
                     setIsPostMenuOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-widest text-red-500 hover:bg-white/5 transition-colors"
+                  className="w-full text-left px-4 py-2 text-sm   text-red-500 hover:bg-white/5 transition-colors"
                 >
-                  Delete Post
+                  Delete
                 </button>
               )}
-              <button className="w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-400 hover:bg-white/5 transition-colors">
+              <button className="w-full text-left px-4 py-2 text-sm text-gray-400 hover:bg-white/5 transition-colors">
                 Report
               </button>
             </div>
@@ -315,64 +349,87 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
 
       {/* Caption */}
       {post.caption && (
-        <div className="px-5 pb-3">
-          <p className="text-[13px] text-gray-300 leading-relaxed font-medium">
+        <div className="flex-none px-2 pb-2 sm:px-2 md:px-0">
+          <p className="text-sm text-gray-300 leading-relaxed font-medium">
             {post.caption}
           </p>
         </div>
       )}
 
       {/* Media */}
-      <div className="relative bg-black w-full overflow-hidden group/media">
-        <img src={post.imageUrl} className="w-full object-contain max-h-[700px]" alt="Post Media" />
+      <div 
+        className="w-full bg-[#151923]/30 relative flex items-center justify-center overflow-hidden my-3 group"
+        style={{ 
+          aspectRatio: cropMode === 'cover' ? instagramRatio : originalRatio
+        }}
+      >
+        <img 
+          src={getOptimizedUrl(post.imageUrl, 2000)} 
+          className={`w-full h-full ${cropMode === 'cover' ? 'object-cover' : 'object-contain'} transition-all duration-500 ease-out`} 
+          alt="Post Media" 
+          loading="lazy" 
+        />
+        
+        {/* Aspect Ratio / Crop Toggle Button */}
+        {post.width && post.height && (
+          <button
+            onClick={() => setCropMode(prev => prev === 'cover' ? 'contain' : 'cover')}
+            className="absolute bottom-4 left-4 p-2.5 bg-black/40 hover:bg-black/60 active:scale-95 text-white/80 hover:text-white rounded-xl backdrop-blur-md border border-white/10 transition-all z-20 flex items-center justify-center opacity-70 md:opacity-0 md:group-hover:opacity-100 duration-300 shadow-lg"
+            title={cropMode === 'cover' ? "Show full image" : "Crop to feed"}
+          >
+            {cropMode === 'cover' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+          </button>
+        )}
       </div>
 
-      {/* Interactions */}
-      <div className="flex items-center gap-6 px-5 pt-4 pb-1">
-        <button onClick={onLike} className={`flex items-center gap-2 transition-all ${isLiked ? 'text-pink-500' : 'text-gray-400 hover:text-white'}`}>
-          <Heart size={24} fill={isLiked ? "currentColor" : "none"} />
-          <span className="text-sm font-bold tracking-tight">{post.likes?.length || 0} Likes</span>
-        </button>
-        <button onClick={() => setShowFullComments(true)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-all">
-          <MessageCircle size={24} />
-          <span className="text-sm font-bold tracking-tight">{filteredComments.length} Comments</span>
-        </button>
-      </div>
-
-      {/* Feed Preview Comments */}
-      {filteredComments.length > 0 && (
-        <div className="px-5 pt-2 space-y-2">
-          {filteredComments.length > 2 && (
-            <button 
-              onClick={() => setShowFullComments(true)}
-              className="text-[12px] font-bold text-gray-600 hover:text-gray-400 transition-colors py-1"
-            >
-              View all {filteredComments.length} comments
-            </button>
-          )}
-          {previewComments.map((comment, idx) => (
-            <div key={idx} className="flex gap-2 animate-in fade-in duration-300">
-              <div className="flex-1">
-                <p className="text-[12px] text-gray-300 leading-snug">
-                  <span className="font-bold text-white mr-2">
-                    {typeof comment.user === 'object' ? comment.user?.username : 'User'}
-                  </span>
-                  {comment.text}
-                </p>
-                <button 
-                  onClick={() => {
-                    setReplyingTo({ commentId: comment._id, username: typeof comment.user === 'object' ? comment.user?.username : 'User' });
-                    setShowFullComments(true);
-                  }}
-                  className="text-[9px] font-black uppercase tracking-widest text-gray-600 hover:text-purple-400 mt-1"
-                >
-                  Reply
-                </button>
-              </div>
-            </div>
-          ))}
+      {/* Interactions & Comments Footer */}
+      <div className="flex-none space-y-2 pt-2 pb-2">
+        <div className="flex items-center gap-6 px-2 sm:px-2 md:px-0">
+          <button onClick={onLike} className={`flex items-center gap-2 transition-all ${isLiked ? 'text-pink-500' : 'text-gray-400 hover:text-white'}`}>
+            <Heart size={24} fill={isLiked ? "currentColor" : "none"} />
+            <span className="text-sm font-bold tracking-tight">{post.likes?.length || 0} Likes</span>
+          </button>
+          <button onClick={() => setShowFullComments(true)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-all">
+            <MessageCircle size={24} />
+            <span className="text-sm font-bold tracking-tight">{filteredComments.length} Comments</span>
+          </button>
         </div>
-      )}
+
+        {/* Feed Preview Comments */}
+        {filteredComments.length > 0 && (
+          <div className="px-5 sm:px-4 md:px-0 pt-1 space-y-1.5">
+            {filteredComments.length > 2 && (
+              <button 
+                onClick={() => setShowFullComments(true)}
+                className="text-[12px] font-bold text-gray-600 hover:text-gray-400 transition-colors py-0.5"
+              >
+                View all {filteredComments.length} comments
+              </button>
+            )}
+            {previewComments.map((comment, idx) => (
+              <div key={idx} className="flex gap-2 animate-in fade-in duration-300">
+                <div className="flex-1">
+                  <p className="text-[12px] text-gray-300 leading-snug">
+                    <span className="font-normal text-white mr-2">
+                      {typeof comment.user === 'object' ? comment.user?.username : 'User'}
+                    </span>
+                    {comment.text}
+                  </p>
+                  <button 
+                    onClick={() => {
+                      setReplyingTo({ commentId: comment._id, username: typeof comment.user === 'object' ? comment.user?.username : 'User' });
+                      setShowFullComments(true);
+                    }}
+                    className="text-[9px] font-semibold text-gray-600 hover:text-purple-400 mt-0.5"
+                  >
+                    Reply..
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* FULL COMMENT SECTION MODAL / OVERLAY - PORTALED TO TOP LEVEL */}
       {showFullComments && createPortal(
@@ -401,7 +458,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
                 <div key={idx} className="space-y-4">
                   <div className="flex gap-3 relative group/comment">
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
-                      <img src={comment.user?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="User" />
+                      <img src={getOptimizedUrl(comment.user?.profilePic, 200) || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="User" loading="lazy" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-start justify-between">

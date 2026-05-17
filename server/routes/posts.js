@@ -90,7 +90,7 @@ router.get('/user/:userId', auth, async (req, res) => {
 // ======================================================
 router.post('/', auth, async (req, res) => {
   try {
-    const { imageUrl, caption, visibility } = req.body;
+    const { imageUrl, caption, visibility, width, height } = req.body;
 
     if (!imageUrl) {
       return res.status(400).json({ error: 'Image is required' });
@@ -101,6 +101,8 @@ router.post('/', auth, async (req, res) => {
     const post = await Post.create({
       user: req.userId,
       imageUrl,
+      width,
+      height,
       caption: moderation.text,
       visibility: visibility || 'connections'
     });
