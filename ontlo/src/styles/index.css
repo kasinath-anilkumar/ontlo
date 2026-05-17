@@ -68,9 +68,11 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
   }
   body {
     @apply bg-brand-bg text-brand-text font-sans antialiased overflow-x-hidden;
+    overscroll-behavior-y: none;
   }
   /* Responsive typography */
   h1 { @apply text-2xl md:text-3xl lg:text-4xl font-black tracking-tighter; }

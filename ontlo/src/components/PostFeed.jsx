@@ -469,7 +469,15 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
               </button>
             )}
             {previewComments.map((comment, idx) => (
-              <div key={idx} className="flex gap-2 animate-in fade-in duration-300">
+              <div key={idx} className="flex gap-2 items-start animate-in fade-in duration-300">
+                <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 mt-0.5 border border-white/10">
+                  <img 
+                    src={getOptimizedUrl(comment.user?.profilePic, 100) || 'https://via.placeholder.com/150'} 
+                    className="w-full h-full object-cover" 
+                    alt="User" 
+                    loading="lazy"
+                  />
+                </div>
                 <div className="flex-1">
                   <p className="text-[12px] text-gray-300 leading-snug">
                     <span className="font-normal text-white mr-2">
