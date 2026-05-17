@@ -237,7 +237,8 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
 
 const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onReply, currentUser }) => {
   const navigate = useNavigate();
-  const isLiked = post.likes?.includes(currentUser?._id);
+  const currentUserId = currentUser?._id || currentUser?.id;
+  const isLiked = post.likes?.includes(currentUserId);
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeCommentMenu, setActiveCommentMenu] = useState(null);
@@ -284,7 +285,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
   // Privacy Filter for comments
   const filteredComments = (post.comments || []).filter(comment => {
     const commentUserId = typeof comment.user === 'object' ? comment.user?._id : comment.user;
-    return post.user?._id === currentUser?._id || commentUserId === currentUser?._id;
+    return post.user?._id === currentUserId || commentUserId === currentUserId;
   });
 
   // Latest 2 comments for the feed preview
@@ -328,7 +329,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           
           {isPostMenuOpen && (
             <div className="absolute right-0 top-10 z-50 bg-[#151923] border border-white/10 rounded-sm shadow-sm overflow-hidden min-w-[120px] animate-in fade-in zoom-in-95 duration-200">
-              {currentUser?._id === post.user?._id && (
+              {currentUserId === post.user?._id && (
                 <button 
                   onClick={() => {
                     onDeletePost(post._id);

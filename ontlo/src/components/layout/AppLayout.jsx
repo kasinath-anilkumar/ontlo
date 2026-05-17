@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import BottomNav from "../navigation/BottomNav";
 import Sidebar from "../navigation/Sidebar";
 import VideoContainer from "../video/VideoContainer";
+import PullToRefresh from "../common/PullToRefresh";
 
 const RightPanel = lazy(() => import("./RightPanel"));
 
@@ -41,9 +42,15 @@ const AppLayout = ({ children }) => {
           className={`flex-1 w-full h-full relative scroll-smooth ${['/messages', '/video', '/create-post'].includes(location.pathname) ? 'overflow-hidden' : 'overflow-y-auto'
             } ${location.pathname === '/' ? 'scrollbar-hide md:scrollbar-default' : ''}`}
         >
-          <main className={`min-h-full animate-in fade-in slide-in-from-bottom-2 duration-500 ${['/messages', '/video', '/create-post'].includes(location.pathname) ? 'h-full' : 'pb-24 md:pb-0'
+          <main className={`min-h-full flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-500 ${['/messages', '/video', '/create-post'].includes(location.pathname) ? 'h-full' : 'pb-24 md:pb-0'
             }`}>
-            {children}
+            {['/messages', '/video', '/create-post'].includes(location.pathname) ? (
+              children
+            ) : (
+              <PullToRefresh>
+                {children}
+              </PullToRefresh>
+            )}
           </main>
 
           <VideoContainer />
