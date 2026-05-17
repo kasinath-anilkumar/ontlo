@@ -382,18 +382,55 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           loading="lazy" 
         />
 
-        {/* Double Tap Heart Animation Overlay */}
-        {showHeartAnim && (
-          <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
-            <Heart 
-              size={100} 
-              className="text-pink-500 fill-pink-500 animate-in zoom-in-50 fade-in duration-300 drop-shadow-2xl" 
-              style={{
-                filter: 'drop-shadow(0 0 20px rgba(236,72,153,0.6))'
-              }}
-            />
-          </div>
-        )}
+{/* Double Tap Heart Animation Overlay */}
+{showHeartAnim && (
+  <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+    <Heart
+      size={110}
+      className="
+        text-pink-500
+        fill-pink-500
+        opacity-0
+        scale-50
+        animate-[heartPop_900ms_cubic-bezier(0.22,1,0.36,1)_forwards]
+        drop-shadow-[0_0_12px_rgba(236,72,153,0.7)]
+      "
+      style={{
+        filter:
+          'drop-shadow(0 0 12px rgba(236,72,153,0.7)) drop-shadow(0 0 30px rgba(236,72,153,0.35))',
+      }}
+    />
+
+    <style>
+      {`
+        @keyframes heartPop {
+          0% {
+            transform: scale(0.3);
+            opacity: 0;
+          }
+
+          15% {
+            transform: scale(1.25);
+            opacity: 1;
+          }
+
+          30% {
+            transform: scale(0.92);
+          }
+
+          45% {
+            transform: scale(1.08);
+          }
+
+          100% {
+            transform: scale(1);
+            opacity: 0;
+          }
+        }
+      `}
+    </style>
+  </div>
+)}
         
         {/* Aspect Ratio / Crop Toggle Button */}
         {post.width && post.height && (
