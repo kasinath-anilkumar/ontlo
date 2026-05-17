@@ -942,7 +942,7 @@ module.exports = (io) => {
             await Like.findOneAndUpdate(
               { fromUser: socket.userId, toUser: targetUserId },
               { isRead: false },
-              { upsert: true, new: true }
+              { upsert: true, returnDocument: 'after' }
             );
 
           } catch (error) {
@@ -1069,11 +1069,12 @@ module.exports = (io) => {
         );
 
       } catch (error) {
-
-        console.error(
-          '[SOCKET CONNECTION ERROR]:',
-          error
-        );
+        if (error.name === 'JsonWebTokenError') {
+          console.warn('[SOCKET AUTH]: Invalid token signature - client likely has an old session');
+        } else {
+          console.error('[SOCKET CONNECTION ERROR]:', error);
+        }
+        socket.disconnect(true);
       }
     }
   );

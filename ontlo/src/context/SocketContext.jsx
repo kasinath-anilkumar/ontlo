@@ -178,9 +178,8 @@ export const SocketProvider = ({ children }) => {
     };
   }, []);
 
-  const fetchGlobalConnections = async (force = false) => {
-    // Cache for 2 minutes unless forced
-    if (!force && connections.length > 0 && Date.now() - lastFetchRef.current.connections < 120000) return;
+  const fetchGlobalConnections = React.useCallback(async (force = false) => {
+    if (!force && lastFetchRef.current.connections && (Date.now() - lastFetchRef.current.connections < 120000)) return;
     
     try {
       const res = await apiFetch(`${API_URL}/api/connections`);
@@ -188,11 +187,13 @@ export const SocketProvider = ({ children }) => {
         const data = await res.json();
         setConnections(data);
         lastFetchRef.current.connections = Date.now();
+        return data;
       }
     } catch (err) {
       console.error("Fetch connections failed", err);
     }
-  };
+    return [];
+  }, []);
 
   React.useEffect(() => {
     connectionsRef.current = connections;

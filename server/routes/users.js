@@ -352,7 +352,10 @@ router.patch('/profile/update', auth, async (req, res) => {
       'notificationPreferences',
       'matchPreferences',
       'lowBandwidth',
-      'locationCoordinates'
+      'locationCoordinates',
+      'occupation',
+      'education',
+      'languages'
     ];
 
     const updates = {};
@@ -363,6 +366,19 @@ router.patch('/profile/update', auth, async (req, res) => {
         updates[field] = req.body[field];
       }
     });
+
+    if (updates.dob) {
+      const birth = new Date(updates.dob);
+      if (!isNaN(birth.getTime())) {
+        const today = new Date();
+        let calculatedAge = today.getFullYear() - birth.getFullYear();
+        const month = today.getMonth() - birth.getMonth();
+        if (month < 0 || (month === 0 && today.getDate() < birth.getDate())) {
+          calculatedAge--;
+        }
+        updates.age = calculatedAge;
+      }
+    }
 
     // ======================================================
     // PROFILE COMPLETE CHECK
@@ -403,23 +419,12 @@ router.patch('/profile/update', auth, async (req, res) => {
         },
 
         {
-          new: true,
+          returnDocument: 'after',
           runValidators: true
         }
-      ).select(
-        `
-        username
-        profilePic
-        fullName
-        age
-        gender
-        bio
-        interests
-        location
-        locationCoordinates
-        isProfileComplete
-        `
-      );
+      ).select('-password -refreshTokens').lean();
+
+    cacheUtil.del(`user_me_${req.userId}`);
 
     // ======================================================
     // UPDATE SNAPSHOTS

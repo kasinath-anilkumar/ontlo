@@ -19,12 +19,14 @@ export const apiFetch = async (url, options = {}) => {
   const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s for cold starts
 
   const token = localStorage.getItem("token");
+  const isFormData = options.body instanceof FormData;
+
   const config = {
     ...options,
     signal: controller.signal,
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       'Authorization': token ? `Bearer ${token}` : '',
       ...options.headers,
     }

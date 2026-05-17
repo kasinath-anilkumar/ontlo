@@ -160,4 +160,16 @@ router.post(
 
 
 
+// ======================================================
+// POST IMAGE UPLOAD
+// ======================================================
+
+router.post(
+  '/post-image',
+  auth,
+  handleImageUpload('ontlo_posts')
+);
+
+
+
 module.exports = router;

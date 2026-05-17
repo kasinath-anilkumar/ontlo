@@ -137,7 +137,7 @@ router.patch('/:id/read', auth, async (req, res) => {
         readAt: new Date()
       },
       {
-        new: true
+        returnDocument: 'after'
       }
     );
 

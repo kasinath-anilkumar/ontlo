@@ -367,7 +367,7 @@ router.post('/config/keywords', adminAuth(['admin', 'superadmin']), validate({ b
     await AppConfig.findOneAndUpdate(
       {},
       { bannedKeywords: keywords, updatedBy: req.user._id },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     cacheUtil.del('app_config');
@@ -431,7 +431,7 @@ router.patch('/support/status/:id', adminAuth(['admin', 'superadmin', 'moderator
     const ticket = await SupportTicket.findByIdAndUpdate(
       req.params.id,
       { status },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
@@ -477,7 +477,7 @@ router.post('/matchmaking/config', adminAuth(['admin', 'superadmin']), validate(
     if (settings.ageGap != null) patch.ageGap = settings.ageGap;
     if (settings.boostPremium != null) patch.boostPremium = settings.boostPremium;
 
-    await AppConfig.findOneAndUpdate({}, patch, { upsert: true, new: true });
+    await AppConfig.findOneAndUpdate({}, patch, { upsert: true, returnDocument: 'after' });
     cacheUtil.del('app_config');
     res.json({ message: 'Algorithm settings updated' });
   } catch (err) {

@@ -20,11 +20,11 @@ const Connections = () => {
 
   useEffect(() => {
     if (connections.length === 0) {
-      fetchGlobalConnections();
+      fetchGlobalConnections().finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [fetchGlobalConnections]);
 
   const removeConnection = async (id, e) => {
     e.stopPropagation();

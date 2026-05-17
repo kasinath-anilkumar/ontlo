@@ -156,26 +156,25 @@ const Auth = () => {
             <FeatureCard icon={<Video className="w-4 h-4 text-purple-400" />} title="Video Call" desc="Not some photos" />
           </div>
         </div>
-      </div>
-
-      {/* RIGHT SECTION - Auth Form */}
-      <div className="flex-1 flex items-center justify-center p-4 relative z-10 lg:bg-white/[0.01] lg:backdrop-blur-sm border-l border-white/5">
+      </div>      {/* RIGHT SECTION - Auth Form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 relative z-10 lg:bg-white/[0.01] lg:backdrop-blur-sm lg:border-l lg:border-white/5">
         
-        {/* Mobile Logo (Visible only on small screens) */}
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 lg:hidden">
-           <img src={logo} alt="Logo" className="w-10 h-10 drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]" />
-        </div>
+        <div className="w-full max-w-[460px] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 duration-700 my-auto">
+          
+          {/* Mobile Logo in natural flow */}
+          <div className="flex items-center justify-center gap-3 mb-6 lg:hidden">
+            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl">
+              <img src={logo} alt="Logo" className="w-8 h-8 drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]" />
+            </div>
+            {/* <span className="text-sm font-black tracking-widest uppercase text-white">Ontlo</span> */}
+          </div>
 
-        <div className="w-full max-w-[420px] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 duration-700">
-          <div className="bg-[#0D1117]/60 md:backdrop-blur-3xl backdrop-blur-xl border border-white/5 rounded-[40px] p-8 sm:p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] relative overflow-hidden group">
-            
-            {/* Subtle glow effect on hover */}
-            <div className="absolute -inset-2 bg-gradient-to-r from-purple-600/0 via-purple-600/5 to-pink-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none"></div>
+          <div className="w-full relative overflow-hidden group py-4">
 
             {/* Header */}
-            <div className="mb-8 relative">
+            <div className="mb-6 relative text-center lg:text-left">
               {!isLogin && (
-                <div className="flex items-center gap-1.5 mb-6">
+                <div className="flex items-center gap-1.5 mb-5">
                   {[1, 2, 3, 4, 5].map(i => (
                     <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-700 ${i === 1 ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]' : 'bg-white/5'}`}></div>
                   ))}
@@ -184,7 +183,7 @@ const Auth = () => {
               <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">
                 {isLogin ? "Login" : "Create Account"}
               </h2>
-              <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.4em] mt-1.5">
+              <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.4em] mt-1">
                 {isLogin ? "Enter your credentials" : "Onboarding Phase 1 of 5"}
               </p>
             </div>
@@ -195,11 +194,11 @@ const Auth = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
               
               {/* USERNAME */}
-              <div className="space-y-1.5">
-                <label className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-5">
+              <div className="space-y-1">
+                <label className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">
                   Username
                 </label>
                 <div className="relative group/input">
@@ -212,15 +211,15 @@ const Auth = () => {
                     onChange={(e) => setUsername(e.target.value)}
                     autoComplete="username"
                     className="w-full bg-white/5 border border-white/10 text-white rounded-[20px] pl-12 pr-5 py-3.5 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all font-bold text-xs placeholder:text-gray-700"
-                    placeholder="e.g. cyber_punk"
+                    placeholder="Enter Username"
                     required
                   />
                 </div>
               </div>
 
               {/* PASSWORD */}
-              <div className="space-y-1.5">
-                <label className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-5">
+              <div className="space-y-1">
+                <label className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">
                   Password
                 </label>
                 <div className="relative group/input">
@@ -259,18 +258,18 @@ const Auth = () => {
               )}
 
               {!isLogin && (
-                <div className="flex items-start gap-3 px-4 py-2 bg-purple-500/5 rounded-2xl border border-white/5">
+                <div className="flex items-start gap-3 px-4 py-2.5 bg-purple-500/5 rounded-2xl border border-white/5">
                   <div 
                     onClick={() => setAgreed(!agreed)}
-                    className={`mt-1 flex-shrink-0 w-5 h-5 rounded-md border-2 cursor-pointer flex items-center justify-center transition-all ${agreed ? 'bg-purple-600 border-purple-600 shadow-[0_0_10px_rgba(168,85,247,0.4)]' : 'border-white/10'}`}
+                    className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded-md border-2 cursor-pointer flex items-center justify-center transition-all ${agreed ? 'bg-purple-600 border-purple-600 shadow-[0_0_10px_rgba(168,85,247,0.4)]' : 'border-white/10'}`}
                   >
-                    {agreed && <Check size={12} strokeWidth={4} />}
+                    {agreed && <Check size={10} strokeWidth={4} />}
                   </div>
-                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tight leading-relaxed">
+                  <p className="text-[8px] text-gray-400 font-bold uppercase tracking-tight leading-relaxed">
                     I am <span className="text-white">18 years or older</span> and I agree to the{' '}
-                    <button type="button" onClick={() => navigate('/terms')} className="text-purple-500 hover:underline">Terms of Service</button>
+                    <button type="button" onClick={() => navigate('/terms')} className="text-purple-500 hover:underline">Terms</button>
                     {' '}and{' '}
-                    <button type="button" onClick={() => navigate('/privacy')} className="text-purple-500 hover:underline">Privacy Policy</button>.
+                    <button type="button" onClick={() => navigate('/privacy')} className="text-purple-500 hover:underline">Privacy</button>.
                   </p>
                 </div>
               )}
@@ -279,7 +278,7 @@ const Auth = () => {
               <button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full py-4 rounded-[20px] bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/10 flex justify-center items-center gap-3 disabled:opacity-50 mt-2 group/btn"
+                className="w-full py-4 rounded-[20px] bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/10 flex justify-center items-center gap-3 disabled:opacity-50 mt-4 group/btn"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -292,7 +291,7 @@ const Auth = () => {
               </button>
             </form>
 
-            <div className="mt-8 text-center">
+            <div className="mt-6 text-center">
               <button 
                 onClick={() => {
                   setIsLogin(!isLogin);
@@ -307,25 +306,25 @@ const Auth = () => {
             </div>
           </div>
 
-          <div className="mt-8 text-center space-x-4">
+          <div className="mt-6 text-center space-x-4">
             <button 
               onClick={() => navigate('/privacy')}
-              className="text-[8px] font-black text-white hover:text-indigo-400 uppercase tracking-[0.3em] transition-all"
+              className="text-[8px] font-black text-gray-500 hover:text-white uppercase tracking-[0.3em] transition-all"
             >
               Privacy Policy
             </button>
             <span className="text-gray-800">•</span>
             <button 
               onClick={() => navigate('/terms')}
-              className="text-[8px] font-black text-white hover:text-indigo-400 uppercase tracking-[0.3em] transition-all"
+              className="text-[8px] font-black text-gray-500 hover:text-white uppercase tracking-[0.3em] transition-all"
             >
               Terms of Service
             </button>
           </div>
           
-          <p className="text-center text-[8px] text-white font-black uppercase tracking-[0.4em] mt-8 leading-relaxed opacity-40">
+          {/* <p className="hidden sm:block text-center text-[8px] text-white font-black uppercase tracking-[0.4em] mt-6 leading-relaxed opacity-40">
             Ontlo Universal Identity Layer<br/>Quantum-Safe Authentication
-          </p>
+          </p> */}
         </div>
       </div>
     </div>

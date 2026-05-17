@@ -39,11 +39,11 @@ const AppLayout = ({ children }) => {
         <div 
           id="main-scroll-container" 
           className={`flex-1 w-full h-full relative scroll-smooth ${
-            ['/messages', '/video'].includes(location.pathname) ? 'overflow-hidden' : 'overflow-y-auto'
+            ['/messages', '/video', '/create-post'].includes(location.pathname) ? 'overflow-hidden' : 'overflow-y-auto'
           } ${location.pathname === '/' ? 'scrollbar-hide md:scrollbar-default' : ''}`}
         >
           <main className={`min-h-full animate-in fade-in slide-in-from-bottom-2 duration-500 ${
-            ['/messages', '/video'].includes(location.pathname) ? 'h-full' : 'pb-24 md:pb-0'
+            ['/messages', '/video', '/create-post'].includes(location.pathname) ? 'h-full' : 'pb-24 md:pb-0'
           }`}>
             {children}
           </main>

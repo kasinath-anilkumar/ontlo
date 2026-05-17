@@ -29,8 +29,6 @@ const {
 // ======================================================
 
 router.get('/', auth, async (req, res) => {
-  const label = `connections_${Date.now()}`;
-  console.time(label);
   try {
     const userIdStr = req.userId.toString();
     const limit = Math.min(50, Number(req.query.limit) || 20);
@@ -105,7 +103,6 @@ router.get('/', auth, async (req, res) => {
       };
     }).filter(Boolean);
 
-    console.timeEnd(label);
 
     res.json([
       ...requestFormatted,

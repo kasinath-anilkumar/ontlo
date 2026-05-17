@@ -32,12 +32,15 @@ const Messages = () => {
     };
 
     if (connections.length === 0) {
-      fetchGlobalConnections().then(handleInitialSelection);
+      fetchGlobalConnections().finally(() => {
+        setLoading(false);
+        handleInitialSelection();
+      });
     } else {
       setLoading(false);
       handleInitialSelection();
     }
-  }, [location.state, connections.length]);
+  }, [location.state, connections.length, fetchGlobalConnections]);
 
   useEffect(() => {
     if (!selectedConnection?.id) return;

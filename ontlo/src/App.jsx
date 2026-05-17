@@ -16,8 +16,10 @@ const Onboarding = lazy(() => import("./pages/Onboarding"));
 const WhoLikedYou = lazy(() => import("./pages/WhoLikedYou"));
 const Favorites = lazy(() => import("./pages/Favorites"));
 const Notifications = lazy(() => import("./pages/Notifications"));
+const CreatePost = lazy(() => import("./pages/CreatePost"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 const PageLoader = () => (
   <div className="h-screen w-full flex items-center justify-center bg-[#0B0E14]">
@@ -69,7 +71,9 @@ function App() {
                     {/* <Route path="/who-liked-you" element={<WhoLikedYou />} /> */}
                     <Route path="/favorites" element={<Favorites />} />
                     <Route path="/notifications" element={<Notifications />} />
+                    <Route path="/create-post" element={<CreatePost />} />
                     <Route path="/profile" element={<Profile />} />
+                    <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </AppLayout>

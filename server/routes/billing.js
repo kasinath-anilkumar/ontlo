@@ -26,7 +26,7 @@ router.post('/upgrade', auth, async (req, res) => {
     const user = await User.findByIdAndUpdate(req.userId, {
       isPremium: true,
       premiumExpiresAt: expiresAt
-    }, { new: true });
+    }, { returnDocument: 'after' });
 
     const subscription = new Subscription({
       user: req.userId,
@@ -58,7 +58,7 @@ router.post('/buy-boosts', auth, async (req, res) => {
 
     const user = await User.findByIdAndUpdate(req.userId, {
       $inc: { boosts: count }
-    }, { new: true });
+    }, { returnDocument: 'after' });
 
     const subscription = new Subscription({
       user: req.userId,

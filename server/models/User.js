@@ -81,6 +81,23 @@ const UserSchema = new mongoose.Schema(
       maxlength: 100
     },
 
+    occupation: {
+      type: String,
+      trim: true,
+      maxlength: 100
+    },
+
+    education: {
+      type: String,
+      trim: true,
+      maxlength: 100
+    },
+
+    languages: {
+      type: [String],
+      default: ['English']
+    },
+
     // ======================================================
     // GEO LOCATION
     // ======================================================

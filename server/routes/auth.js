@@ -364,8 +364,6 @@ router.get(
   '/me',
   auth,
   async (req, res) => {
-    const label = `me_${Date.now()}`;
-    console.time(label);
     try {
       // explain query if requested
       if (req.query.explain) {
@@ -376,12 +374,9 @@ router.get(
       const cacheKey = `user_me_${req.userId}`;
       const user = await cacheUtil.getOrSet(cacheKey, async () => {
         return await User.findById(
-          req.userId,
-          'username email profilePic fullName isProfileComplete onlineStatus isVerified isPremium notificationCount role'
-        ).maxTimeMS(2000).lean();
+          req.userId
+        ).select('-password -refreshTokens').maxTimeMS(2000).lean();
       }, 30); // Cache for 30s
-
-      console.timeEnd(label);
 
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
@@ -951,7 +946,7 @@ router.post(
       const user = await User.findByIdAndUpdate(
         req.userId,
         { $set: updates },
-        { new: true, runValidators: true }
+        { returnDocument: 'after', runValidators: true }
       ).select('-password -refreshTokens');
 
       if (!user) {

@@ -447,7 +447,7 @@ router.patch(
           },
 
           {
-            new: true
+            returnDocument: 'after'
           }
         );
 

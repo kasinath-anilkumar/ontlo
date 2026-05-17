@@ -1,4 +1,6 @@
 // server.js
+const dotenv = require('dotenv');
+dotenv.config();
 
 const express = require('express');
 const http = require('http');
@@ -9,7 +11,6 @@ const dns = require('dns');
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const cors = require('cors');
-const dotenv = require('dotenv');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
@@ -18,8 +19,6 @@ const User = require('./models/User');
 
 const { logger } = require('./utils/logger');
 const monitor = require('./utils/monitor');
-
-dotenv.config();
 
 
 
@@ -297,26 +296,26 @@ app.use(
 // API REQUEST LOGGING
 // ======================================================
 
-app.use((
-  req,
-  res,
-  next
-) => {
-
-  if (
-    req.path.startsWith(
-      '/api/'
-    )
-  ) {
-
-    console.log(
-
-      `[${new Date().toLocaleTimeString()}] ${req.method} ${req.path}`
-    );
-  }
-
-  next();
-});
+// app.use((
+//   req,
+//   res,
+//   next
+// ) => {
+//
+//   if (
+//     req.path.startsWith(
+//       '/api/'
+//     )
+//   ) {
+//
+//     console.log(
+//
+//       `[${new Date().toLocaleTimeString()}] ${req.method} ${req.path}`
+//     );
+//   }
+//
+//   next();
+// });
 
 
 
@@ -434,6 +433,11 @@ app.use(
 app.use(
   '/api/notifications',
   require('./routes/notifications')
+);
+
+app.use(
+  '/api/posts',
+  require('./routes/posts')
 );
 
 app.use(
