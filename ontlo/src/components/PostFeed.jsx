@@ -246,9 +246,19 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
   const [replyingTo, setReplyingTo] = useState(null); // { commentId, username }
   const [showFullComments, setShowFullComments] = useState(false);
   const [cropMode, setCropMode] = useState('cover'); // 'cover' or 'contain'
+  const [showHeartAnim, setShowHeartAnim] = useState(false);
 
   const originalRatio = post.width && post.height ? post.width / post.height : 1;
   const instagramRatio = Math.min(Math.max(originalRatio, 0.8), 1.91);
+
+  const handleDoubleTap = (e) => {
+    e.preventDefault();
+    if (!isLiked) {
+      onLike();
+    }
+    setShowHeartAnim(true);
+    setTimeout(() => setShowHeartAnim(false), 800);
+  };
 
   // Lock scroll when modal is open to stabilize DOM for external scripts
   useEffect(() => {
@@ -359,17 +369,31 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
 
       {/* Media */}
       <div 
-        className="w-full bg-[#151923]/30 relative flex items-center justify-center overflow-hidden my-3 group"
+        onDoubleClick={handleDoubleTap}
+        className="w-full bg-[#151923]/30 relative flex items-center justify-center overflow-hidden my-3 group select-none touch-manipulation"
         style={{ 
           aspectRatio: cropMode === 'cover' ? instagramRatio : originalRatio
         }}
       >
         <img 
           src={getOptimizedUrl(post.imageUrl, 2000)} 
-          className={`w-full h-full ${cropMode === 'cover' ? 'object-cover' : 'object-contain'} transition-all duration-500 ease-out`} 
+          className={`w-full h-full ${cropMode === 'cover' ? 'object-cover' : 'object-contain'} transition-all duration-500 ease-out pointer-events-none`} 
           alt="Post Media" 
           loading="lazy" 
         />
+
+        {/* Double Tap Heart Animation Overlay */}
+        {showHeartAnim && (
+          <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+            <Heart 
+              size={100} 
+              className="text-pink-500 fill-pink-500 animate-in zoom-in-50 fade-in duration-300 drop-shadow-2xl" 
+              style={{
+                filter: 'drop-shadow(0 0 20px rgba(236,72,153,0.6))'
+              }}
+            />
+          </div>
+        )}
         
         {/* Aspect Ratio / Crop Toggle Button */}
         {post.width && post.height && (

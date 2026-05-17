@@ -7,8 +7,8 @@ const PullToRefresh = ({ children, onRefresh }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
 
-  const MAX_PULL = 80;
-  const THRESHOLD = 60;
+  const MAX_PULL = 120;
+  const THRESHOLD = 80;
 
   const onTouchStart = (e) => {
     // Only allow pull to refresh if we are at the very top of the scroll container
@@ -87,9 +87,9 @@ const PullToRefresh = ({ children, onRefresh }) => {
     >
       {/* Pull To Refresh Loader */}
       <div 
-        className="absolute top-0 left-0 right-0 flex justify-center items-center z-[100] transition-all duration-300 ease-out pointer-events-none"
+        className="absolute top-0 left-0 right-0 flex justify-center items-center z-[30] transition-all duration-300 ease-out pointer-events-none"
         style={{
-          transform: `translateY(${pullDistance > 0 ? pullDistance : -50}px)`,
+          transform: `translateY(${pullDistance > 0 ? pullDistance + 60 : -50}px)`,
           opacity: pullDistance > 0 ? Math.min(pullDistance / MAX_PULL, 1) : 0,
         }}
       >
@@ -104,13 +104,8 @@ const PullToRefresh = ({ children, onRefresh }) => {
         </div>
       </div>
 
-      {/* Content wrapper with smooth spring-like translation */}
-      <div 
-        className="flex-1 w-full h-full transition-transform duration-300 ease-out"
-        style={{ 
-          transform: `translateY(${pullDistance}px)`,
-        }}
-      >
+      {/* Content wrapper - static so it doesn't move fixed/sticky headers */}
+      <div className="flex-1 w-full h-full">
         {children}
       </div>
     </div>
