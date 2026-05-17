@@ -1,31 +1,127 @@
 {
-  "short_name": "Ontlo",
+  "id": "/",
   "name": "Ontlo - Connect & Chat",
+  "short_name": "Ontlo",
   "description": "Premium real-time connectivity and chat platform.",
-  "icons": [
-    {
-      "src": "favicon.svg",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/svg+xml"
-    },
-    {
-      "src": "icon-192.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icon-512.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any maskable"
-    }
-  ],
-  "start_url": ".",
+
+  "start_url": "/",
+  "scope": "/",
+
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+
+  "orientation": "portrait-primary",
+
   "theme_color": "#0B0E14",
   "background_color": "#0B0E14",
-  "orientation": "portrait-primary",
-  "categories": ["social", "chat"],
-  "screenshots": []
+
+  "lang": "en",
+  "dir": "ltr",
+
+  "categories": [
+    "social",
+    "chat",
+    "communication"
+  ],
+
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+
+  "shortcuts": [
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "description": "Open your messages",
+      "url": "/messages",
+      "icons": [
+        {
+          "src": "/shortcut-message.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+
+    {
+      "name": "Connections",
+      "short_name": "Connections",
+      "description": "View your connections",
+      "url": "/connections",
+      "icons": [
+        {
+          "src": "/shortcut-connections.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+
+    {
+      "name": "Create Post",
+      "short_name": "Post",
+      "description": "Create a new post",
+      "url": "/create",
+      "icons": [
+        {
+          "src": "/shortcut-post.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+
+  "screenshots": [
+    {
+      "src": "/screenshots/home-mobile.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Ontlo mobile home feed"
+    },
+    {
+      "src": "/screenshots/home-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Ontlo desktop experience"
+    }
+  ],
+
+  "prefer_related_applications": false
 }
