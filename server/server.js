@@ -33,38 +33,7 @@ app.set('trust proxy', 1);
 const server =
   http.createServer(app);
 
-const io =
-  new Server(server, {
-
-    cors: {
-
-      origin: (
-        process.env.CORS_ORIGIN ||
-        '*'
-      )
-        .split(',')
-        .map(o => o.trim()),
-
-      credentials: true,
-
-      methods: [
-        'GET',
-        'POST',
-        'PUT',
-        'PATCH',
-        'DELETE'
-      ]
-    },
-
-    pingTimeout: 60000,
-
-    pingInterval: 25000,
-
-    transports: [
-      'websocket',
-      'polling'
-    ]
-  });
+let io; // Initialized after corsOptions
 
 
 
@@ -152,6 +121,12 @@ const allowedOrigins =
 
     .filter(Boolean);
 
+// In development, explicitly allow localhost origins for Vite dev server
+if (!isProduction) {
+  allowedOrigins.push('http://localhost:5173');
+  allowedOrigins.push('http://127.0.0.1:5173');
+}
+
 const corsOptions = {
   origin: (origin, callback) => {
     // allow requests with no origin (like mobile apps or curl requests)
@@ -165,8 +140,12 @@ const corsOptions = {
     ) {
       callback(null, true);
     } else {
-      // In development, we can be more permissive if needed, but for now let's stick to allowed origins
-      callback(null, true);
+      // In development, be permissive if not production
+      if (!isProduction) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
     }
   },
   credentials: true,

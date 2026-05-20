@@ -15,7 +15,7 @@ import {
   Users,
   Plus
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
@@ -42,8 +42,8 @@ const Profile = () => {
     const fetchMoments = async () => {
       try {
         const token = localStorage.getItem("token");
-        const endpoint = isSelf 
-          ? `${API_URL}/api/posts/my-posts` 
+        const endpoint = isSelf
+          ? `${API_URL}/api/posts/my-posts`
           : `${API_URL}/api/posts/user/${profileUser._id}`;
         const res = await apiFetch(endpoint, {
           headers: { "Authorization": `Bearer ${token}` }
@@ -114,12 +114,25 @@ const Profile = () => {
     }
   };
 
+
+
+  const containerRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handleScroll = () => setScrolled(el.scrollTop > 20);
+    el.addEventListener("scroll", handleScroll);
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <div className="flex-1 h-screen bg-[#090B10] overflow-y-auto scrollbar-hide relative pb-20 animate-in fade-in duration-500 text-white font-sans">
+    <div ref={containerRef} className="flex-1 h-screen  overflow-y-auto scrollbar-hide relative pb-20 animate-in fade-in duration-500 text-white font-sans">
 
       {/* Full Screen Post Feed View */}
       {viewingPostId ? (
-        <div className="min-h-full bg-[#090B10] flex flex-col animate-in fade-in duration-300">
+        <div className="min-h-full  flex flex-col animate-in fade-in duration-300">
           <div className="sticky top-0 z-40 flex items-center justify-between p-3.5 px-4 bg-[#090B10]/95 backdrop-blur-xl border-b border-white/5 shadow-md">
             <div className="flex items-center gap-3">
               <button onClick={() => setViewingPostId(null)} className="p-1 text-gray-400 hover:text-white transition-colors">
@@ -146,38 +159,142 @@ const Profile = () => {
       ) : (
         <>
           {/* TOP HEADER */}
-          <div className="sticky top-0 z-40 flex items-center justify-between p-4 sm:px-8 bg-[#090B10]/80 backdrop-blur-xl border-b border-white/5 min-h-[64px]">
-            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-medium text-sm relative z-10">
+          <div
+            className={`
+    sticky
+    top-0
+    z-40
+    flex
+    items-center
+    justify-between
+    p-4
+    sm:px-8
+    min-h-[64px]
+    transition-all
+    duration-300
+    ${scrolled
+                ? "backdrop-blur-2xl bg-black/30 border-b border-white/10"
+                : "bg-transparent border-b border-transparent"
+              }
+  `}
+          >
+            {/* BACK BUTTON */}
+            <button
+              onClick={() => navigate(-1)}
+              className="
+      flex
+      items-center
+      gap-2
+      text-white/60
+      hover:text-white
+      transition-all
+      font-medium
+      text-sm
+      relative
+      z-10
+    "
+            >
               <ChevronLeft size={20} />
               <span className="hidden sm:inline">Back</span>
             </button>
-            <span className="sm:hidden absolute inset-0 flex items-center justify-center font-bold tracking-wide text-sm pointer-events-none">
+
+            {/* MOBILE TITLE */}
+            <span
+              className="
+      sm:hidden
+      absolute
+      inset-0
+      flex
+      items-center
+      justify-center
+      font-semibold
+      tracking-tight
+      text-sm
+      text-white
+      pointer-events-none
+    "
+            >
               {isSelf ? "My Profile" : profileUser?.username}
             </span>
+
+            {/* RIGHT ACTIONS */}
             <div className="flex items-center gap-3 relative z-10">
               {isSelf ? (
                 <>
+                  {/* CREATE POST */}
                   <button
                     onClick={() => navigate("/create-post")}
-                    className="w-10 h-10 border border-white/5 rounded-full hover:bg-purple-600/30 flex items-center justify-center text-purple-400 hover:text-purple-300 transition-all shadow-lg"
+                    className="
+            w-10
+            h-10
+            rounded-full
+            border
+            border-white/10
+            bg-white/[0.04]
+            hover:bg-white/[0.08]
+            flex
+            items-center
+            justify-center
+            text-white/70
+            hover:text-white
+            transition-all
+            backdrop-blur-xl
+          "
                     title="Create Post"
                   >
-                    <Plus size={20} />
+                    <Plus size={18} />
                   </button>
+
+                  {/* SETTINGS */}
                   <button
                     onClick={() => navigate("/settings")}
-                    className="w-10 h-10 rounded-2xl bg-[#141724] hover:bg-[#1a1f30] border border-white/5 flex items-center justify-center text-gray-400 hover:text-white transition-all shadow-lg"
+                    className="
+            w-10
+            h-10
+            rounded-full
+            border
+            border-white/10
+            bg-white/[0.04]
+            hover:bg-white/[0.08]
+            flex
+            items-center
+            justify-center
+            text-white/70
+            hover:text-white
+            transition-all
+            backdrop-blur-xl
+          "
                     title="Settings"
                   >
                     <SettingsIcon size={18} />
                   </button>
                 </>
               ) : (
-                <button 
-                  onClick={() => navigate("/messages", { state: { selectId: profileUser._id } })}
-                  className="px-4 h-10 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg"
+                <button
+                  onClick={() =>
+                    navigate("/messages", {
+                      state: { selectId: profileUser._id },
+                    })
+                  }
+                  className="
+          px-5
+          h-10
+          rounded-full
+          bg-white
+          hover:bg-white/90
+          text-black
+          text-sm
+          font-semibold
+          flex
+          items-center
+          gap-2
+          transition-all
+          duration-300
+          hover:scale-[1.02]
+          active:scale-[0.98]
+        "
                 >
-                  <MessageSquare size={16} />
+                  <MessageSquare size={15} />
                   <span>Message</span>
                 </button>
               )}

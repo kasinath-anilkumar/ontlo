@@ -149,10 +149,42 @@ export const SocketProvider = ({ children }) => {
             if (countsRes?.ok) setCounts(await countsRes.json());
             if (onlineRes?.ok) setOnlineUsers(await onlineRes.json());
           }
-        } else if (meRes.status === 401) {
+        }
+        else if (meRes.status === 401) {
+          // Attempt token refresh
+          try {
+            const refreshRes = await apiFetch(`${API_URL}/api/auth/refresh-token`);
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              if (refreshData.token) localStorage.setItem("token", refreshData.token);
+              if (refreshData.refreshToken) localStorage.setItem("refreshToken", refreshData.refreshToken);
+              // Retry fetching user after refresh
+              const retryMeRes = await apiFetch(`${API_URL}/api/auth/me`);
+              if (retryMeRes.ok) {
+                const meData = await retryMeRes.json();
+                setUser(meData);
+                localStorage.setItem('user', JSON.stringify(meData));
+                setIsInitialLoad(false);
+                // Continue with fetching counts and online users if token present
+                if (localStorage.getItem('token')) {
+                  const [countsRes, onlineRes] = await Promise.all([
+                    apiFetch(`${API_URL}/api/notifications/counts`).catch(() => null),
+                    apiFetch(`${API_URL}/api/connections/online`).catch(() => null)
+                  ]);
+                  if (countsRes?.ok) setCounts(await countsRes.json());
+                  if (onlineRes?.ok) setOnlineUsers(await onlineRes.json());
+                }
+                return; // Early exit after successful refresh and retry
+              }
+            }
+          } catch (e) {
+            console.error('Refresh failed during init', e);
+          }
+          // If refresh or retry fails, clear auth state
           setUser(null);
           localStorage.removeItem('user');
           localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
           setIsInitialLoad(false);
         }
       } catch (err) {
@@ -426,6 +458,7 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('force-logout', () => {
       localStorage.removeItem('user');
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
       setUser(null);
       newSocket.disconnect();
     });

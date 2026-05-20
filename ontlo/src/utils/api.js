@@ -46,11 +46,13 @@ export const apiFetch = async (url, options = {}) => {
         // Synchronize multiple refresh attempts
         if (!refreshPromise) {
           console.log('[Auth] Starting refresh token request...');
+          const localRefreshToken = localStorage.getItem("refreshToken");
           refreshPromise = fetch(`${API_URL}/api/auth/refresh-token`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
+            body: JSON.stringify({ refreshToken: localRefreshToken }),
             credentials: 'include'
           }).then(async res => {
             if (res.ok) {
@@ -58,6 +60,9 @@ export const apiFetch = async (url, options = {}) => {
               if (data.token) {
                 console.log('[Auth] Refresh successful, new token received');
                 localStorage.setItem("token", data.token);
+                if (data.refreshToken) {
+                  localStorage.setItem("refreshToken", data.refreshToken);
+                }
                 return data.token;
               }
             }
@@ -87,6 +92,7 @@ export const apiFetch = async (url, options = {}) => {
           console.error('[Auth] Token refresh failed, logging out');
           localStorage.removeItem('user');
           localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
           window.dispatchEvent(new Event('auth-expired'));
           // Important: after logout, we should probably redirect or at least return the 401
         }

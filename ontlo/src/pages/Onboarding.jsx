@@ -253,6 +253,7 @@ const Onboarding = () => {
       // Save user and token
       localStorage.setItem("user", JSON.stringify(data.user));
       if (data.token) localStorage.setItem("token", data.token);
+      if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
 
       // Clear temp reg
       localStorage.removeItem("temp_reg");

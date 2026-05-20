@@ -72,12 +72,14 @@ const Home = () => {
               <span className="text-[10px] sm:text-xs font-bold text-gray-300 tracking-tight">{onlineCount.toLocaleString()}</span>
             </div>
           )}
+
           <button
             onClick={() => navigate("/create-post")}
             className="w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-purple-400 hover:text-white transition-all shadow-lg shadow-purple-500/10"
           >
             <Plus className="h-5 w-5" />
           </button>
+
           <button onClick={() => navigate("/notifications")} className="relative w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all">
             <Bell className="h-4 w-4" />
           </button>
@@ -92,9 +94,9 @@ const Home = () => {
       ) : hasPosts ? (
         /* PURE FEED UI (Instagram Style) */
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-700">
-          <PostFeed 
-            initialPosts={posts} 
-            onPostDeleted={(deletedId) => setPosts(prev => prev.filter(p => p._id !== deletedId))} 
+          <PostFeed
+            initialPosts={posts}
+            onPostDeleted={(deletedId) => setPosts(prev => prev.filter(p => p._id !== deletedId))}
           />
         </div>
       ) : (

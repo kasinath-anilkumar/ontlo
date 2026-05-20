@@ -61,6 +61,7 @@ const Auth = () => {
 
       localStorage.setItem("user", JSON.stringify(data.user));
       if (data.token) localStorage.setItem("token", data.token);
+      if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
       setUser(data.user);
       
       const target = data.user.isProfileComplete ? "/" : "/onboarding";

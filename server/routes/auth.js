@@ -198,7 +198,7 @@ const generateTokens =
     );
 
     console.log(`[Auth] Tokens generated and cookies set for user: ${user.username || user._id}`);
-    return accessToken;
+    return { accessToken, refreshToken };
   };
 
 
@@ -542,7 +542,7 @@ router.post(
             true
         });
 
-      const token =
+      const { accessToken, refreshToken } =
         await generateTokens(
           admin,
           res
@@ -553,7 +553,8 @@ router.post(
         message:
           'Setup completed',
 
-        token,
+        token: accessToken,
+        refreshToken,
 
         user: {
 
@@ -801,7 +802,7 @@ router.post(
 
       }).catch(() => {});
 
-      const token =
+      const { accessToken, refreshToken } =
         await generateTokens(
           user,
           res
@@ -809,7 +810,8 @@ router.post(
 
       res.status(201).json({
 
-        token,
+        token: accessToken,
+        refreshToken,
 
         user: {
 
@@ -974,14 +976,14 @@ router.post(
   '/refresh-token',
   async (req, res) => {
     const label = `refresh_${Date.now()}`;
-    console.log(`[Auth] Refresh attempt - Cookies:`, req.cookies);
+    console.log(`[Auth] Refresh attempt - Cookies:`, req.cookies, `Body:`, req.body);
     
     console.time(label);
     try {
-      const { refreshToken } = req.cookies;
+      const refreshToken = req.cookies.refreshToken || req.body.refreshToken || req.headers['x-refresh-token'];
 
       if (!refreshToken) {
-        console.warn('[Auth] Refresh failed: No refresh token in cookies');
+        console.warn('[Auth] Refresh failed: No refresh token in cookies, body, or headers');
         return res.status(401).json({ error: 'No refresh token provided' });
       }
 
@@ -1012,11 +1014,11 @@ router.post(
       }
 
       // 3. Rotate tokens
-      const accessToken = await generateTokens(user, res);
+      const { accessToken, refreshToken: newRefreshToken } = await generateTokens(user, res);
       console.log('[Auth] Tokens rotated successfully for:', user.username);
 
       console.timeEnd(label);
-      res.json({ token: accessToken });
+      res.json({ token: accessToken, refreshToken: newRefreshToken });
 
     } catch (error) {
       console.error('[REFRESH TOKEN ERROR]:', error);
@@ -1176,7 +1178,7 @@ router.post(
 
       await user.save();
 
-      const token =
+      const { accessToken, refreshToken } =
         await generateTokens(
           user,
           res
@@ -1200,7 +1202,8 @@ router.post(
 
       res.json({
 
-        token,
+        token: accessToken,
+        refreshToken,
 
         user: {
 

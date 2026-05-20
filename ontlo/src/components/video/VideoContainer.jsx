@@ -70,8 +70,8 @@ const VideoContainer = () => {
   const isAlreadyMatched = connections?.some(conn => {
     const remoteId = remoteUser?._id || remoteUser?.id;
     if (!remoteId) return false;
-    return (conn.user?._id?.toString() === remoteId.toString() || 
-            conn.user?.id?.toString() === remoteId.toString());
+    return (conn.user?._id?.toString() === remoteId.toString() ||
+      conn.user?.id?.toString() === remoteId.toString());
   });
 
   // ── Camera Initialization ──
@@ -212,7 +212,7 @@ const VideoContainer = () => {
     setInCall(false); setShowChat(false); setRemoteUser(null); setIsBlurred(false);
     setIsPrivate(false); setPeerIsPrivate(false); setCommonInterests([]);
     setShowConnectRequest(false); setConnectionStatus(null); setCallDuration(0);
-    setChatMessages([]); setHasNewMessage(false); setIsMatching(false); 
+    setChatMessages([]); setHasNewMessage(false); setIsMatching(false);
     if (shouldAutoRejoin) {
       if (rejoinTimerRef.current) clearTimeout(rejoinTimerRef.current);
       rejoinTimerRef.current = setTimeout(() => {
@@ -254,7 +254,7 @@ const VideoContainer = () => {
         stream.addTrack(e.track);
       }
       // Mobile / autoplay policies: explicitly try to play remote A/V
-      el.play?.().catch(() => {});
+      el.play?.().catch(() => { });
     };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected") {
@@ -302,20 +302,20 @@ const VideoContainer = () => {
     const onMatchFound = async ({ roomId: rId, role, remoteUserId: remoteId, icebreaker: prompt, isWildcard: wildcardFlag }) => {
       console.log('[MatchFound] Match event received!', { rId, role, remoteId });
       if (peerConnectionRef.current) endCallLocally(false);
-      roomIdRef.current = rId; 
-      
+      roomIdRef.current = rId;
+
       // IMMEDIATE SAFETY BLUR
-      setInCall(true); 
-      setIsBlurred(true); 
-      setSafetyBlurTimer(3); 
-      
-      setShowConnectRequest(false); 
-      setConnectionStatus(null); 
-      setChatMessages([]); 
+      setInCall(true);
+      setIsBlurred(true);
+      setSafetyBlurTimer(3);
+
+      setShowConnectRequest(false);
+      setConnectionStatus(null);
+      setChatMessages([]);
       setHasNewMessage(false);
-      setIsMatching(false); 
-      setIcebreaker(prompt); 
-      setIsWildcard(wildcardFlag); 
+      setIsMatching(false);
+      setIcebreaker(prompt);
+      setIsWildcard(wildcardFlag);
       setCuriosityBlurTimer(0);
       if (navigator.vibrate) navigator.vibrate(100);
 
@@ -453,7 +453,7 @@ const VideoContainer = () => {
       setInCall(false);
       setRemoteUser(null);
     };
-    
+
     const onPeerDeclined = () => {
       setConnectionStatus("declined");
       setDeclineTimer(120);
@@ -600,19 +600,136 @@ const VideoContainer = () => {
                     <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1] opacity-20" />
                     <div className="relative z-20 text-center p-6">
                       {isMatching ? (
-                        <div className="flex flex-col items-center animate-pulse">
-                          <div className="w-20 h-20 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mb-8" />
-                          <h2 className="text-2xl text-white font-black uppercase italic tracking-tighter">Finding Match...</h2>
-                          <button onClick={() => { socket?.emit("leave-queue"); setIsMatching(false); }} className="mt-8 px-8 py-3 bg-white/5 border border-white/10 text-gray-400 rounded-2xl text-xs font-bold uppercase tracking-widest">Cancel</button>
+                        <div className="flex flex-col items-center">
+
+                          {/* LOADER */}
+                          <div className="relative mb-7">
+                            <div className="w-16 h-16 rounded-full border border-white/10" />
+
+                            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white/90 animate-spin" />
+
+                            <div className="absolute inset-3 rounded-full bg-white/[0.03] backdrop-blur-xl" />
+                          </div>
+
+                          <h2 className="text-2xl text-white font-semibold tracking-tight">
+                            Finding Match...
+                          </h2>
+
+                          <p className="text-white/45 text-sm mt-2">
+                            Connecting anonymously
+                          </p>
+
+                          {/* CANCEL */}
+                          <button
+                            onClick={() => {
+                              socket?.emit("leave-queue");
+                              setIsMatching(false);
+                            }}
+                            className="
+          mt-8
+          px-6
+          py-3
+          rounded-full
+          border
+          border-white/10
+          bg-white/[0.04]
+          backdrop-blur-xl
+          text-white/70
+          text-sm
+          font-medium
+          transition-all
+          duration-300
+          hover:bg-white/[0.08]
+          hover:text-white
+        "
+                          >
+                            Cancel
+                          </button>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center">
-                          <h2 className="text-xl sm:text-2xl md:text-4xl text-white font-black uppercase italic tracking-tighter mb-4">start a Chat</h2>
+
+                          {/* TITLE */}
+                          <div className="mb-2">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-xl mb-5">
+                              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                              <span className="text-white/50 text-xs tracking-wide">
+                                Online Now
+                              </span>
+                            </div>
+
+                            <h2
+                              className="
+    text-4xl
+    sm:text-6xl
+    font-semibold
+    tracking-[-0.04em]
+    leading-[0.95]
+    text-transparent
+    bg-clip-text
+    bg-gradient-to-b
+    from-white
+    to-white/60
+  "
+                            >
+                              Start a Chat
+                            </h2>
+
+                            {/* <p className="text-white/45 text-sm sm:text-base mt-4 max-w-xs mx-auto leading-relaxed">
+                              Meet random people around the world instantly and anonymously.
+                            </p> */}
+                          </div>
+
+                          {/* BUTTON */}
                           <button
                             onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
-                            className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black rounded-md uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-sm sm:text-base md:text-lg"
+                            className="
+          group
+          relative
+          overflow-hidden
+          px-8
+          sm:px-10
+          py-3.5
+          rounded-full
+          border
+          border-white/10
+          bg-white/[0.05]
+          backdrop-blur-2xl
+          text-white
+          text-sm
+          sm:text-base
+          font-medium
+          transition-all
+          duration-300
+          hover:bg-white/[0.09]
+          hover:border-white/20
+          hover:scale-[1.02]
+          active:scale-[0.98]
+          shadow-[0_8px_30px_rgba(0,0,0,0.35)]
+        "
                           >
-                            Find Match
+
+                            {/* INNER GLOW */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] to-transparent opacity-60" />
+
+                            <span className="relative z-10 flex items-center gap-3">
+                              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                              Find Match
+                            </span>
+
+                            {/* HOVER SHINE */}
+                            <div className="
+          absolute
+          inset-0
+          opacity-0
+          group-hover:opacity-100
+          transition-opacity
+          duration-300
+          bg-gradient-to-r
+          from-transparent
+          via-white/[0.06]
+          to-transparent
+        " />
                           </button>
                         </div>
                       )}
@@ -620,12 +737,12 @@ const VideoContainer = () => {
                   </div>
                 ) : (
                   <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#05070A] shadow-2xl group">
-                    <video 
-                      ref={remoteVideoRef} 
-                      autoPlay 
-                      playsInline 
-                      style={{ filter: (isBlurred || peerIsPrivate || safetyBlurTimer > 0) ? "blur(80px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px)` : "none" }} 
-                      className="absolute inset-0 w-full h-full object-cover transition-all duration-[2000ms] ease-in-out z-10" 
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      style={{ filter: (isBlurred || peerIsPrivate || safetyBlurTimer > 0) ? "blur(80px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px)` : "none" }}
+                      className="absolute inset-0 w-full h-full object-cover transition-all duration-[2000ms] ease-in-out z-10"
                     />
 
                     {/* Safety Blur UI Overlay */}
@@ -695,25 +812,24 @@ const VideoContainer = () => {
                       </div>
                       <div className="flex gap-2">
                         {(connectionStatus !== 'accepted' || isAlreadyMatched) && (
-                          <button 
-                            onClick={isAlreadyMatched || connectionStatus === 'declined' ? null : (callDuration >= 10 ? connectUser : null)} 
+                          <button
+                            onClick={isAlreadyMatched || connectionStatus === 'declined' ? null : (callDuration >= 10 ? connectUser : null)}
                             disabled={(!isAlreadyMatched && callDuration < 10) || connectionStatus === 'declined'}
-                            className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                              isAlreadyMatched 
-                                ? 'bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]'
-                                : connectionStatus === 'declined'
-                                  ? 'bg-gray-800 text-gray-500 border border-white/5 cursor-not-allowed'
-                                  : callDuration < 10 
-                                    ? 'bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed' 
-                                    : 'bg-gradient-to-tr from-purple-600 to-pink-600 text-white shadow-lg hover:scale-110 active:scale-95'
-                            }`}
+                            className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isAlreadyMatched
+                              ? 'bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]'
+                              : connectionStatus === 'declined'
+                                ? 'bg-gray-800 text-gray-500 border border-white/5 cursor-not-allowed'
+                                : callDuration < 10
+                                  ? 'bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed'
+                                  : 'bg-gradient-to-tr from-purple-600 to-pink-600 text-white shadow-lg hover:scale-110 active:scale-95'
+                              }`}
                           >
                             {isAlreadyMatched ? (
                               <Check className="w-5 h-5" />
                             ) : connectionStatus === 'declined' ? (
                               <div className="flex flex-col items-center">
                                 <Timer className="w-3.5 h-3.5 mb-0.5" />
-                                <span className="text-[7px] font-black">{Math.floor(declineTimer / 60)}:{ (declineTimer % 60).toString().padStart(2, '0') }</span>
+                                <span className="text-[7px] font-black">{Math.floor(declineTimer / 60)}:{(declineTimer % 60).toString().padStart(2, '0')}</span>
                               </div>
                             ) : callDuration < 10 ? (
                               <>
