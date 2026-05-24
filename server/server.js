@@ -7,8 +7,10 @@ const http = require('http');
 const mongoose = require('mongoose');
 const dns = require('dns');
 
-// Fix for MongoDB SRV resolution issues in some environments
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+// Fix for MongoDB SRV resolution issues in some environments (only if explicitly enabled in local development)
+if (process.env.NODE_ENV !== 'production' && process.env.SET_DNS === 'true') {
+  dns.setServers(['8.8.8.8', '8.8.4.4']);
+}
 
 const cors = require('cors');
 const helmet = require('helmet');
@@ -47,7 +49,7 @@ const isProduction =
 
 const PORT =
   Number(process.env.PORT) ||
-  5000;
+  (process.env.NODE_ENV === 'test' ? 5001 : 5000);
 
 const MONGO_URI =
   process.env.MONGO_URI ||
@@ -154,6 +156,14 @@ const corsOptions = {
   exposedHeaders: ['set-cookie'],
   optionsSuccessStatus: 204
 };
+
+// Initialize Socket.IO server with corsOptions
+io = new Server(server, {
+  cors: corsOptions,
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ['websocket', 'polling']
+});
 
 
 
@@ -505,89 +515,83 @@ require('./socket')(io);
 // START SERVER
 // ======================================================
 
-const startServer =
-  async () => {
+const startServer = async () => {
+  // Validate MONGO_URI in production
+  if (isProduction && (!process.env.MONGO_URI || process.env.MONGO_URI.includes('127.0.0.1') || process.env.MONGO_URI.includes('localhost'))) {
+    console.error('❌ CRITICAL ERROR: MONGO_URI is missing or pointing to localhost in production environment!');
+  }
 
-    try {
+  // ======================================================
+  // START HTTP IMMEDIATELY (Crucial for Render deployment)
+  // ======================================================
+  server.listen(PORT, '0.0.0.0', () => {
+    const maskedMongoUri = MONGO_URI.replace(/:([^@]+)@/, ':******@');
+    console.log(`🚀 Server running on ${PORT}`);
+    console.log(`[DB] Connecting to ${maskedMongoUri}...`);
 
-      // ======================================================
-      // MONGO CONNECT
-      // ======================================================
-      console.log('[DB] Connecting...');
-      await mongoose.connect(MONGO_URI, {
-        connectTimeoutMS: 20000,
-        serverSelectionTimeoutMS: 20000,
-        socketTimeoutMS: 45000,
-        waitQueueTimeoutMS: 15000,
-        retryWrites: true,
-        autoIndex: false, // Prevent automatic index sync from blocking startup
-        retryReads: true,
-        maxPoolSize: 50,
-        minPoolSize: 5
-      });
-
+    // ======================================================
+    // MONGO CONNECT (Asynchronous to avoid blocking startup)
+    // ======================================================
+    mongoose.connect(MONGO_URI, {
+      connectTimeoutMS: 20000,
+      serverSelectionTimeoutMS: 20000,
+      socketTimeoutMS: 45000,
+      waitQueueTimeoutMS: 15000,
+      retryWrites: true,
+      autoIndex: false, // Prevent automatic index sync from blocking startup
+      retryReads: true,
+      maxPoolSize: 50,
+      minPoolSize: 5
+    })
+    .then(() => {
       logger.info('✅ MongoDB Connected');
+      console.log('📦 Mongo connected');
 
       // ======================================================
-      // START HTTP IMMEDIATELY
+      // BACKGROUND INITIALIZATION (Only run if connected successfully)
       // ======================================================
-      server.listen(PORT, '0.0.0.0', () => {
-        console.log(`🚀 Server running on ${PORT}`);
-        
-        // ======================================================
-        // BACKGROUND INITIALIZATION (Delayed to avoid startup congestion)
-        // ======================================================
-        setTimeout(async () => {
-          console.log('[BG] Starting background initialization tasks...');
-          try {
-            // 1. Reset online status (non-blocking)
-            const resetStart = Date.now();
-            await User.updateMany(
-              { onlineStatus: 'online' },
-              { $set: { onlineStatus: 'offline' } }
-            ).maxTimeMS(30000); // 30s timeout for heavy updates
-            console.log(`[DB] Reset online statuses in ${Date.now() - resetStart}ms`);
+      setTimeout(async () => {
+        console.log('[BG] Starting background initialization tasks...');
+        try {
+          // 1. Reset online status (non-blocking)
+          const resetStart = Date.now();
+          await User.updateMany(
+            { onlineStatus: 'online' },
+            { $set: { onlineStatus: 'offline' } }
+          ).maxTimeMS(30000); // 30s timeout for heavy updates
+          console.log(`[DB] Reset online statuses in ${Date.now() - resetStart}ms`);
 
-            // 2. Index Sync (Optional/Dev only)
-            if (!isProduction || process.env.SYNC_INDEXES === 'true') {
-              console.log('[BG] Syncing database indexes...');
-              const modelsToSync = ['User', 'Connection', 'Message', 'Notification'];
-              for (const modelName of modelsToSync) {
-                try {
-                  const model = mongoose.model(modelName);
-                  if (modelName === 'Connection') {
-                    const indexes = await model.collection.indexes().catch(() => []);
-                    if (indexes.find(idx => idx.name === 'users_1')?.unique) {
-                      await model.collection.dropIndex('users_1').catch(() => {});
-                    }
+          // 2. Index Sync (Optional/Dev only)
+          if (!isProduction || process.env.SYNC_INDEXES === 'true') {
+            console.log('[BG] Syncing database indexes...');
+            const modelsToSync = ['User', 'Connection', 'Message', 'Notification'];
+            for (const modelName of modelsToSync) {
+              try {
+                const model = mongoose.model(modelName);
+                if (modelName === 'Connection') {
+                  const indexes = await model.collection.indexes().catch(() => []);
+                  if (indexes.find(idx => idx.name === 'users_1')?.unique) {
+                    await model.collection.dropIndex('users_1').catch(() => {});
                   }
-                  await model.createIndexes();
-                } catch (e) {
-                  console.warn(`[INDEX ERROR] ${modelName}: ${e.message}`);
                 }
+                await model.createIndexes();
+              } catch (e) {
+                console.warn(`[INDEX ERROR] ${modelName}: ${e.message}`);
               }
-              console.log('[BG] Index sync complete.');
             }
-          } catch (err) {
-            console.error('[BG INIT ERROR]:', err);
+            console.log('[BG] Index sync complete.');
           }
-        }, 30000); // Wait 30s before starting heavy tasks
-      });
-
-    } catch (error) {
-
-      console.error(
-
-        '❌ MongoDB connection failed:',
-
-        error.message
-      );
-
-      console.log(
-        '⚠️ Server running without DB'
-      );
-    }
-  };
+        } catch (err) {
+          console.error('[BG INIT ERROR]:', err);
+        }
+      }, 5000); // Delay slightly after connection
+    })
+    .catch((error) => {
+      console.error('❌ MongoDB connection failed:', error.message);
+      console.log('⚠️ Server running without DB');
+    });
+  });
+};
 
 
 

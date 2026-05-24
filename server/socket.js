@@ -44,6 +44,10 @@ const {
 // ======================================================
 
 module.exports = (io) => {
+  if (!io) {
+    console.error('[SOCKET ERROR]: Socket.IO server instance (io) is undefined!');
+    return;
+  }
 
   // ======================================================
   // MEMORY PRESENCE
