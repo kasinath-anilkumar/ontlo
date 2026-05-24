@@ -7,9 +7,13 @@ const http = require('http');
 const mongoose = require('mongoose');
 const dns = require('dns');
 
-// Fix for MongoDB SRV resolution issues in some environments (only if explicitly enabled in local development)
-if (process.env.NODE_ENV !== 'production' && process.env.SET_DNS === 'true') {
-  dns.setServers(['8.8.8.8', '8.8.4.4']);
+// Fix for MongoDB SRV resolution issues in some environments (disabled on Render/Production)
+if (process.env.NODE_ENV !== 'production' && !process.env.RENDER) {
+  try {
+    dns.setServers(['8.8.8.8', '8.8.4.4']);
+  } catch (err) {
+    console.warn('Failed to set custom DNS servers:', err.message);
+  }
 }
 
 const cors = require('cors');
@@ -48,8 +52,9 @@ const isProduction =
   'production';
 
 const PORT =
-  Number(process.env.PORT) ||
-  (process.env.NODE_ENV === 'test' ? 5001 : 5000);
+  process.env.NODE_ENV === 'test'
+    ? 5001
+    : (Number(process.env.PORT) || 5000);
 
 const MONGO_URI =
   process.env.MONGO_URI ||
