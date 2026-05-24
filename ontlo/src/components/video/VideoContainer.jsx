@@ -558,9 +558,6 @@ const VideoContainer = () => {
           <div className="sticky top-0 left-0 right-0 h-16 shrink-0 flex items-center justify-between px-6 border-b border-[#1e293b] bg-[#0B0E14]">
             <div className="flex items-center gap-4">
               <img src={ontloLogo} alt="Ontlo" className="w-12 h-12 sm:block md:hidden" />
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-bold border border-green-500/20">
-                <Shield className="w-3 h-3" /> Secure
-              </div>
               <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${isConnected ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20 animate-pulse'}`}>
                 <div className={`w-1 h-1 rounded-full ${isConnected ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.6)]' : 'bg-orange-400'}`}></div>
                 <span>{isConnected ? 'LIVE' : 'CONNECTING...'}</span>
@@ -648,37 +645,6 @@ const VideoContainer = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center">
-
-                          {/* TITLE */}
-                          <div className="mb-2">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-xl mb-5">
-                              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                              <span className="text-white/50 text-xs tracking-wide">
-                                Online Now
-                              </span>
-                            </div>
-
-                            <h2
-                              className="
-    text-4xl
-    sm:text-6xl
-    font-semibold
-    tracking-[-0.04em]
-    leading-[0.95]
-    text-transparent
-    bg-clip-text
-    bg-gradient-to-b
-    from-white
-    to-white/60
-  "
-                            >
-                              Start a Chat
-                            </h2>
-
-                            {/* <p className="text-white/45 text-sm sm:text-base mt-4 max-w-xs mx-auto leading-relaxed">
-                              Meet random people around the world instantly and anonymously.
-                            </p> */}
-                          </div>
 
                           {/* BUTTON */}
                           <button

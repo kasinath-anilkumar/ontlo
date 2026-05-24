@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Video, 
-  Loader2, 
-  ShieldCheck, 
-  Check, 
-  X, 
-  Eye, 
-  EyeOff, 
-  Sparkles, 
-  User, 
-  Lock, 
+import {
+  Video,
+  Loader2,
+  ShieldCheck,
+  Check,
+  X,
+  Eye,
+  EyeOff,
+  Sparkles,
+  User,
+  Lock,
   ArrowRight,
   Globe,
   Zap
@@ -63,7 +63,7 @@ const Auth = () => {
       if (data.token) localStorage.setItem("token", data.token);
       if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
       setUser(data.user);
-      
+
       const target = data.user.isProfileComplete ? "/" : "/onboarding";
       navigate(target);
     } catch (err) {
@@ -75,7 +75,7 @@ const Auth = () => {
 
   const handleSignUp = async () => {
     setError("");
-    
+
     if (!agreed) {
       setError("You must be 18+ and agree to the Terms & Privacy Policy.");
       return;
@@ -120,7 +120,7 @@ const Auth = () => {
 
   return (
     <div className="h-screen w-full bg-[#05070A] text-white flex flex-col lg:flex-row relative overflow-hidden font-sans select-none">
-      
+
       {/* Dynamic Background Elements - Shared */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="hidden md:block absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[120px] md:animate-pulse"></div>
@@ -136,12 +136,12 @@ const Auth = () => {
               <img src={logo} alt="Logo" className="w-10 h-10" />
             </div>
             <div className="h-6 w-px bg-white/10"></div>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Beyond your Circle</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Privacy Matters</span>
           </div>
 
           <h1 className="text-5xl xl:text-6xl font-black mb-4 leading-tight tracking-tighter uppercase italic">
-            Start From Here.<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 animate-gradient-x">Find Your Peoples</span>
+            Connect<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 animate-gradient-x">To your Circle</span>
             <br />
           </h1>
 
@@ -151,17 +151,17 @@ const Auth = () => {
           </p>
 
           <div className="grid grid-cols-2 gap-4 max-w-md">
-            <FeatureCard icon={<Zap className="w-4 h-4 text-yellow-400" />} title="Instant" desc="no more waiting" />
-            <FeatureCard icon={<ShieldCheck className="w-4 h-4 text-green-400" />} title="Secure" desc="Your safety is our priority" />
-            <FeatureCard icon={<Globe className="w-4 h-4 text-blue-400" />} title="Global" desc="Meet people around the world" />
-            <FeatureCard icon={<Video className="w-4 h-4 text-purple-400" />} title="Video Call" desc="Not some photos" />
+            <FeatureCard icon={<Zap className="w-4 h-4 text-yellow-400" />} title="Private" desc="Control who sees your content" />
+            <FeatureCard icon={<ShieldCheck className="w-4 h-4 text-green-400" />} title="Secure" desc="Your identity is protected" />
+            <FeatureCard icon={<Globe className="w-4 h-4 text-blue-400" />} title="Authentic" desc="No Catfishing. Real identities only" />
+            <FeatureCard icon={<Video className="w-4 h-4 text-purple-400" />} title="Video Call" desc="Connect with voice & camera" />
           </div>
         </div>
       </div>      {/* RIGHT SECTION - Auth Form */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 relative z-10 lg:bg-white/[0.01] lg:backdrop-blur-sm lg:border-l lg:border-white/5">
-        
+
         <div className="w-full max-w-[460px] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 duration-700 my-auto">
-          
+
           {/* Mobile Logo in natural flow */}
           <div className="flex items-center justify-center gap-3 mb-6 lg:hidden">
             <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl">
@@ -196,7 +196,7 @@ const Auth = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
-              
+
               {/* USERNAME */}
               <div className="space-y-1">
                 <label className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-4">
@@ -206,8 +206,8 @@ const Auth = () => {
                   <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-purple-400 transition-colors">
                     <User className="w-3.5 h-3.5" />
                   </div>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     autoComplete="username"
@@ -227,8 +227,8 @@ const Auth = () => {
                   <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-purple-400 transition-colors">
                     <Lock className="w-3.5 h-3.5" />
                   </div>
-                  <input 
-                    type={showPassword ? "text" : "password"} 
+                  <input
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete={isLogin ? "current-password" : "new-password"}
@@ -236,7 +236,7 @@ const Auth = () => {
                     placeholder="••••••••"
                     required
                   />
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white transition-colors"
@@ -260,7 +260,7 @@ const Auth = () => {
 
               {!isLogin && (
                 <div className="flex items-start gap-3 px-4 py-2.5 bg-purple-500/5 rounded-2xl border border-white/5">
-                  <div 
+                  <div
                     onClick={() => setAgreed(!agreed)}
                     className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded-md border-2 cursor-pointer flex items-center justify-center transition-all ${agreed ? 'bg-purple-600 border-purple-600 shadow-[0_0_10px_rgba(168,85,247,0.4)]' : 'border-white/10'}`}
                   >
@@ -276,8 +276,8 @@ const Auth = () => {
               )}
 
               {/* BUTTON */}
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isLoading}
                 className="w-full py-4 rounded-[20px] bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/10 flex justify-center items-center gap-3 disabled:opacity-50 mt-4 group/btn"
               >
@@ -285,7 +285,7 @@ const Auth = () => {
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
-                    {isLogin ? "Log In" : "Continue"} 
+                    {isLogin ? "Log In" : "Continue"}
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
@@ -293,11 +293,11 @@ const Auth = () => {
             </form>
 
             <div className="mt-6 text-center">
-              <button 
+              <button
                 onClick={() => {
                   setIsLogin(!isLogin);
                   setError("");
-                }} 
+                }}
                 className="group text-[9px] font-black text-gray-500 hover:text-white uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 mx-auto"
               >
                 <div className="w-8 h-px bg-white/5 group-hover:w-12 group-hover:bg-purple-500/50 transition-all"></div>
@@ -308,21 +308,21 @@ const Auth = () => {
           </div>
 
           <div className="mt-6 text-center space-x-4">
-            <button 
+            <button
               onClick={() => navigate('/privacy')}
               className="text-[8px] font-black text-gray-500 hover:text-white uppercase tracking-[0.3em] transition-all"
             >
               Privacy Policy
             </button>
             <span className="text-gray-800">•</span>
-            <button 
+            <button
               onClick={() => navigate('/terms')}
               className="text-[8px] font-black text-gray-500 hover:text-white uppercase tracking-[0.3em] transition-all"
             >
               Terms of Service
             </button>
           </div>
-          
+
           {/* <p className="hidden sm:block text-center text-[8px] text-white font-black uppercase tracking-[0.4em] mt-6 leading-relaxed opacity-40">
             Ontlo Universal Identity Layer<br/>Quantum-Safe Authentication
           </p> */}

@@ -556,7 +556,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
                               <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{new Date(comment.createdAt).toLocaleDateString()}</span>
                               <button
                                 onClick={() => setReplyingTo({ commentId: comment._id, username: typeof comment.user === 'object' ? comment.user?.username : 'User' })}
-                                className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-purple-400"
+                                className="text-[10px] font-black text-gray-500 hover:text-purple-400"
                               >
                                 Reply
                               </button>
@@ -610,8 +610,8 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
             {/* Modal Sticky Input Box */}
             <div className="sticky bottom-0 w-full p-4 bg-[#0B0E14] border-t border-white/10 z-20 shadow-[0_-10px_25px_rgba(0,0,0,0.5)]">
               {replyingTo && (
-                <div className="flex items-center justify-between px-4 py-2 bg-purple-500/10 border-l-2 border-purple-500 mb-3 animate-in slide-in-from-bottom-2 duration-300">
-                  <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Replying to {replyingTo.username}</span>
+                <div className="flex items-center justify-between px-4 py-2 border-l-2 border-purple-500 mb-2 animate-in slide-in-from-bottom-2 duration-300">
+                  <span className="text-[10px] text-purple-400 font-bold tracking-widest">Replying to {replyingTo.username}</span>
                   <button onClick={() => setReplyingTo(null)} className="text-gray-500"><X size={14} /></button>
                 </div>
               )}
@@ -641,7 +641,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
       {/* Main Feed Comment Input (When Modal is Closed) */}
       {!showFullComments && (
         <div className="px-5 pt-4">
-          <div className="min-h-[32px]">
+          <div className="min-h-auto">
             {replyingTo && (
               <div className="flex items-center justify-between px-4 py-1.5 bg-purple-500/10 border-l-2 border-purple-500 mb-2 animate-in slide-in-from-bottom-2 duration-300">
                 <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">

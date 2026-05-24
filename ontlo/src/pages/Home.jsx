@@ -72,12 +72,6 @@ const Home = () => {
             </>
           ) : (
             <>
-              <div className="bg-[#151923]/60 backdrop-blur-md border border-[#1e293b] rounded-xl px-3 py-1.5 flex items-center gap-2 flex-shrink-0 shadow-lg">
-                <Users className="w-3.5 h-3.5 text-purple-400" />
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                <span className="text-[10px] sm:text-xs font-bold text-gray-300 tracking-tight">{onlineCount.toLocaleString()}</span>
-              </div>
-
               <button
                 onClick={() => navigate("/create-post")}
                 className="w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-purple-400 hover:text-white transition-all shadow-lg shadow-purple-500/10"

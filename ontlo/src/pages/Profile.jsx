@@ -496,8 +496,8 @@ const Profile = () => {
 
               {/* TAB HEADERS & CONTENT SECTION */}
               <div className="space-y-4 pt-2">
-                <div className="flex items-center justify-between px-2 border-b border-white/5 pb-3">
-                  <div className="flex gap-6">
+                <div className="flex items-center justify-evenly border-b border-white/5 pb-3">
+                  <div className="flex gap-16">
                     <button
                       onClick={() => setActiveTab("posts")}
                       className={`text-sm sm:text-base font-bold tracking-tight pb-2 transition-all ${activeTab === 'posts' ? 'text-white border-b-2 border-purple-500 font-black' : 'text-gray-500 hover:text-white'}`}
