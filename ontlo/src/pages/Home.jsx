@@ -64,28 +64,35 @@ const Home = () => {
         </div>
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
           {isInitialLoad ? (
-            <Skeleton className="w-24 h-8 rounded-xl" />
+            <>
+              <Skeleton className="w-16 h-8 rounded-xl" />
+              <Skeleton className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl" />
+              <Skeleton className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl" />
+              <Skeleton className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl" />
+            </>
           ) : (
-            <div className="bg-[#151923]/60 backdrop-blur-md border border-[#1e293b] rounded-xl px-3 py-1.5 flex items-center gap-2 flex-shrink-0 shadow-lg">
-              <Users className="w-3.5 h-3.5 text-purple-400" />
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-[10px] sm:text-xs font-bold text-gray-300 tracking-tight">{onlineCount.toLocaleString()}</span>
-            </div>
+            <>
+              <div className="bg-[#151923]/60 backdrop-blur-md border border-[#1e293b] rounded-xl px-3 py-1.5 flex items-center gap-2 flex-shrink-0 shadow-lg">
+                <Users className="w-3.5 h-3.5 text-purple-400" />
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                <span className="text-[10px] sm:text-xs font-bold text-gray-300 tracking-tight">{onlineCount.toLocaleString()}</span>
+              </div>
+
+              <button
+                onClick={() => navigate("/create-post")}
+                className="w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-purple-400 hover:text-white transition-all shadow-lg shadow-purple-500/10"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+
+              <button onClick={() => navigate("/notifications")} className="relative w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                <Bell className="h-4 w-4" />
+              </button>
+              <button onClick={() => navigate("/profile")} className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-purple-500/20 overflow-hidden bg-[#151923] flex items-center justify-center">
+                {user?.profilePic ? <img src={user.profilePic} className="w-full h-full object-cover" alt="Profile" /> : <User className="w-5 h-5 text-gray-500" />}
+              </button>
+            </>
           )}
-
-          <button
-            onClick={() => navigate("/create-post")}
-            className="w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-purple-400 hover:text-white transition-all shadow-lg shadow-purple-500/10"
-          >
-            <Plus className="h-5 w-5" />
-          </button>
-
-          <button onClick={() => navigate("/notifications")} className="relative w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all">
-            <Bell className="h-4 w-4" />
-          </button>
-          <button onClick={() => navigate("/profile")} className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-purple-500/20 overflow-hidden bg-[#151923] flex items-center justify-center">
-            {user?.profilePic ? <img src={user.profilePic} className="w-full h-full object-cover" alt="Profile" /> : <User className="w-5 h-5 text-gray-500" />}
-          </button>
         </div>
       </header>
 

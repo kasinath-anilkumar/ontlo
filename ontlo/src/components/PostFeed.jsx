@@ -471,10 +471,10 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
             {previewComments.map((comment, idx) => (
               <div key={idx} className="flex gap-2 items-start animate-in fade-in duration-300">
                 <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 mt-0.5 border border-white/10">
-                  <img 
-                    src={getOptimizedUrl(comment.user?.profilePic, 100) || 'https://via.placeholder.com/150'} 
-                    className="w-full h-full object-cover" 
-                    alt="User" 
+                  <img
+                    src={getOptimizedUrl(comment.user?.profilePic, 100) || 'https://via.placeholder.com/150'}
+                    className="w-full h-full object-cover"
+                    alt="User"
                     loading="lazy"
                   />
                 </div>
@@ -503,122 +503,138 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
 
       {/* FULL COMMENT SECTION MODAL / OVERLAY - PORTALED TO TOP LEVEL */}
       {showFullComments && createPortal(
-        <div className="fixed inset-y-0 left-0 md:left-64 right-0 xl:right-80 z-[100] bg-[#0B0E14] border-r border-white/5 animate-in fade-in duration-300 flex flex-col shadow-2xl">
-          {/* Modal Header */}
-          <div className="flex items-center justify-between p-4 px-5 border-b border-white/5 bg-[#0B0E14] sticky top-0 z-10">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Comments</h3>
-            <button
-              onClick={() => {
-                setShowFullComments(false);
-                setReplyingTo(null);
-              }}
-              className="p-2 text-gray-400 hover:text-white transition-colors"
-            >
-              <X size={24} />
-            </button>
-          </div>
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => {
+              setShowFullComments(false);
+              setReplyingTo(null);
+            }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99] animate-in fade-in duration-300"
+          />
 
-          {/* Modal Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-6 pb-32">
-            {filteredComments.map((comment, idx) => {
-              const commentUserId = typeof comment.user === 'object' ? comment.user?._id : comment.user;
-              const canDelete = currentUser?._id === post.user?._id || currentUser?._id === commentUserId;
+          <div className="fixed bottom-0 top-auto left-0 right-0 h-[75vh] md:h-auto md:inset-y-0 md:left-64 md:right-0 md:xl:right-80 z-[100] bg-[#0B0E14] border-t md:border-t-0 border-white/10 md:border-r md:border-white/5 rounded-t-[24px] md:rounded-t-none animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in flex flex-col shadow-2xl overflow-hidden">
+            {/* Grab Handle for Mobile */}
+            <div className="md:hidden w-full flex justify-center py-2.5 shrink-0 bg-[#0B0E14]">
+              <div className="w-12 h-1 bg-white/20 rounded-full"></div>
+            </div>
 
-              return (
-                <div key={idx} className="space-y-4">
-                  <div className="flex gap-3 relative group/comment">
-                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
-                      <img src={getOptimizedUrl(comment.user?.profilePic, 200) || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="User" loading="lazy" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <p className="text-[13px] text-gray-200">
-                            <span className="font-bold text-white mr-2">{typeof comment.user === 'object' ? comment.user?.username : 'User'}</span>
-                            {comment.text}
-                          </p>
-                          <div className="flex items-center gap-4">
-                            <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{new Date(comment.createdAt).toLocaleDateString()}</span>
-                            <button
-                              onClick={() => setReplyingTo({ commentId: comment._id, username: typeof comment.user === 'object' ? comment.user?.username : 'User' })}
-                              className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-purple-400"
-                            >
-                              Reply
-                            </button>
+            {/* Modal Header */}
+            {/* <div className="flex items-center justify-between p-4 px-5 border-b border-white/5 bg-[#0B0E14] sticky top-0 z-10">
+              <h3 className="text-[11px] font-thin text-white">Comments</h3>
+              <button
+                onClick={() => {
+                  setShowFullComments(false);
+                  setReplyingTo(null);
+                }}
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div> */}
+
+            {/* Modal Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-6 pb-32">
+              {filteredComments.map((comment, idx) => {
+                const commentUserId = typeof comment.user === 'object' ? comment.user?._id : comment.user;
+                const canDelete = currentUser?._id === post.user?._id || currentUser?._id === commentUserId;
+
+                return (
+                  <div key={idx} className="space-y-4">
+                    <div className="flex gap-3 relative group/comment">
+                      <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
+                        <img src={getOptimizedUrl(comment.user?.profilePic, 200) || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="User" loading="lazy" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <p className="text-[13px] text-gray-200">
+                              <span className="font-bold text-white mr-2">{typeof comment.user === 'object' ? comment.user?.username : 'User'}</span>
+                              {comment.text}
+                            </p>
+                            <div className="flex items-center gap-4">
+                              <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{new Date(comment.createdAt).toLocaleDateString()}</span>
+                              <button
+                                onClick={() => setReplyingTo({ commentId: comment._id, username: typeof comment.user === 'object' ? comment.user?.username : 'User' })}
+                                className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-purple-400"
+                              >
+                                Reply
+                              </button>
+                            </div>
                           </div>
+                          {canDelete && (
+                            <button onClick={() => onDeleteComment(post._id, comment._id)} className="text-gray-800 hover:text-red-500 transition-colors p-1">
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
-                        {canDelete && (
-                          <button onClick={() => onDeleteComment(post._id, comment._id)} className="text-gray-800 hover:text-red-500 transition-colors p-1">
-                            <Trash2 size={14} />
-                          </button>
-                        )}
                       </div>
                     </div>
+
+                    {/* Replies in Modal - Premium Thread UI */}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="ml-4 space-y-4 pt-2 border-l border-white/10 pl-6 mt-1">
+                        {comment.replies.filter(reply => {
+                          const rUid = typeof reply.user === 'object' ? reply.user?._id : reply.user;
+                          if (post.user?._id === currentUser?._id) return true;
+                          if (rUid === currentUser?._id) return true;
+                          if (rUid === post.user?._id && commentUserId === currentUser?._id) return true;
+                          return false;
+                        }).map((reply, ridx) => (
+                          <div key={ridx} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300">
+                            <div className="w-6 h-6 rounded-full overflow-hidden border border-white/5 flex-shrink-0 mt-0.5">
+                              <img
+                                src={reply.user?.profilePic || 'https://via.placeholder.com/150'}
+                                className="w-full h-full object-cover"
+                                alt="User"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-[11px] text-gray-300 leading-normal">
+                                <span className="font-bold text-white mr-2">{reply.user?.username}</span>
+                                {reply.text}
+                              </p>
+                              <span className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1 inline-block">
+                                {new Date(reply.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
+                );
+              })}
+            </div>
 
-                  {/* Replies in Modal - Premium Thread UI */}
-                  {comment.replies && comment.replies.length > 0 && (
-                    <div className="ml-4 space-y-4 pt-2 border-l border-white/10 pl-6 mt-1">
-                      {comment.replies.filter(reply => {
-                        const rUid = typeof reply.user === 'object' ? reply.user?._id : reply.user;
-                        if (post.user?._id === currentUser?._id) return true;
-                        if (rUid === currentUser?._id) return true;
-                        if (rUid === post.user?._id && commentUserId === currentUser?._id) return true;
-                        return false;
-                      }).map((reply, ridx) => (
-                        <div key={ridx} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300">
-                          <div className="w-6 h-6 rounded-full overflow-hidden border border-white/5 flex-shrink-0 mt-0.5">
-                            <img
-                              src={reply.user?.profilePic || 'https://via.placeholder.com/150'}
-                              className="w-full h-full object-cover"
-                              alt="User"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-[11px] text-gray-300 leading-normal">
-                              <span className="font-bold text-white mr-2">{reply.user?.username}</span>
-                              {reply.text}
-                            </p>
-                            <span className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1 inline-block">
-                              {new Date(reply.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+            {/* Modal Sticky Input Box */}
+            <div className="sticky bottom-0 w-full p-4 bg-[#0B0E14] border-t border-white/10 z-20 shadow-[0_-10px_25px_rgba(0,0,0,0.5)]">
+              {replyingTo && (
+                <div className="flex items-center justify-between px-4 py-2 bg-purple-500/10 border-l-2 border-purple-500 mb-3 animate-in slide-in-from-bottom-2 duration-300">
+                  <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Replying to {replyingTo.username}</span>
+                  <button onClick={() => setReplyingTo(null)} className="text-gray-500"><X size={14} /></button>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Modal Sticky Input Box */}
-          <div className="sticky bottom-0 w-full p-4 bg-[#0B0E14] border-t border-white/10 z-20 shadow-[0_-10px_25px_rgba(0,0,0,0.5)]">
-            {replyingTo && (
-              <div className="flex items-center justify-between px-4 py-2 bg-purple-500/10 border-l-2 border-purple-500 mb-3 animate-in slide-in-from-bottom-2 duration-300">
-                <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Replying to {replyingTo.username}</span>
-                <button onClick={() => setReplyingTo(null)} className="text-gray-500"><X size={14} /></button>
+              )}
+              <div className="flex items-center gap-3 bg-[#151923] rounded-2xl px-4 py-2 border border-white/[0.03] shadow-2xl">
+                <input
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={handleSubmitComment}
+                  placeholder={replyingTo ? `Reply to ${replyingTo.username}...` : "Add a comment..."}
+                  className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-700"
+                />
+                <button
+                  onClick={handleSubmitComment}
+                  disabled={!commentText.trim()}
+                  className={`p-2 transition-all ${commentText.trim() ? 'text-purple-400 scale-110' : 'text-gray-800'}`}
+                >
+                  <Send size={20} className="rotate-[-10deg] fill-current opacity-80" />
+                </button>
               </div>
-            )}
-            <div className="flex items-center gap-3 bg-[#151923] rounded-2xl px-4 py-2 border border-white/[0.03] shadow-2xl">
-              <input
-                type="text"
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                onKeyDown={handleSubmitComment}
-                placeholder={replyingTo ? `Reply to ${replyingTo.username}...` : "Add a comment..."}
-                className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-700"
-              />
-              <button
-                onClick={handleSubmitComment}
-                disabled={!commentText.trim()}
-                className={`p-2 transition-all ${commentText.trim() ? 'text-purple-400 scale-110' : 'text-gray-800'}`}
-              >
-                <Send size={20} className="rotate-[-10deg] fill-current opacity-80" />
-              </button>
             </div>
           </div>
-        </div>,
+        </>,
         document.body
       )}
 
