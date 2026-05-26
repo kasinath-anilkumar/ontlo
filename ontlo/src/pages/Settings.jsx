@@ -243,13 +243,13 @@ const Settings = () => {
               </button>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Settings</h1>
             </div>
-            <button
+            {/* <button
               onClick={() => navigate("/create-post")}
               className="w-10 h-10 rounded-2xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 flex items-center justify-center text-purple-400 hover:text-purple-300 transition-all shadow-lg"
               title="Create Post"
             >
               <Plus size={20} />
-            </button>
+            </button> */}
           </div>
           <div className="space-y-1">
             <TabButton active={activeTab === "profile"} onClick={() => setActiveTab("profile")} icon={<User className="w-5 h-5 text-purple-400" />} label="Edit Profile" />
@@ -319,7 +319,7 @@ const Settings = () => {
                   <button
                     onClick={isEditing ? handleSaveProfile : () => setIsEditing(true)}
                     disabled={saving}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-purple-600/10 text-purple-400 border border-purple-500/20 hover:bg-purple-600 hover:text-white'}`}
+                    className={`px-4 py-2 rounded-xl text-[10px] transition-all flex items-center gap-2 ${isEditing ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-purple-600/10 text-purple-400 border border-purple-500/20 hover:bg-purple-600 hover:text-white'}`}
                   >
                     {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : isEditing ? <Check className="w-3 h-3" /> : null}
                     {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Edit Profile'}

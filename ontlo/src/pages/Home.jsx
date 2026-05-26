@@ -1,13 +1,12 @@
-import { Bell, ChevronRight, Globe, Heart, Plus, Star, User, Users, Radio } from "lucide-react";
+import { Bell, ChevronRight, Globe, Heart, Plus, Radio, Star, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import banner1 from "../assets/banner1.webp";
 import banner2 from "../assets/banner2.webp";
 import logo from "../assets/ontlo_Logo.webp";
-import Skeleton from "../components/ui/Skeleton";
 import PostFeed from "../components/PostFeed";
+import Skeleton from "../components/ui/Skeleton";
 import { useSocket } from "../context/SocketContext";
-import { getDynamicGreeting } from "../utils/greeting";
 import API_URL, { apiFetch } from "../utils/api";
 
 const Home = () => {
@@ -52,13 +51,13 @@ const Home = () => {
   const hasPosts = posts.length > 0;
 
   return (
-    <div className="flex-1 flex flex-col pt-20 md:pt-6 space-y-4 sm:space-y-6 pb-24 sm:pb-12 px-0 sm:px-6 lg:px-8 relative overflow-x-hidden scrollbar-hide md:scrollbar-default">
+    <div className="flex-1 flex flex-col pt-14 md:pt-6 space-y-4 sm:space-y-6 pb-24 sm:pb-8 px-0 sm:px-6 lg:px-8 relative overflow-x-hidden scrollbar-hide md:scrollbar-default">
       {/* Background Glows */}
-      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[120px] rounded-full pointer-events-none"></div>
-      <div className="absolute bottom-20 left-0 w-[300px] h-[300px] bg-pink-600/5 blur-[100px] rounded-full pointer-events-none"></div>
+      {/* <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[120px] rounded-full pointer-events-none"></div> */}
+      {/* <div className="absolute bottom-20 left-0 w-[300px] h-[300px] bg-pink-600/5 blur-[100px] rounded-full pointer-events-none"></div> */}
 
       {/* Top Bar Header */}
-      <header className="fixed md:hidden top-0 left-0 right-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 sm:pt-0 pb-4 -mx-2 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 border-b border-white/5">
+      <header className="fixed md:hidden top-0 left-0 right-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 sm:pt-0 pb-4 sm:pb-0 -mx-2 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 border-b border-white/5">
         <div className="block sm:hidden flex-shrink-0">
           <img src={logo} alt="Ontlo" className="h-8 w-auto object-contain drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
         </div>
@@ -74,15 +73,15 @@ const Home = () => {
             <>
               <button
                 onClick={() => navigate("/create-post")}
-                className="w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-purple-400 hover:text-white transition-all shadow-lg shadow-purple-500/10"
+                className="w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-full flex items-center justify-center text-gray-400 hover:text-white transition-all"
               >
                 <Plus className="h-5 w-5" />
               </button>
 
-              <button onClick={() => navigate("/notifications")} className="relative w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all">
+              <button onClick={() => navigate("/notifications")} className="relative w-8 h-8 sm:w-9 sm:h-9 bg-[#151923] border border-[#1e293b] rounded-full flex items-center justify-center text-gray-400 hover:text-white transition-all">
                 <Bell className="h-4 w-4" />
               </button>
-              <button onClick={() => navigate("/profile")} className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-purple-500/20 overflow-hidden bg-[#151923] flex items-center justify-center">
+              <button onClick={() => navigate("/profile")} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-purple-500/20 overflow-hidden bg-[#151923] flex items-center justify-center">
                 {user?.profilePic ? <img src={user.profilePic} className="w-full h-full object-cover" alt="Profile" /> : <User className="w-5 h-5 text-gray-500" />}
               </button>
             </>

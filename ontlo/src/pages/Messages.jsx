@@ -81,10 +81,10 @@ const Messages = () => {
       <div className="absolute top-0 left-0 w-64 h-64 bg-purple-600/5 blur-[100px] pointer-events-none"></div>
 
       <div className={`w-full md:w-96 flex flex-col h-full bg-[#0B0E14] z-10 transition-all duration-300 ${selectedConnection ? 'hidden md:flex' : 'flex'}`}>
-        <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl p-6 pb-4 border-b border-white/5 overflow-x-hidden">
+        <div className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl p-4 pb-4 border-b border-white/5 overflow-x-hidden">
           <div className="flex items-center justify-between mb-4">
             <div className="flex flex-col">
-              <h1 className="text-3xl font-black text-white tracking-tight">Messages</h1>
+              <h1 className="text-2xl font-semibold text-white">Messages</h1>
               {/* <div className="flex items-center gap-1.5 mt-0.5">
                 <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-orange-500 animate-pulse'}`}></div>
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
@@ -103,7 +103,7 @@ const Messages = () => {
             </div>
             <input 
               type="text" 
-              placeholder="Search conversations..." 
+              placeholder="Search connection..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[#151923] border border-[#1e293b] text-white text-sm rounded-2xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-purple-500/50 transition-all shadow-inner"
@@ -111,9 +111,9 @@ const Messages = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 space-y-1 pt-4 smooth-render gpu-accelerated">
+        <div className="flex-1 overflow-y-auto  space-y-1 pt-4 smooth-render gpu-accelerated">
           {loading ? (
-            <div className="space-y-4 px-2">
+            <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={`msg-skeleton-${i}`} className="flex items-center gap-4 p-4 mx-2">
                   <Skeleton circle={true} className="w-14 h-14" />
@@ -134,7 +134,7 @@ const Messages = () => {
               <div 
                 key={conn.id} 
                 onClick={() => conn.status !== 'pending' && setSelectedConnection(conn)}
-                className={`p-4 mx-2 rounded-2xl transition-all flex items-center justify-between group ${selectedConnection?.id === conn.id ? 'bg-[#151923] shadow-lg border border-[#1e293b]/50' : (conn.status === 'pending' ? 'bg-purple-500/5 cursor-default' : 'hover:bg-[#151923]/40 cursor-pointer')}`}
+                className={`p-4 rounded-2xl transition-all flex items-center justify-between group ${selectedConnection?.id === conn.id ? 'bg-[#151923] shadow-lg border border-[#1e293b]/50' : (conn.status === 'pending' ? 'bg-purple-500/5 cursor-default' : 'hover:bg-[#151923]/40 cursor-pointer')}`}
               >
                 <div className="flex items-center gap-4">
                   <div className="relative">

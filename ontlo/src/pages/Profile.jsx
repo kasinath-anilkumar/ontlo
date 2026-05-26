@@ -708,7 +708,7 @@ const Profile = () => {
                         <div
                           key={m._id}
                           onClick={() => setViewingPostId(m._id)}
-                          className="aspect-square bg-[#1a1f30] rounded-xl overflow-hidden relative group cursor-pointer border border-white/5 shadow-sm"
+                          className="aspect-square bg-[#1a1f30] rounded-sm overflow-hidden relative group cursor-pointer border border-white/5 shadow-sm"
                         >
                           <img
                             src={m.imageUrl}
@@ -735,15 +735,15 @@ const Profile = () => {
                         <div
                           key={conn.id}
                           onClick={() => navigate("/messages", { state: { selectId: conn.id } })}
-                          className="p-3 bg-[#131622] border border-white/5 rounded-2xl flex items-center justify-between hover:border-purple-500/30 transition cursor-pointer group"
+                          className="p-3  flex items-center justify-between hover:border-purple-500/30 transition cursor-pointer group"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10">
-                              <img src={conn.user?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="User" />
+                              <img src={conn.user?.profilePic} className="w-full h-full object-cover" alt="User" />
                             </div>
                             <div>
                               <p className="text-sm font-bold text-white group-hover:text-purple-400 transition">{conn.user?.username}</p>
-                              <p className="text-xs text-gray-500 font-medium">{conn.user?.onlineStatus === 'online' ? '🟢 Online' : '⚪ Offline'}</p>
+                              <p className="text-xs text-gray-500 font-medium">{conn.user?.onlineStatus === 'online' ? ' Online' : ' Offline'}</p>
                             </div>
                           </div>
                           <button className="p-2 bg-white/5 rounded-xl text-gray-400 group-hover:text-white transition">

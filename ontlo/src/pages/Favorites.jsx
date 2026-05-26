@@ -127,7 +127,7 @@ const Favorites = () => {
             <div
               key={fav._id}
               onClick={() => navigate("/messages", { state: { selectId: fav._id } })}
-              className="p-4 mx-2 rounded-2xl transition-all flex items-center justify-between group hover:bg-[#151923]/40 cursor-pointer"
+              className="p-4 rounded-2xl transition-all flex items-center justify-between group hover:bg-[#151923]/40 cursor-pointer"
             >
               <div className="flex items-center gap-4 min-w-0">
                 <div className="relative shrink-0">

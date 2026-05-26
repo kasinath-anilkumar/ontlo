@@ -329,18 +329,18 @@ const Search = () => {
     <div className="h-full bg-[#0B0E14] flex flex-col overflow-hidden">
       
       {/* Instagram style minimal search bar header */}
-      <div className="sticky top-0 z-40 bg-[#0B0E14]/95 backdrop-blur-xl px-4 py-3 flex items-center gap-3 shrink-0">
-        <button
+      <div className="sticky top-0 z-40 bg-[#0B0E14]/95 backdrop-blur-xl px-4 py-4 flex items-center gap-3 shrink-0">
+        {/* <button
           onClick={() => navigate(-1)}
           className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white transition-all shrink-0"
         >
           <ChevronLeft className="w-5 h-5" />
-        </button>
+        </button> */}
         
         <div className="relative flex-1">
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Find connections..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full bg-[#1A1F2C] border border-white/5 text-white rounded-full py-2 pl-10 pr-4 text-sm placeholder-gray-500 focus:outline-none focus:border-white/10 transition-all font-medium"
@@ -350,7 +350,7 @@ const Search = () => {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 overflow-y-auto px-4 pb-20 scrollbar-hide">
+      <div className="flex-1 h-screen overflow-y-auto px-4 pb-20 scrollbar-hide">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-40">
             <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />

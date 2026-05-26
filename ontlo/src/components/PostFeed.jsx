@@ -243,7 +243,7 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
         </div>
       )} */}
 
-      <div className="flex flex-col gap-6">
+ui       <div className="flex flex-col gap-2">
         {posts.length === 0 ? (
           <div className="bg-[#151923]/40 border border-dashed border-white/5 rounded-[32px] p-12 text-center">
             <Camera size={32} className="mx-auto mb-4 text-gray-700" />
@@ -750,14 +750,13 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
                 className="w-full bg-[#11141D] border border-white/[0.03] focus:border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder:text-gray-700 outline-none transition-all pr-14 disabled:opacity-50"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <Smile size={16} className="text-gray-700 hover:text-purple-400 transition-colors cursor-pointer" />
                 <div className="min-w-[24px] flex justify-center">
                   {commentText.trim() && !isSubmitting && (
                     <button
                       onClick={handleSubmitComment}
                       className="p-1 text-purple-400 hover:text-purple-300 transition-colors animate-in fade-in zoom-in duration-300"
                     >
-                      <Send size={18} className="rotate-[-10deg] fill-current opacity-80" />
+                      <Send size={18} className="rotate-[45deg] fill-current opacity-80" />
                     </button>
                   )}
                 </div>

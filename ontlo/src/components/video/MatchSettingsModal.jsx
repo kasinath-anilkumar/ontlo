@@ -67,11 +67,8 @@ const MatchSettingsModal = ({ onClose, currentPreferences, onSave }) => {
         {/* Header */}
         <div className="px-5 py-4 flex items-center justify-between bg-white/5 border-b border-white/5">
           <div className="flex items-center gap-3">
-             <div className="p-1.5 bg-purple-500/10 rounded-lg">
-               <Sparkles className="w-4 h-4 text-purple-400" />
-             </div>
              <div>
-               <h3 className="text-base font-black text-white uppercase tracking-tighter italic">Match Preferences</h3>
+               <h3 className="text-base text-white  italic">Match Preferences</h3>
              </div>
           </div>
           <button 
