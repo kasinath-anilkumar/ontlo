@@ -114,7 +114,7 @@ LikeSchema.index({
 // VALIDATION
 // ======================================================
 
-LikeSchema.pre('validate', function (next) {
+LikeSchema.pre('validate', function () {
 
   // Prevent self-like
   if (
@@ -124,14 +124,10 @@ LikeSchema.pre('validate', function (next) {
       this.toUser.toString()
   ) {
 
-    return next(
-      new Error(
-        'Users cannot like themselves'
-      )
+    throw new Error(
+      'Users cannot like themselves'
     );
   }
-
-  next();
 });
 
 

@@ -113,13 +113,13 @@ const NotificationItem = ({ n, isSelecting, isSelected, onToggleSelect, onDelete
             <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
               <button 
                 onClick={() => onAccept(n.fromUser?._id, n._id)}
-                className="px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-[10px] font-black uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-md"
+                className="px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-[10px] hover:opacity-90 active:scale-95 transition-all shadow-md"
               >
                 Accept
               </button>
               <button 
                 onClick={() => onDecline(n.fromUser?._id, n._id)}
-                className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-wider hover:bg-white/10 active:scale-95 transition-all"
+                className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white text-[10px] hover:bg-white/10 active:scale-95 transition-all"
               >
                 Decline
               </button>

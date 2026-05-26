@@ -1,13 +1,27 @@
 import { ChevronLeft, Loader2, Search as SearchIcon, User } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
 
-const UserRow = ({ item, onOpenProfile }) => {
+const getPayloadUserId = (payload) => (
+  payload?.user?._id ||
+  payload?.userId ||
+  payload?.matchedUser?._id ||
+  payload?.fromUser?._id ||
+  payload?.fromUser ||
+  null
+);
+
+const UserRow = ({ item, onStatusChange }) => {
   const [status, setStatus] = useState(item.connectionStatus || 'none');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const updateStatus = useCallback((nextStatus) => {
+    setStatus(nextStatus);
+    onStatusChange?.(item._id, nextStatus);
+  }, [item._id, onStatusChange]);
 
   // Fetch connection status on mount if not provided (e.g. from discover)
   useEffect(() => {
@@ -16,7 +30,7 @@ const UserRow = ({ item, onOpenProfile }) => {
         const response = await apiFetch(`${API_URL}/api/users/${item._id}`);
         if (response.ok) {
           const data = await response.json();
-          setStatus(data.connectionStatus || 'none');
+          updateStatus(data.connectionStatus || 'none');
         }
       } catch (err) {
         console.error(err);
@@ -25,9 +39,9 @@ const UserRow = ({ item, onOpenProfile }) => {
     if (item.connectionStatus === undefined) {
       fetchStatus();
     } else {
-      setStatus(item.connectionStatus);
+      setStatus(item.connectionStatus || 'none');
     }
-  }, [item._id, item.connectionStatus]);
+  }, [item._id, item.connectionStatus, updateStatus]);
 
   // Real-time connection updates
   const { socket } = useSocket();
@@ -35,34 +49,48 @@ const UserRow = ({ item, onOpenProfile }) => {
     if (!socket) return;
 
     const handleNewMatch = (payload) => {
-      if (payload.userId === item._id || payload.matchedUser?._id === item._id) {
-        setStatus('active');
+      if (getPayloadUserId(payload)?.toString() === item._id?.toString()) {
+        updateStatus('active');
       }
     };
     
     const handleNewConnection = (connection) => {
-      const users = typeof connection.users[0] === 'object' ? connection.users.map(u => u._id || u) : connection.users;
-      if (users.includes(item._id)) {
-        setStatus('active');
+      const connectionUserId =
+        connection?.user?._id ||
+        connection?.users?.find?.((user) => (user?._id || user)?.toString() === item._id?.toString());
+
+      if (connectionUserId?.toString() === item._id?.toString()) {
+        updateStatus(connection.status === 'blocked' ? 'blocked' : 'active');
       }
     };
 
     const handleNotification = (notif) => {
-      if ((notif.type === 'like' || notif.type === 'connection_request') && (notif.fromUser?._id === item._id || notif.fromUser === item._id)) {
-        setStatus('pending_received');
+      if (
+        (notif.type === 'like' || notif.type === 'connection_request') &&
+        getPayloadUserId(notif)?.toString() === item._id?.toString()
+      ) {
+        updateStatus('pending_received');
+      }
+    };
+
+    const handleRequestCancelled = (payload) => {
+      if (payload?.fromUserId?.toString() === item._id?.toString()) {
+        updateStatus('none');
       }
     };
 
     socket.on('new-match', handleNewMatch);
     socket.on('new-connection', handleNewConnection);
     socket.on('new-notification', handleNotification);
+    socket.on('connection-request-cancelled', handleRequestCancelled);
 
     return () => {
       socket.off('new-match', handleNewMatch);
       socket.off('new-connection', handleNewConnection);
       socket.off('new-notification', handleNotification);
+      socket.off('connection-request-cancelled', handleRequestCancelled);
     };
-  }, [socket, item._id]);
+  }, [socket, item._id, updateStatus]);
 
   const handleConnect = async (e) => {
     e.stopPropagation();
@@ -76,9 +104,9 @@ const UserRow = ({ item, onOpenProfile }) => {
       if (res.ok) {
         const data = await res.json();
         if (data.isMatch) {
-          setStatus('active');
+          updateStatus('active');
         } else {
-          setStatus('pending_sent');
+          updateStatus('pending_sent');
         }
       }
     } catch (err) {
@@ -98,7 +126,26 @@ const UserRow = ({ item, onOpenProfile }) => {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
-        setStatus('active');
+        updateStatus('active');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelRequest = async (e) => {
+    e.stopPropagation();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await apiFetch(`${API_URL}/api/interactions/${item._id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        updateStatus('none');
       }
     } catch (err) {
       console.error(err);
@@ -148,10 +195,11 @@ const UserRow = ({ item, onOpenProfile }) => {
         )}
         {status === 'pending_sent' && (
           <button 
-            disabled
-            className="px-4 py-1.5 rounded-full border border-white/5 text-xs font-bold text-gray-500 tracking-tight cursor-not-allowed"
+            onClick={handleCancelRequest}
+            disabled={loading}
+            className="px-4 py-1.5 rounded-full border border-white/10 hover:bg-white/5 text-xs font-bold text-gray-400 hover:text-white tracking-tight active:scale-95 transition-all disabled:opacity-50"
           >
-            Requested
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Requested"}
           </button>
         )}
         {status === 'pending_received' && (
@@ -186,6 +234,17 @@ const Search = () => {
   const { socket } = useSocket();
   const navigate = useNavigate();
   const searchTimeoutRef = useRef(null);
+
+  const updateUserStatus = useCallback((userId, connectionStatus) => {
+    const updateList = (list) => list.map((user) => (
+      user._id?.toString() === userId?.toString()
+        ? { ...user, connectionStatus }
+        : user
+    ));
+
+    setResults((prev) => updateList(prev));
+    setSuggestions((prev) => updateList(prev));
+  }, []);
 
   // Fetch Suggestions (Discover Users)
   const fetchSuggestions = async () => {
@@ -301,7 +360,7 @@ const Search = () => {
           /* Explore suggestions (Instagram explorer style) */
           <div className="mt-4 flex flex-col">
             <div className="px-2 pb-2">
-              <h2 className="text-sm font-bold text-white text-left tracking-wide">Suggested</h2>
+              <h2 className="text-xs font-thin text-white text-left tracking-wide">Suggested</h2>
             </div>
             {loadingSuggestions ? (
               <div className="flex justify-center py-10 opacity-30">
@@ -315,6 +374,7 @@ const Search = () => {
                   <UserRow 
                     key={user._id} 
                     item={user} 
+                    onStatusChange={updateUserStatus}
                   />
                 ))}
               </div>
@@ -331,6 +391,7 @@ const Search = () => {
               <UserRow 
                 key={user._id} 
                 item={user} 
+                onStatusChange={updateUserStatus}
               />
             ))}
           </div>

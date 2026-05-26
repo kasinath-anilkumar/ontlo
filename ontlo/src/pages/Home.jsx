@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Globe, Heart, Plus, Star, User, Users, Video } from "lucide-react";
+import { Bell, ChevronRight, Globe, Heart, Plus, Star, User, Users, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import banner1 from "../assets/banner1.webp";
@@ -108,17 +108,17 @@ const Home = () => {
             <div className="relative grid md:grid-cols-2 gap-10 items-center z-20">
               <div className="space-y-6">
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight tracking-tight">
-                  Start a <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent italic">Video Chat</span>
+                  Start <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent italic">Connecting</span>
                 </h1>
                 <p className="text-white/40 max-w-sm text-xs sm:text-sm font-medium leading-relaxed">
-                  Jump into a conversation and see where it leads. Meet real people instantly.
+                  Jump into a conversation and see where it leads. Meet real people.
                 </p>
                 <button
                   onClick={() => navigate("/video")}
                   className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl shadow-purple-500/20 hover:scale-105 transition"
                 >
-                  <Video size={18} className="fill-current" />
-                  <span>Start Discovery</span>
+                  <Radio size={18} className="fill-current" />
+                  <span>Connect Now</span>
                 </button>
               </div>
               <div className="hidden md:flex relative justify-center">

@@ -1,29 +1,27 @@
 import {
-  Camera,
-  ChevronLeft,
-  Settings as SettingsIcon,
   BadgeCheck,
-  MapPin,
   Briefcase,
-  GraduationCap,
   Calendar,
-  MoreHorizontal,
-  MessageSquare,
-  Image as ImageIcon,
-  Star,
+  ChevronLeft,
+  GraduationCap,
   Heart,
-  Users,
+  Image as ImageIcon,
+  Loader2,
+  MessageSquare,
+  MoreHorizontal,
   Plus,
-  Loader2
+  Settings as SettingsIcon,
+  Star,
+  Users
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import PostFeed from "../components/PostFeed";
 import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
-import PostFeed from "../components/PostFeed";
 
 const Profile = () => {
-  const { user, setUser, connections, socket } = useSocket();
+  const { user, connections, socket } = useSocket();
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
@@ -33,13 +31,13 @@ const Profile = () => {
   const [profileUser, setProfileUser] = useState(isSelf ? user : profileUserFromState);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const [uploading, setUploading] = useState(false);
   const [moments, setMoments] = useState([]);
   const [loadingMoments, setLoadingMoments] = useState(true);
   const [viewingPostId, setViewingPostId] = useState(null);
   const [activeTab, setActiveTab] = useState("posts");
-  const [favorites, setFavorites] = useState([]);
-  const [loadingFavorites, setLoadingFavorites] = useState(true);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isProfileFavorite, setIsProfileFavorite] = useState(false);
+  const [favoriteActionLoading, setFavoriteActionLoading] = useState(false);
 
   useEffect(() => {
     if (!isSelf && profileUserFromState?._id) {
@@ -119,6 +117,8 @@ const Profile = () => {
       }
     };
     const fetchFavorites = async () => {
+      if (isSelf) return;
+
       try {
         const token = localStorage.getItem("token");
         const res = await apiFetch(`${API_URL}/api/interactions/favorites`, {
@@ -126,51 +126,39 @@ const Profile = () => {
         });
         if (res.ok) {
           const data = await res.json();
-          setFavorites(data);
+          setIsProfileFavorite(
+            data.some((fav) => fav._id?.toString() === profileUser._id?.toString())
+          );
         }
       } catch (err) {
         console.error("Fetch favorites error:", err);
-      } finally {
-        setLoadingFavorites(false);
       }
     };
     fetchMoments();
-    if (isSelf) {
-      fetchFavorites();
-    } else {
-      setLoadingFavorites(false);
-    }
+    fetchFavorites();
   }, [isSelf, profileUser?._id]);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setUploading(true);
-    const data = new FormData();
-    data.append("image", file);
+  const handleToggleFavorite = async () => {
+    if (!profileUser?._id || isSelf || profileUser.connectionStatus !== 'active') return;
+
+    setFavoriteActionLoading(true);
+
     try {
       const token = localStorage.getItem("token");
-      const response = await apiFetch(`${API_URL}/api/upload/profile-pic`, {
+      const res = await apiFetch(`${API_URL}/api/interactions/favorites/${profileUser._id}`, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: data
+        headers: { Authorization: `Bearer ${token}` }
       });
-      const result = await response.json();
-      if (response.ok) {
-        const updateRes = await apiFetch(`${API_URL}/api/users/profile/update`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-          body: JSON.stringify({ profilePic: result.url }),
-        });
-        if (updateRes.ok) {
-          const updatedUser = await updateRes.json();
-          setUser({ ...user, ...updatedUser });
-        }
+
+      if (res.ok) {
+        const data = await res.json();
+        setIsProfileFavorite(Boolean(data.isFavorite));
       }
     } catch (err) {
-      console.error("Upload error:", err);
+      console.error("Toggle favorite error:", err);
     } finally {
-      setUploading(false);
+      setFavoriteActionLoading(false);
+      setShowProfileMenu(false);
     }
   };
 
@@ -211,6 +199,24 @@ const Profile = () => {
     }
   };
 
+  const handleCancelRequest = async () => {
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiFetch(`${API_URL}/api/interactions/${profileUser._id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (response.ok) {
+        setProfileUser(prev => ({ ...prev, connectionStatus: 'none' }));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleDecline = async () => {
     setActionLoading(true);
     try {
@@ -234,23 +240,60 @@ const Profile = () => {
     
     if (profileUser?.connectionStatus === 'active') {
       return (
-        <button
-          onClick={() => navigate("/messages", { state: { selectId: profileUser._id } })}
-          className={`flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isDesktop ? 'px-5 h-10 rounded-full bg-white text-black text-sm font-semibold hover:bg-white/90' : 'flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-sm py-3 rounded-2xl shadow-[0_4px_20px_rgba(168,85,247,0.3)]'}`}
-        >
-          <MessageSquare size={isDesktop ? 15 : 18} />
-          <span>Message {isDesktop ? '' : profileUser.username}</span>
-        </button>
+        <div className={`flex items-center gap-2 ${isDesktop ? '' : 'w-full'}`}>
+          <button
+            onClick={() => navigate("/messages", { state: { selectId: profileUser._id } })}
+            className={`flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isDesktop ? 'px-5 h-10 rounded-full bg-white text-black text-sm font-semibold hover:bg-white/90' : 'flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-sm py-3 rounded-2xl shadow-[0_4px_20px_rgba(168,85,247,0.3)]'}`}
+          >
+            <MessageSquare size={isDesktop ? 15 : 18} />
+            <span>Message {isDesktop ? '' : profileUser.username}</span>
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowProfileMenu((prev) => !prev);
+              }}
+              className={`${isDesktop ? 'w-10 h-10 rounded-full' : 'w-12 h-12 rounded-2xl'} bg-white/5 border border-white/10 flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition-all`}
+              title="More actions"
+            >
+              <MoreHorizontal size={isDesktop ? 18 : 20} />
+            </button>
+
+            {showProfileMenu && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setShowProfileMenu(false)} />
+                <div className={`absolute right-0 ${isDesktop ? 'top-12' : 'bottom-14'} w-52 bg-[#151923] border border-[#1e293b] rounded-2xl shadow-2xl z-30 py-2 overflow-hidden animate-in zoom-in-95 duration-200`}>
+                  <button
+                    onClick={handleToggleFavorite}
+                    disabled={favoriteActionLoading}
+                    className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-[#1e293b] hover:text-white flex items-center gap-2 transition disabled:opacity-50"
+                  >
+                    {favoriteActionLoading ? (
+                      <Loader2 className="w-4 h-4 text-yellow-500 animate-spin" />
+                    ) : (
+                      <Star className={`w-4 h-4 text-yellow-500 ${isProfileFavorite ? 'fill-current' : ''}`} />
+                    )}
+                    {isProfileFavorite ? 'Remove Favorite' : 'Add to Favorite'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       );
     }
     
     if (profileUser?.connectionStatus === 'pending_sent') {
       return (
         <button
-          disabled
-          className={`flex items-center justify-center gap-2 cursor-not-allowed border border-white/10 text-gray-400 font-bold ${isDesktop ? 'px-5 h-10 rounded-full bg-white/5 text-sm' : 'flex-1 bg-white/5 text-sm py-3 rounded-2xl'}`}
+          onClick={handleCancelRequest}
+          disabled={actionLoading}
+          className={`flex items-center justify-center gap-2 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 font-bold transition-all disabled:opacity-50 ${isDesktop ? 'px-5 h-10 rounded-full bg-white/5 text-sm' : 'flex-1 bg-white/5 text-sm py-3 rounded-2xl'}`}
         >
-          <span>Requested</span>
+          {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+          {!actionLoading && <span>Requested</span>}
         </button>
       );
     }
@@ -396,7 +439,7 @@ const Profile = () => {
             </span>
 
             {/* RIGHT ACTIONS */}
-            <div className="flex items-center gap-3 relative z-10">
+            <div className={`items-center gap-3 relative z-10 ${isSelf ? 'flex' : 'hidden sm:flex'}`}>
               {isSelf ? (
                 <>
                   {/* CREATE POST */}
@@ -465,22 +508,15 @@ const Profile = () => {
               {/* DESKTOP LAYOUT (Left Avatar, Right Info) / MOBILE (Centered) */}
               <div className="flex flex-col sm:flex-row items-center sm:items-center gap-6 sm:gap-10 relative z-10">
 
-                {/* AVATAR WITH GLOW & ONLINE BADGE */}
+                {/* AVATAR */}
                 <div className="relative group flex-shrink-0">
-                  <div className="w-32 h-32 sm:w-44 sm:h-44 rounded-full border-4 border-purple-500/40 p-1 group-hover:border-purple-400 transition-all shadow-[0_0_30px_rgba(168,85,247,0.2)]">
+                  <div className="w-32 h-32 sm:w-44 sm:h-44 ">
                     <div className="w-full h-full rounded-full overflow-hidden bg-[#151923] relative">
                       <img src={profileUser?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="Profile" />
-                      {isSelf && (
-                        <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer backdrop-blur-sm">
-                          <Camera size={24} className="text-white mb-1" />
-                          <span className="text-[10px] font-bold">Change</span>
-                          <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" disabled={uploading} />
-                        </label>
-                      )}
                     </div>
                   </div>
                   {/* Online Green Badge */}
-                  {profileUser?.onlineStatus === 'online' && (
+                  {false && profileUser?.onlineStatus === 'online' && (
                     <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 w-5 h-5 bg-green-500 rounded-full border-4 border-[#121420] shadow-md" />
                   )}
                 </div>
@@ -498,7 +534,7 @@ const Profile = () => {
                   </div>
 
                   {/* DEMOGRAPHICS & STATUS ROW */}
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs sm:text-sm text-gray-300 font-medium tracking-wide">
+                  <div className="hidden">
                     {profileUser?.age && <span>{profileUser.age} Y.O</span>}
                     {profileUser?.gender && (
                       <>
@@ -530,30 +566,14 @@ const Profile = () => {
                     {profileUser?.bio || <span className="italic text-gray-500">No bio provided yet.</span>}
                   </p>
 
-                  {/* PILLS */}
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-2 pt-1">
-                    {profileUser?.interests?.length > 0 ? (
-                      profileUser.interests.map((tag) => (
-                        <span key={tag} className="px-3.5 py-1.5 rounded-full bg-purple-950/40 border border-purple-500/20 text-purple-300 font-medium text-xs tracking-wide">
-                          {tag}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-gray-500 italic">No interests selected.</span>
-                    )}
-                  </div>
                 </div>
               </div>
 
               {/* LARGE SCREEN STATS FOOTER (Inside Hero Card) */}
-              <div className="hidden sm:grid grid-cols-3 gap-6 pt-8 mt-8 border-t border-white/5 text-center relative z-10">
+              <div className="hidden sm:grid grid-cols-2 gap-6 pt-8 mt-8 border-t border-white/5 text-center relative z-10">
                 <div>
                   <div className="text-2xl font-bold text-white">{moments.length || 0}</div>
                   <div className="text-xs text-gray-400 font-medium mt-0.5 uppercase tracking-wider">Posts</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white">{favorites.length || 0}</div>
-                  <div className="text-xs text-gray-400 font-medium mt-0.5 uppercase tracking-wider">Favorites</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-white">{connections.length || 0}</div>
@@ -563,14 +583,10 @@ const Profile = () => {
             </div>
 
             {/* SMALL SCREEN STATS ROW (3 Separate Static Boxes) */}
-            <div className="grid grid-cols-3 gap-2 sm:hidden px-1">
+            <div className="grid grid-cols-2 gap-2 sm:hidden px-1">
               <div className="bg-[#131622] border border-white/5 rounded-2xl p-2.5 text-center shadow-lg">
                 <div className="text-base font-bold text-white">{moments.length || 0}</div>
                 <div className="text-[10px] text-gray-400 font-medium mt-0.5 uppercase tracking-wider">Posts</div>
-              </div>
-              <div className="bg-[#131622] border border-white/5 rounded-2xl p-2.5 text-center shadow-lg">
-                <div className="text-base font-bold text-white">{favorites.length || 0}</div>
-                <div className="text-[10px] text-gray-400 font-medium mt-0.5 uppercase tracking-wider">Favorites</div>
               </div>
               <div className="bg-[#131622] border border-white/5 rounded-2xl p-2.5 text-center shadow-lg">
                 <div className="text-base font-bold text-white">{connections.length || 0}</div>
@@ -620,7 +636,7 @@ const Profile = () => {
                       <span>{profileUser.education}</span>
                     </div>
                   )}
-                  {profileUser?.location && (
+                  {false && profileUser?.location && (
                     <div className="flex items-center gap-3.5 font-medium">
                       <MapPin size={20} className="text-purple-400 flex-shrink-0" />
                       <span>Lives in {profileUser.location}</span>
@@ -629,6 +645,21 @@ const Profile = () => {
                   <div className="flex items-center gap-3.5 font-medium">
                     <Calendar size={20} className="text-purple-400 flex-shrink-0" />
                     <span>Joined {profileUser?.createdAt ? new Date(profileUser.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'}</span>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/5 space-y-3">
+                  <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide">Interests</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {profileUser?.interests?.length > 0 ? (
+                      profileUser.interests.map((tag) => (
+                        <span key={tag} className="px-3.5 py-1.5 bg-purple-950/40 border border-purple-500/20 text-purple-300 font-semibold text-xs rounded-xl">
+                          {tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-gray-500 italic">No interests selected.</span>
+                    )}
                   </div>
                 </div>
 
@@ -657,12 +688,6 @@ const Profile = () => {
                       className={`text-sm sm:text-base font-bold tracking-tight pb-2 transition-all ${activeTab === 'posts' ? 'text-white border-b-2 border-purple-500 font-black' : 'text-gray-500 hover:text-white'}`}
                     >
                       Posts ({moments.length})
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("favorites")}
-                      className={`text-sm sm:text-base font-bold tracking-tight pb-2 transition-all ${activeTab === 'favorites' ? 'text-white border-b-2 border-purple-500 font-black' : 'text-gray-500 hover:text-white'}`}
-                    >
-                      Favorites ({favorites.length})
                     </button>
                     <button
                       onClick={() => setActiveTab("connections")}
@@ -702,37 +727,7 @@ const Profile = () => {
                   </div>
                 )}
 
-                {/* TAB 2: FAVORITES GRID */}
-                {activeTab === "favorites" && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-in fade-in duration-300">
-                    {loadingFavorites ? (
-                      <div className="col-span-full py-20 text-center text-gray-500 text-sm animate-pulse">Loading favorites...</div>
-                    ) : favorites.length > 0 ? (
-                      favorites.map((fav) => (
-                        <div
-                          key={fav._id}
-                          onClick={() => navigate("/messages", { state: { selectId: fav._id } })}
-                          className="group relative aspect-[3/4] rounded-2xl overflow-hidden border border-white/10 bg-[#151923] shadow-xl cursor-pointer transition-all hover:scale-[1.02]"
-                        >
-                          <img src={fav.profilePic} className="w-full h-full object-cover" alt={fav.username} />
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#0B0E14] via-transparent opacity-80"></div>
-                          <div className="absolute bottom-0 inset-x-0 p-3">
-                            <p className="text-sm font-bold text-white truncate">{fav.username}{fav.age ? `, ${fav.age}` : ''}</p>
-                            <p className="text-[10px] text-purple-400 font-semibold">{fav.location || 'Connected'}</p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="col-span-full py-16 text-center bg-white/[0.02] border border-dashed border-white/5 rounded-3xl">
-                        <Star size={32} className="mx-auto mb-3 text-yellow-500 opacity-60" />
-                        <p className="text-sm font-bold text-white mb-1">No favorite connections</p>
-                        <p className="text-xs text-gray-500 font-medium">Star your favorite connections to see them here</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* TAB 3: CONNECTIONS LIST */}
+                {/* TAB 2: CONNECTIONS LIST */}
                 {activeTab === "connections" && (
                   <div className="space-y-2 animate-in fade-in duration-300">
                     {connections.length > 0 ? (

@@ -608,7 +608,7 @@ const VideoContainer = () => {
             </div>
           </div>
 
-          <div className="relative flex flex-1 overflow-hidden p-2 sm:p-4 gap-4 bg-[#05070A]">
+          <div className="relative flex flex-1 overflow-hidden  gap-4 bg-[#05070A]">
             <div className="flex-1 flex flex-col relative overflow-hidden bg-[#05070A]">
               {showMatchSuccess && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/75 backdrop-blur-xl animate-in fade-in duration-500">
@@ -665,7 +665,7 @@ const VideoContainer = () => {
 
               <div className="flex-1 relative flex items-stretch">
                 {!inCall ? (
-                  <div className="absolute inset-0 bg-[#0B0E14] rounded-md overflow-hidden border border-[#1e293b] flex items-center justify-center">
+                  <div className="absolute inset-0 bg-[#0B0E14] overflow-hidden  flex items-center justify-center">
                     <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1] opacity-20" />
                     <div className="relative z-20 text-center p-6">
                       {isMatching ? (

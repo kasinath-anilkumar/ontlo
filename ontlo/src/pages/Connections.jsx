@@ -139,7 +139,7 @@ const Connections = () => {
               {conn.status === 'pending' ? (
                 <button 
                   onClick={(e) => acceptConnection(conn.user._id, e)}
-                  className="px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-purple-500/20 active:scale-95"
+                  className="px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-xs hover:opacity-90 transition-all shadow-lg shadow-purple-500/20 active:scale-95"
                 >
                   Accept
                 </button>

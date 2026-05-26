@@ -23,6 +23,87 @@ const {
   emitNotification
 } = require('../utils/realtime');
 
+const safeOnlineStatus = (status) => (
+  ['online', 'offline', 'away'].includes(status)
+    ? status
+    : 'offline'
+);
+
+const buildPairKey = (userId, targetUserId) =>
+  [userId.toString(), targetUserId.toString()].sort().join('_');
+
+const buildUserSnapshot = (user) => ({
+  _id: user._id,
+  username: user.username,
+  profilePic: user.profilePic || '',
+  onlineStatus: safeOnlineStatus(user.onlineStatus)
+});
+
+const createConnectionForPair = async (userId, targetUserId) => {
+  const Connection = require('../models/Connection');
+  const pairKey = buildPairKey(userId, targetUserId);
+
+  const existingConn = await Connection.findOne({
+    pairKey
+  }).lean();
+
+  if (existingConn) {
+    return {
+      connection: existingConn,
+      created: false
+    };
+  }
+
+  const [
+    currentUserFull,
+    targetUserFull
+  ] = await Promise.all([
+    User.findById(userId).select('username profilePic onlineStatus').lean(),
+    User.findById(targetUserId).select('username profilePic onlineStatus').lean()
+  ]);
+
+  if (!currentUserFull || !targetUserFull) {
+    const error = new Error('User not found');
+    error.status = 404;
+    throw error;
+  }
+
+  let newConn;
+
+  try {
+    newConn = await Connection.create({
+      users: [userId, targetUserId],
+      pairKey,
+      userDetails: [
+        buildUserSnapshot(currentUserFull),
+        buildUserSnapshot(targetUserFull)
+      ]
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      const racedConn = await Connection.findOne({
+        pairKey
+      }).lean();
+
+      if (racedConn) {
+        return {
+          connection: racedConn,
+          created: false
+        };
+      }
+    }
+
+    throw error;
+  }
+
+  return {
+    connection: newConn,
+    created: true,
+    currentUser: currentUserFull,
+    targetUser: targetUserFull
+  };
+};
+
 
 
 // ======================================================
@@ -108,6 +189,9 @@ router.post(
       const targetUserId =
         req.params.userId;
 
+      const currentUserId =
+        req.userId;
+
       // ======================================================
       // VALIDATION
       // ======================================================
@@ -131,7 +215,7 @@ router.post(
 
       if (
         targetUserId ===
-        req.user.id
+        currentUserId
       ) {
 
         return res.status(400).json({
@@ -162,6 +246,26 @@ router.post(
         });
       }
 
+      const Connection = require('../models/Connection');
+      const existingConnection =
+        await Connection.findOne({
+          pairKey: buildPairKey(currentUserId, targetUserId)
+        }).lean();
+
+      if (existingConnection) {
+        if (existingConnection.status !== 'active') {
+          return res.status(409).json({
+            error: 'Connection is blocked'
+          });
+        }
+
+        return res.json({
+          success: true,
+          isMatch: true,
+          connectionId: existingConnection._id
+        });
+      }
+
       // ======================================================
       // DUPLICATE LIKE
       // ======================================================
@@ -170,7 +274,7 @@ router.post(
         await Like.findOne({
 
           fromUser:
-            req.user.id,
+            currentUserId,
 
           toUser:
             targetUserId
@@ -195,53 +299,22 @@ router.post(
             targetUserId,
 
           toUser:
-            req.user.id
+            currentUserId
         }).lean();
 
       if (mutualLike) {
 
-        // ======================================================
-        // CREATE CONNECTION
-        // ======================================================
-
-        const Connection = require('../models/Connection');
-
-        // Check if connection already exists (failsafe)
-        const sortedIds = [
-          req.user.id,
+        const {
+          connection: newConn,
+          created,
+          currentUser: currentUserFull,
+          targetUser: targetUserFull
+        } = await createConnectionForPair(
+          currentUserId,
           targetUserId
-        ].sort();
+        );
 
-        const pairKey = sortedIds.join('_');
-
-        const existingConn = await Connection.findOne({
-          pairKey
-        }).lean();
-
-        if (!existingConn) {
-
-          const targetUserFull = await User.findById(targetUserId).select('username profilePic onlineStatus').lean();
-          const currentUserFull = await User.findById(req.user.id).select('username profilePic onlineStatus').lean();
-
-          const newConn = await Connection.create({
-            users: [req.user.id, targetUserId],
-            pairKey,
-            userDetails: [
-              {
-                _id: currentUserFull._id,
-                username: currentUserFull.username,
-                profilePic: currentUserFull.profilePic,
-                onlineStatus: currentUserFull.onlineStatus
-              },
-              {
-                _id: targetUserFull._id,
-                username: targetUserFull.username,
-                profilePic: targetUserFull.profilePic,
-                onlineStatus: targetUserFull.onlineStatus
-              }
-            ]
-          });
-
+        if (created) {
           // ======================================================
           // NOTIFICATIONS (BOTH)
           // ======================================================
@@ -260,7 +333,7 @@ router.post(
 
           // Notify Current
           Notification.create({
-            user: req.user.id,
+            user: currentUserId,
             type: 'match',
             content: `You matched with ${targetUserFull.username}!`,
             fromUser: {
@@ -277,7 +350,7 @@ router.post(
           if (req.io) {
             emitConnectionUpdate(req.io, newConn, 'new-connection');
             emitCountsUpdate(req.io, targetUserId);
-            emitCountsUpdate(req.io, req.user.id);
+            emitCountsUpdate(req.io, currentUserId);
 
             // To Target
             req.io.to(`user_${targetUserId}`).emit('new-match', {
@@ -290,7 +363,7 @@ router.post(
             });
 
             // To Current
-            req.io.to(`user_${req.user.id}`).emit('new-match', {
+            req.io.to(`user_${currentUserId}`).emit('new-match', {
               connectionId: newConn._id,
               user: {
                 _id: targetUserFull._id,
@@ -304,8 +377,8 @@ router.post(
         // Cleanup likes
         await Like.deleteMany({
           $or: [
-            { fromUser: req.user.id, toUser: targetUserId },
-            { fromUser: targetUserId, toUser: req.user.id }
+            { fromUser: currentUserId, toUser: targetUserId },
+            { fromUser: targetUserId, toUser: currentUserId }
           ]
         });
 
@@ -319,29 +392,34 @@ router.post(
       // CREATE LIKE (Standard)
       // ======================================================
 
-      await Like.create({
-
-        fromUser:
-          req.user.id,
-
-        toUser:
-          targetUserId
-      });
-
-      // ======================================================
-      // LOAD CURRENT USER
-      // ======================================================
-
       const currentUser =
         await User.findById(
 
-          req.user.id,
+          currentUserId,
 
           `
           username
           profilePic
           `
         ).lean();
+
+      if (!currentUser) {
+
+        return res.status(404).json({
+
+          error:
+            'User not found'
+        });
+      }
+
+      await Like.create({
+
+        fromUser:
+          currentUserId,
+
+        toUser:
+          targetUserId
+      });
 
       // ======================================================
       // CREATE NOTIFICATION
@@ -447,10 +525,132 @@ router.post(
         });
       }
 
+      res.status(error.status || 500).json({
+        error: error.status ? error.message : 'Server error'
+      });
+    }
+  }
+);
+
+
+
+// ======================================================
+// CANCEL SENT CONNECTION REQUEST
+// ======================================================
+
+router.delete(
+  '/:userId',
+
+  auth,
+
+  async (req, res) => {
+
+    try {
+
+      const targetUserId =
+        req.params.userId;
+
+      const currentUserId =
+        req.userId;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          targetUserId
+        )
+      ) {
+
+        return res.status(400).json({
+
+          error:
+            'Invalid user id'
+        });
+      }
+
+      if (
+        targetUserId ===
+        currentUserId
+      ) {
+
+        return res.status(400).json({
+
+          error:
+            'Cannot cancel request to yourself'
+        });
+      }
+
+      const deletedLike =
+        await Like.findOneAndDelete({
+
+          fromUser:
+            currentUserId,
+
+          toUser:
+            targetUserId
+        }).lean();
+
+      if (!deletedLike) {
+
+        return res.status(404).json({
+
+          error:
+            'No pending request found'
+        });
+      }
+
+      await Notification.deleteOne({
+
+        user:
+          targetUserId,
+
+        type:
+          'like',
+
+        'fromUser._id':
+          new mongoose.Types.ObjectId(
+            currentUserId
+          )
+      });
+
+      if (req.io) {
+
+        req.io
+          .to(
+            `user_${targetUserId}`
+          )
+          .emit(
+            'connection-request-cancelled',
+            {
+              fromUserId:
+                currentUserId
+            }
+          );
+
+        emitCountsUpdate(
+          req.io,
+          targetUserId
+        );
+      }
+
+      res.json({
+
+        success:
+          true,
+
+        connectionStatus:
+          'none'
+      });
+
+    } catch (error) {
+
+      console.error(
+        '[CANCEL REQUEST ERROR]:',
+        error
+      );
+
       res.status(500).json({
-        error: 'Server error',
-        details: error.message,
-        stack: error.stack
+
+        error:
+          'Server error'
       });
     }
   }
@@ -473,6 +673,9 @@ router.post(
 
       const targetUserId =
         req.params.userId;
+
+      const currentUserId =
+        req.userId;
 
       // ======================================================
       // VALIDATE
@@ -498,10 +701,29 @@ router.post(
             targetUserId,
 
           toUser:
-            req.user.id
+            currentUserId
         }).lean();
 
       if (!matchRequest) {
+
+        const Connection = require('../models/Connection');
+        const existingConnection = await Connection.findOne({
+          pairKey: buildPairKey(currentUserId, targetUserId)
+        }).lean();
+
+        if (existingConnection) {
+          if (existingConnection.status !== 'active') {
+            return res.status(409).json({
+              error: 'Connection is blocked'
+            });
+          }
+
+          return res.json({
+            success: true,
+            message: 'Match accepted',
+            connectionId: existingConnection._id
+          });
+        }
 
         return res.status(404).json({
 
@@ -514,49 +736,17 @@ router.post(
       // CREATE CONNECTION
       // ======================================================
 
-      const Connection = require('../models/Connection');
-
-      const sortedIds = [
-        req.user.id,
+      const {
+        connection: newConn,
+        created,
+        currentUser: currentUserFull,
+        targetUser: targetUserFull
+      } = await createConnectionForPair(
+        currentUserId,
         targetUserId
-      ].sort();
+      );
 
-      const pairKey = sortedIds.join('_');
-
-      const existingConn = await Connection.findOne({
-        pairKey
-      }).lean();
-
-      if (!existingConn) {
-
-        const targetUserFull = await User.findById(targetUserId).select('username profilePic onlineStatus').lean();
-        const currentUserFull = await User.findById(req.userId).select('username profilePic onlineStatus').lean();
-
-        if (!targetUserFull || !currentUserFull) {
-          return res.status(404).json({
-            error: 'User not found'
-          });
-        }
-
-        const newConn = await Connection.create({
-          users: [req.userId, targetUserId],
-          pairKey,
-          userDetails: [
-            {
-              _id: currentUserFull._id,
-              username: currentUserFull.username,
-              profilePic: currentUserFull.profilePic,
-              onlineStatus: currentUserFull.onlineStatus
-            },
-            {
-              _id: targetUserFull._id,
-              username: targetUserFull.username,
-              profilePic: targetUserFull.profilePic,
-              onlineStatus: targetUserFull.onlineStatus
-            }
-          ]
-        });
-
+      if (created) {
         // ======================================================
         // NOTIFICATIONS
         // ======================================================
@@ -578,7 +768,7 @@ router.post(
         if (req.io) {
           emitConnectionUpdate(req.io, newConn, 'new-connection');
           emitCountsUpdate(req.io, targetUserId);
-          emitCountsUpdate(req.io, req.userId);
+          emitCountsUpdate(req.io, currentUserId);
 
           // 🔥 Standard notification event for toasts
           req.io.to(`user_${targetUserId}`).emit('new-match', {
@@ -605,7 +795,7 @@ router.post(
               relatedId: newConn._id
             },
             {
-              user: req.userId,
+              user: currentUserId,
               type: 'match',
               content: `You matched with ${targetUserFull.username}!`,
               fromUser: {
@@ -623,7 +813,7 @@ router.post(
             notifications: 1
           });
           
-          req.io.to(`user_${req.userId}`).emit('counts-delta', {
+          req.io.to(`user_${currentUserId}`).emit('counts-delta', {
             connections: 1,
             notifications: 1
           });
@@ -644,8 +834,8 @@ router.post(
       // Cleanup likes
       await Like.deleteMany({
         $or: [
-          { fromUser: req.userId, toUser: targetUserId },
-          { fromUser: targetUserId, toUser: req.userId }
+          { fromUser: currentUserId, toUser: targetUserId },
+          { fromUser: targetUserId, toUser: currentUserId }
         ]
       });
 
@@ -661,8 +851,8 @@ router.post(
         error
       );
 
-      res.status(500).json({
-        error: 'Server error'
+      res.status(error.status || 500).json({
+        error: error.status ? error.message : 'Server error'
       });
     }
   }
@@ -947,4 +1137,3 @@ router.post(
 
 module.exports =
   router;
-

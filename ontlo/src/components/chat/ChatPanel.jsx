@@ -1,4 +1,4 @@
-import { Check, CheckCheck, ChevronLeft, Loader2, MessageSquare, MoreHorizontal, Plus, Send, ShieldAlert, Smile, User, Users, UserX, X } from "lucide-react";
+import { Check, CheckCheck, ChevronLeft, Loader2, MessageSquare, MoreHorizontal, Plus, Send, ShieldAlert, Smile, Star, User, Users, UserX, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocket } from "../../context/SocketContext";
 import API_URL, { apiFetch } from "../../utils/api";
@@ -25,6 +25,8 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteActionLoading, setFavoriteActionLoading] = useState(false);
   const navigate = useNavigate();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -56,9 +58,34 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
 
   const effectiveRoomId = roomId || connectionId;
   const cacheKey = connectionId || roomId;
+  const remoteUserId = remoteUser?._id || remoteUser?.id;
 
   // Use persisted messages (from parent/video mode) or internal messages (standalone mode)
   const messages = persistedMessages ?? internalMessages;
+
+  useEffect(() => {
+    if (!remoteUserId || !connectionId) return;
+
+    const fetchFavoriteStatus = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await apiFetch(`${API_URL}/api/interactions/favorites`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setIsFavorite(
+            data.some((fav) => fav._id?.toString() === remoteUserId?.toString())
+          );
+        }
+      } catch (err) {
+        console.error("Failed to fetch favorite status", err);
+      }
+    };
+
+    fetchFavoriteStatus();
+  }, [remoteUserId, connectionId]);
 
   // Persist parent-provided chat data into the shared cache.
   useEffect(() => {
@@ -300,6 +327,30 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
     setShowMenu(false);
   };
 
+  const handleToggleFavorite = async () => {
+    if (!remoteUserId || !connectionId) return;
+
+    setFavoriteActionLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await apiFetch(`${API_URL}/api/interactions/favorites/${remoteUserId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setIsFavorite(Boolean(data.isFavorite));
+      }
+    } catch (err) {
+      console.error("Failed to toggle favorite", err);
+    } finally {
+      setFavoriteActionLoading(false);
+      setShowMenu(false);
+    }
+  };
+
   const handleInputChange = useCallback((e) => {
     setInputValue(e.target.value);
     if (!socket || !effectiveRoomId) return;
@@ -478,6 +529,21 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                     >
                       <Users className="w-4 h-4 text-purple-400" /> View Profile
                     </button>
+
+                    {connectionId && (
+                      <button
+                        onClick={handleToggleFavorite}
+                        disabled={favoriteActionLoading}
+                        className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-[#1e293b] hover:text-white flex items-center gap-2 transition disabled:opacity-50"
+                      >
+                        {favoriteActionLoading ? (
+                          <Loader2 className="w-4 h-4 text-yellow-500 animate-spin" />
+                        ) : (
+                          <Star className={`w-4 h-4 text-yellow-500 ${isFavorite ? 'fill-current' : ''}`} />
+                        )}
+                        {isFavorite ? 'Remove Favorite' : 'Add to Favorite'}
+                      </button>
+                    )}
 
                     {connectionId && (
                       <button

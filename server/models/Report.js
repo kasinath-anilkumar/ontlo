@@ -197,7 +197,7 @@ ReportSchema.statics.getRepeatOffenderStats =
 // VALIDATION
 // ======================================================
 
-ReportSchema.pre('validate', function (next) {
+ReportSchema.pre('validate', function () {
 
   if (
     this.reporter &&
@@ -206,14 +206,10 @@ ReportSchema.pre('validate', function (next) {
       this.reportedUser.toString()
   ) {
 
-    return next(
-      new Error(
-        'Users cannot report themselves'
-      )
+    throw new Error(
+      'Users cannot report themselves'
     );
   }
-
-  next();
 });
 
 

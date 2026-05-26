@@ -24,7 +24,10 @@ const Messages = () => {
     const handleInitialSelection = () => {
       const stateId = location.state?.selectId;
       if (stateId) {
-        const target = connections.find(c => c.id === stateId);
+        const target = connections.find((connection) => (
+          connection.id?.toString() === stateId?.toString() ||
+          connection.user?._id?.toString() === stateId?.toString()
+        ));
         if (target) setSelectedConnection(target);
       } else if (connections.length > 0 && window.innerWidth > 768 && !selectedConnection) {
         setSelectedConnection(connections[0]);
@@ -171,7 +174,7 @@ const Messages = () => {
                   {conn.status === 'pending' ? (
                     <button 
                       onClick={(e) => { e.stopPropagation(); acceptConnection(conn.user._id); }}
-                      className="px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+                      className="px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-[12px] shadow-lg active:scale-95 transition-transform"
                     >
                       Accept
                     </button>

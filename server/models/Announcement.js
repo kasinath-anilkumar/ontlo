@@ -164,7 +164,7 @@ AnnouncementSchema.index({
 // VALIDATION
 // ======================================================
 
-AnnouncementSchema.pre('validate', function (next) {
+AnnouncementSchema.pre('validate', function () {
 
   const {
     minAge,
@@ -177,14 +177,10 @@ AnnouncementSchema.pre('validate', function (next) {
     minAge > maxAge
   ) {
 
-    return next(
-      new Error(
-        'Minimum age cannot exceed maximum age'
-      )
+    throw new Error(
+      'Minimum age cannot exceed maximum age'
     );
   }
-
-  next();
 });
 
 

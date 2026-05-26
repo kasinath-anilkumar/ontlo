@@ -156,21 +156,17 @@ SupportTicketSchema.index({
 // VALIDATION
 // ======================================================
 
-SupportTicketSchema.pre('validate', function (next) {
+SupportTicketSchema.pre('validate', function () {
 
   if (
     this.subject &&
     this.subject.trim().length < 3
   ) {
 
-    return next(
-      new Error(
-        'Subject must contain at least 3 characters'
-      )
+    throw new Error(
+      'Subject must contain at least 3 characters'
     );
   }
-
-  next();
 });
 
 

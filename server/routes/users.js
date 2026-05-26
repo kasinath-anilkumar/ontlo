@@ -18,6 +18,111 @@ const {
 
 const cacheUtil = require('../utils/cache');
 
+const buildPairKey = (userId, otherUserId) =>
+  [userId.toString(), otherUserId.toString()].sort().join('_');
+
+const attachConnectionStatuses = async (viewerId, users) => {
+  if (!viewerId || users.length === 0) {
+    return users;
+  }
+
+  const viewerIdStr =
+    viewerId.toString();
+
+  const userIds =
+    users.map((user) => user._id.toString());
+
+  const pairKeys =
+    userIds.map((userId) => buildPairKey(viewerIdStr, userId));
+
+  const [
+    connections,
+    sentLikes,
+    receivedLikes
+  ] = await Promise.all([
+    Connection.find(
+      {
+        pairKey: {
+          $in: pairKeys
+        }
+      },
+      'pairKey status'
+    ).lean(),
+
+    Like.find(
+      {
+        fromUser: viewerId,
+        toUser: {
+          $in: userIds
+        }
+      },
+      'toUser'
+    ).lean(),
+
+    Like.find(
+      {
+        fromUser: {
+          $in: userIds
+        },
+        toUser: viewerId
+      },
+      'fromUser'
+    ).lean()
+  ]);
+
+  const connectionByPairKey =
+    new Map(
+      connections.map((connection) => [
+        connection.pairKey,
+        connection.status
+      ])
+    );
+
+  const sentIds =
+    new Set(
+      sentLikes.map((like) => like.toUser.toString())
+    );
+
+  const receivedIds =
+    new Set(
+      receivedLikes.map((like) => like.fromUser.toString())
+    );
+
+  return users.map((user) => {
+    const userId =
+      user._id.toString();
+
+    const connectionStatus =
+      connectionByPairKey.get(buildPairKey(viewerIdStr, userId));
+
+    if (connectionStatus) {
+      return {
+        ...user,
+        connectionStatus
+      };
+    }
+
+    if (sentIds.has(userId)) {
+      return {
+        ...user,
+        connectionStatus: 'pending_sent'
+      };
+    }
+
+    if (receivedIds.has(userId)) {
+      return {
+        ...user,
+        connectionStatus: 'pending_received'
+      };
+    }
+
+    return {
+      ...user,
+      connectionStatus: 'none'
+    };
+  });
+};
+
 
 
 // ======================================================
@@ -169,7 +274,13 @@ router.get('/discover', auth, async (req, res) => {
       .limit(20)
       .lean();
 
-    res.json(users);
+    const usersWithStatuses =
+      await attachConnectionStatuses(
+        req.userId,
+        users
+      );
+
+    res.json(usersWithStatuses);
 
   } catch (error) {
 
@@ -252,10 +363,26 @@ router.get('/blocked/list', auth, async (req, res) => {
 
 router.get('/search', auth, async (req, res) => {
   try {
-    const { q } = req.query;
-    if (!q) {
+    const searchTerm = String(req.query.q || '').trim();
+
+    if (!searchTerm) {
       return res.json([]);
     }
+
+    const normalizedSearchTerm =
+      searchTerm.startsWith('@')
+        ? searchTerm.slice(1).trim()
+        : searchTerm;
+
+    if (!normalizedSearchTerm) {
+      return res.json([]);
+    }
+
+    const escapedSearchTerm =
+      normalizedSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const searchRegex =
+      new RegExp(escapedSearchTerm, 'i');
 
     const currentUser = await User.findById(req.userId, 'blockedUsers').lean();
     const blockedUsers = currentUser?.blockedUsers || [];
@@ -265,16 +392,26 @@ router.get('/search', auth, async (req, res) => {
       role: 'user',
       status: 'active',
       isShadowBanned: false,
-      $and: [
-        { username: { $regex: q, $options: 'i' } },
-        { username: { $not: /^(test|dummy)/i } }
+      $or: [
+        { username: searchRegex },
+        { fullName: searchRegex }
       ]
     })
       .select('username fullName profilePic age gender bio onlineStatus isPremium location interests')
+      .sort({
+        isPremium: -1,
+        username: 1
+      })
       .limit(20)
       .lean();
 
-    res.json(users);
+    const usersWithStatuses =
+      await attachConnectionStatuses(
+        req.userId,
+        users
+      );
+
+    res.json(usersWithStatuses);
   } catch (error) {
     console.error('[SEARCH USERS ERROR]:', error);
     res.status(500).json({ error: 'Server error' });
