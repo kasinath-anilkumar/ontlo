@@ -1,4 +1,4 @@
-import { AlertTriangle, Camera, Check, Heart, Lock, MessageSquare, Mic, Music, PhoneOff, RefreshCw, Settings, Shield, Timer } from "lucide-react";
+import { AlertTriangle, Camera, Check, Heart, Lock, MessageSquare, Mic, Music, PhoneOff, RefreshCw, Settings, Shield, Timer, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ontloLogo from "../../assets/ontlo_Logo.webp";
@@ -30,6 +30,12 @@ const VideoContainer = () => {
   const [showMatchSuccess, setShowMatchSuccess] = useState(false);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [callMode, setCallMode] = useState('video');
+  const [matchedCallMode, setMatchedCallMode] = useState('video');
+  const [icebreakerQuestion, setIcebreakerQuestion] = useState(null);
+  const [localVote, setLocalVote] = useState(null);
+  const [remoteVote, setRemoteVote] = useState(null);
+  const [showIcebreakerGame, setShowIcebreakerGame] = useState(false);
   const [isBlurred, setIsBlurred] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [peerIsPrivate, setPeerIsPrivate] = useState(false);
@@ -80,15 +86,16 @@ const VideoContainer = () => {
     const startCamera = async () => {
       if (!cameraRequested && !inCall && !isMatching) return;
       try {
+        const isAudioCall = inCall ? (matchedCallMode === 'audio') : (callMode === 'audio');
         const constraints = {
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true
           },
-          video: user?.lowBandwidth
+          video: isAudioCall ? false : (user?.lowBandwidth
             ? { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { max: 15 } }
-            : { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24 } }
+            : { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24 } })
         };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         if (!mounted) {
@@ -135,7 +142,7 @@ const VideoContainer = () => {
         localStreamRef.current = null;
       }
     };
-  }, [user?.lowBandwidth, cameraRequested, inCall, isMatching]);
+  }, [user?.lowBandwidth, cameraRequested, inCall, isMatching, callMode, matchedCallMode]);
 
   // ── Call Timers ──
   useEffect(() => {
@@ -194,8 +201,8 @@ const VideoContainer = () => {
   const startMatching = useCallback(() => {
     if (!socket || !user) return;
     setIsMatching(true);
-    socket.emit("join-queue", { userId: user?.id || user?._id });
-  }, [socket, user]);
+    socket.emit("join-queue", { userId: user?.id || user?._id, callMode });
+  }, [socket, user, callMode]);
 
   // ── Cleanup Logic ──
   const endCallLocally = useCallback((shouldAutoRejoin = true) => {
@@ -213,6 +220,7 @@ const VideoContainer = () => {
     setIsPrivate(false); setPeerIsPrivate(false); setCommonInterests([]);
     setShowConnectRequest(false); setConnectionStatus(null); setCallDuration(0);
     setChatMessages([]); setHasNewMessage(false); setIsMatching(false);
+    setLocalVote(null); setRemoteVote(null); setShowIcebreakerGame(false); setIcebreakerQuestion(null);
     if (shouldAutoRejoin) {
       if (rejoinTimerRef.current) clearTimeout(rejoinTimerRef.current);
       rejoinTimerRef.current = setTimeout(() => {
@@ -299,10 +307,16 @@ const VideoContainer = () => {
       });
     };
 
-    const onMatchFound = async ({ roomId: rId, role, remoteUserId: remoteId, icebreaker: prompt, isWildcard: wildcardFlag }) => {
+    const onMatchFound = async ({ roomId: rId, role, remoteUserId: remoteId, icebreaker: prompt, icebreakerQuestion: question, callMode: remoteCallMode, isWildcard: wildcardFlag }) => {
       console.log('[MatchFound] Match event received!', { rId, role, remoteId });
       if (peerConnectionRef.current) endCallLocally(false);
       roomIdRef.current = rId;
+
+      setMatchedCallMode(remoteCallMode || 'video');
+      setIcebreakerQuestion(question || null);
+      setLocalVote(null);
+      setRemoteVote(null);
+      setShowIcebreakerGame(!!question);
 
       // IMMEDIATE SAFETY BLUR
       setInCall(true);
@@ -479,6 +493,10 @@ const VideoContainer = () => {
       }]);
     };
 
+    const onPeerIcebreakerVote = ({ option }) => {
+      setRemoteVote(option);
+    };
+
     socket.on("match-found", onMatchFound);
     socket.on("chat-message", onChatMessage);
     socket.on("typing", onPeerTyping);
@@ -491,6 +509,7 @@ const VideoContainer = () => {
     socket.on("match-ended", onMatchEnded);
     socket.on("peer-declined-connection", onPeerDeclined);
     socket.on("peer-disconnected", onPeerDisconnected);
+    socket.on("peer-icebreaker-vote", onPeerIcebreakerVote);
 
     return () => {
       socket.off("match-found", onMatchFound);
@@ -505,6 +524,7 @@ const VideoContainer = () => {
       socket.off("match-ended", onMatchEnded);
       socket.off("peer-declined-connection", onPeerDeclined);
       socket.off("peer-disconnected", onPeerDisconnected);
+      socket.off("peer-icebreaker-vote", onPeerIcebreakerVote);
     };
   }, [socket, createPeerConnection, endCallLocally, user]);
 
@@ -516,6 +536,13 @@ const VideoContainer = () => {
   const toggleMic = () => { if (localStreamRef.current) { const t = localStreamRef.current.getAudioTracks()[0]; if (t) { t.enabled = !t.enabled; setMicEnabled(t.enabled); } } };
   const toggleCamera = () => { if (localStreamRef.current) { const t = localStreamRef.current.getVideoTracks()[0]; if (t) { t.enabled = !t.enabled; setCameraEnabled(t.enabled); } } };
   const toggleChat = () => { setShowChat(p => !p); setHasNewMessage(false); };
+
+  const handleIcebreakerVote = (option) => {
+    setLocalVote(option);
+    if (socket && roomIdRef.current) {
+      socket.emit("icebreaker-vote", { roomId: roomIdRef.current, option });
+    }
+  };
 
   const reportUser = useCallback(async () => {
     if (!roomIdRef.current || !remoteUser) return;
@@ -584,9 +611,54 @@ const VideoContainer = () => {
           <div className="relative flex flex-1 overflow-hidden p-2 sm:p-4 gap-4 bg-[#05070A]">
             <div className="flex-1 flex flex-col relative overflow-hidden bg-[#05070A]">
               {showMatchSuccess && (
-                <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none animate-in zoom-in-50 duration-500">
-                  <div className="bg-gradient-to-br from-purple-600/95 via-pink-600/95 to-orange-500/95 backdrop-blur-2xl px-12 py-8 border border-white/30 shadow-[0_0_150px_rgba(168,85,247,0.6)] flex flex-col items-center">
-                    <h2 className="text-white text-5xl font-black uppercase tracking-[0.2em]"><span>Match!</span></h2>
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/75 backdrop-blur-xl animate-in fade-in duration-500">
+                  {/* Decorative floating particles */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    {Array.from({ length: 15 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="absolute bg-pink-500/20 rounded-full animate-pulse"
+                        style={{
+                          width: `${Math.random() * 40 + 20}px`,
+                          height: `${Math.random() * 40 + 20}px`,
+                          top: `${Math.random() * 100}%`,
+                          left: `${Math.random() * 100}%`,
+                          animationDuration: `${Math.random() * 4 + 2}s`
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="relative bg-[#11141D]/90 border border-purple-500/40 p-8 rounded-[40px] shadow-[0_0_100px_rgba(168,85,247,0.4)] text-center max-w-sm w-full animate-in zoom-in-95 duration-500">
+                    <div className="relative flex items-center justify-center gap-6 mb-8">
+                      {/* Avatar Current User */}
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-purple-500 animate-in slide-in-from-left duration-700 shadow-xl">
+                        <img src={user?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                      </div>
+
+                      {/* Connected Glowing Thread */}
+                      <div className="w-12 h-0.5 bg-gradient-to-r from-purple-500 to-pink-500 relative flex items-center justify-center">
+                        <Heart className="w-5 h-5 text-pink-500 fill-pink-500 absolute scale-110 animate-bounce" />
+                      </div>
+
+                      {/* Avatar Remote User */}
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-pink-500 animate-in slide-in-from-right duration-700 shadow-xl">
+                        <img src={remoteUser?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                      </div>
+                    </div>
+
+                    <h3 className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 font-black text-3xl mb-3 tracking-tighter uppercase italic">Moments Unlocked!</h3>
+
+                    <p className="text-gray-400 text-xs leading-relaxed mb-8 px-2">
+                      You are now connected with <span className="text-white font-bold">{remoteUser?.fullName || 'this user'}</span>. You can now view their private moments, like and comment on their feed, and send them direct messages.
+                    </p>
+
+                    <button
+                      onClick={() => setShowMatchSuccess(false)}
+                      className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl text-white font-black text-xs uppercase tracking-widest hover:scale-[1.03] active:scale-[0.97] transition-all shadow-lg"
+                    >
+                      Awesome!
+                    </button>
                   </div>
                 </div>
               )}
@@ -645,10 +717,46 @@ const VideoContainer = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center">
+                          {/* Call Mode Toggles */}
+                          <div className="flex items-center gap-4 p-1.5 rounded-2xl mb-8">
+                            <button
+                              onClick={() => setCallMode('video')}
+                              className={`relative overflow-hidden px-6 py-2.5 rounded-2xl text-[11px] font-semibold uppercase tracking-[0.25em] transition-all duration-300 border backdrop-blur-xl
+                                   ${callMode === 'video'
+                                  ? 'bg-white text-black border-white shadow-[0_0_25px_rgba(255,255,255,0.25)] scale-105'
+                                  : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20'
+                                }`}
+                            >
+                              <span className="relative z-10 flex items-center gap-2">
+                                 Video
+                              </span>
+
+                              {callMode === 'video' && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-transparent to-white/20 opacity-40" />
+                              )}
+                            </button>
+
+                            <button
+                              onClick={() => setCallMode('audio')}
+                              className={`relative overflow-hidden px-6 py-2.5 rounded-2xl text-[11px] font-semibold uppercase tracking-[0.25em] transition-all duration-300 border backdrop-blur-xl
+  ${callMode === 'audio'
+                                  ? 'bg-white text-black border-white shadow-[0_0_25px_rgba(255,255,255,0.25)] scale-105'
+                                  : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20'
+                                }`}
+                            >
+                              <span className="relative z-10 flex items-center gap-2">
+                                 Audio
+                              </span>
+
+                              {callMode === 'audio' && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-transparent to-white/20 opacity-40" />
+                              )}
+                            </button>
+                          </div>
 
                           {/* BUTTON */}
                           <button
-                            onClick={cameraReady ? startMatching : () => setCameraRequested(true)}
+                            onClick={cameraReady || callMode === 'audio' ? startMatching : () => setCameraRequested(true)}
                             className="
           group
           relative
@@ -703,16 +811,47 @@ const VideoContainer = () => {
                   </div>
                 ) : (
                   <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#05070A] shadow-2xl group">
-                    <video
-                      ref={remoteVideoRef}
-                      autoPlay
-                      playsInline
-                      style={{ filter: (isBlurred || peerIsPrivate || safetyBlurTimer > 0) ? "blur(80px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px)` : "none" }}
-                      className="absolute inset-0 w-full h-full object-cover transition-all duration-[2000ms] ease-in-out z-10"
-                    />
+                    {matchedCallMode === 'audio' ? (
+                      <div className="absolute inset-0 bg-[#07090E] z-10 flex flex-col items-center justify-center">
+                        {/* Wave Ring Animations */}
+                        <div className="relative w-44 h-44 flex items-center justify-center">
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 animate-pulse border border-purple-500/20" />
+                          <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600/10 to-pink-600/10 animate-[ping_3s_infinite] border border-pink-500/10" style={{ animationDelay: '1s' }} />
+                          <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-purple-600/5 to-pink-600/5 animate-[ping_3s_infinite] border border-purple-500/5" style={{ animationDelay: '2s' }} />
+
+                          {/* Pulsing Avatar */}
+                          <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-purple-500/30 z-10 bg-black flex items-center justify-center shadow-[0_0_50px_rgba(168,85,247,0.3)]">
+                            <img
+                              src={remoteUser?.profilePic || 'https://api.dicebear.com/7.x/avataaars/svg'}
+                              className="w-full h-full object-cover animate-[pulse_4s_infinite]"
+                              alt="Avatar"
+                            />
+                          </div>
+                        </div>
+                        <h2 className="text-white text-xl font-black italic mt-6 tracking-tight">{remoteUser?.fullName || 'Connecting...'}</h2>
+                        <p className="text-purple-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2 animate-pulse">Audio Match Connected</p>
+                      </div>
+                    ) : (
+                      <video
+                        ref={remoteVideoRef}
+                        autoPlay
+                        playsInline
+                        style={{ filter: (isBlurred || peerIsPrivate || safetyBlurTimer > 0) ? "blur(80px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px)` : "none" }}
+                        className="absolute inset-0 w-full h-full object-cover transition-all duration-[2000ms] ease-in-out z-10"
+                      />
+                    )}
+
+                    {/* Stream Watermarking overlay */}
+                    <div className="absolute inset-0 pointer-events-none select-none opacity-[0.03] overflow-hidden flex flex-wrap gap-8 rotate-[-25px] scale-125 items-center justify-center z-20">
+                      {Array.from({ length: 48 }).map((_, i) => (
+                        <span key={i} className="text-white text-[8px] font-black uppercase tracking-widest whitespace-nowrap">
+                          @{user?.username || 'user'} • ONTLO LIVE
+                        </span>
+                      ))}
+                    </div>
 
                     {/* Safety Blur UI Overlay */}
-                    {safetyBlurTimer > 0 && (
+                    {safetyBlurTimer > 0 && matchedCallMode !== 'audio' && (
                       <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md px-8 text-center animate-in fade-in zoom-in duration-700">
                         <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-8 border border-white/10 relative">
                           <div className="absolute inset-0 bg-purple-500/20 rounded-full animate-ping" />
@@ -766,10 +905,79 @@ const VideoContainer = () => {
                       </div>
                     </div>
 
-                    <div style={{ transform: `translate(${localVideoPos.x}px, ${localVideoPos.y}px)`, transition: isDraggingState ? 'none' : 'transform 0.3s' }} className="absolute bottom-24 right-3 w-24 h-36 sm:w-48 sm:h-64 rounded-xl overflow-hidden border border-white/20 z-40 shadow-2xl cursor-grab" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
-                      <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                    <div style={{ transform: `translate(${localVideoPos.x}px, ${localVideoPos.y}px)`, transition: isDraggingState ? 'none' : 'transform 0.3s' }} className="absolute bottom-24 right-3 w-24 h-36 sm:w-40 sm:h-56 rounded-xl overflow-hidden border border-white/20 z-40 shadow-2xl cursor-grab bg-black flex flex-col items-center justify-center p-2" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
+                      {matchedCallMode === 'audio' ? (
+                        <div className="text-center flex flex-col items-center justify-center">
+                          <Volume2 className="w-8 h-8 text-purple-400 mb-2 animate-bounce" />
+                          <span className="text-[8px] font-black uppercase tracking-widest text-purple-500">Audio On</span>
+                        </div>
+                      ) : (
+                        <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                      )}
                       <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/40 rounded-md text-[8px] font-bold text-white uppercase">You</div>
                     </div>
+
+                    {showIcebreakerGame && icebreakerQuestion && (
+                      <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-[80] w-[90%] max-w-[340px] bg-black/60 backdrop-blur-xl border border-purple-500/30 p-4 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom duration-500">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1.5 text-purple-400">
+                            <span className="text-[9px] font-black uppercase tracking-widest">Co-Op Icebreaker</span>
+                          </div>
+                          {(localVote && remoteVote) && (
+                            <button
+                              onClick={() => setShowIcebreakerGame(false)}
+                              className="text-[9px] font-bold text-gray-500 hover:text-white"
+                            >
+                              Dismiss
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-white text-xs font-semibold leading-relaxed mb-3">{icebreakerQuestion.question}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {icebreakerQuestion.options.map((opt, idx) => {
+                            const optCode = idx === 0 ? 'A' : 'B';
+                            const isLocalSelect = localVote === optCode;
+                            const isRemoteSelect = remoteVote === optCode;
+                            const reveal = localVote && remoteVote;
+
+                            return (
+                              <button
+                                key={idx}
+                                disabled={!!localVote}
+                                onClick={() => handleIcebreakerVote(optCode)}
+                                className={`py-3.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all duration-300 border ${reveal
+                                    ? (isLocalSelect && isRemoteSelect
+                                      ? 'bg-purple-600 border-purple-400 text-white animate-bounce'
+                                      : isLocalSelect
+                                        ? 'bg-purple-950 border-purple-800 text-purple-400'
+                                        : isRemoteSelect
+                                          ? 'bg-white/10 border-white/20 text-white/80'
+                                          : 'bg-black/40 border-white/5 text-gray-600')
+                                    : isLocalSelect
+                                      ? 'bg-purple-600 border-purple-400 text-white'
+                                      : 'bg-black/40 border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
+                                  }`}
+                              >
+                                <div>{opt}</div>
+                                {reveal && (
+                                  <div className="text-[7px] text-white/50 mt-1">
+                                    {isLocalSelect && "You"} {isRemoteSelect && "Peer"}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {localVote && !remoteVote && (
+                          <p className="text-[8px] text-gray-500 text-center mt-2 font-bold uppercase tracking-wider animate-pulse">Waiting for peer...</p>
+                        )}
+                        {localVote && remoteVote && (
+                          <p className="text-[9px] text-center mt-2 font-black uppercase tracking-widest text-purple-400">
+                            {localVote === remoteVote ? "🎉 100% Match!" : "☯️ Opposites Attract!"}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="absolute bottom-4 left-3 right-3 flex items-center justify-between z-50">
                       <div className="flex gap-2">

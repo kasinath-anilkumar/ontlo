@@ -31,6 +31,11 @@ const CreatePost = () => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        // alert('Please select an image file (JPG, PNG, WEBP, etc.)');
+        e.target.value = ''; // Reset input
+        return;
+      }
       setImage(file);
       const reader = new FileReader();
       reader.onloadend = () => setPreview(reader.result);

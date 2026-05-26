@@ -448,9 +448,9 @@ router.post(
       }
 
       res.status(500).json({
-
-        error:
-          'Server error'
+        error: 'Server error',
+        details: error.message,
+        stack: error.stack
       });
     }
   }
@@ -904,5 +904,47 @@ router.post(
 
 
 
+// ======================================================
+// DECLINE CONNECTION REQUEST
+// ======================================================
+
+router.post(
+  '/decline/:userId',
+  auth,
+  async (req, res) => {
+    try {
+      const targetUserId = req.params.userId;
+      if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+        return res.status(400).json({ error: 'Invalid user id' });
+      }
+
+      // Delete the pending Like request
+      await Like.deleteOne({
+        fromUser: targetUserId,
+        toUser: req.user.id
+      });
+
+      // Also delete the notification of type 'like' from this user
+      await Notification.deleteOne({
+        user: req.user.id,
+        type: 'like',
+        'fromUser._id': new mongoose.Types.ObjectId(targetUserId)
+      });
+
+      if (req.io) {
+        emitCountsUpdate(req.io, req.user.id);
+      }
+
+      res.json({ success: true, message: 'Connection request declined' });
+    } catch (error) {
+      console.error('[DECLINE ERROR]:', error);
+      res.status(500).json({ error: 'Server error' });
+    }
+  }
+);
+
+
+
 module.exports =
   router;
+

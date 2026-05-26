@@ -20,6 +20,8 @@ const CreatePost = lazy(() => import("./pages/CreatePost"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Search = lazy(() => import("./pages/Search"));
+
 
 const PageLoader = () => (
   <div className="h-screen w-full flex items-center justify-center bg-[#0B0E14]">
@@ -74,6 +76,7 @@ function App() {
                     <Route path="/create-post" element={<CreatePost />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/search" element={<Search />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </AppLayout>

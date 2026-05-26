@@ -25,7 +25,7 @@ const NotificationSkeleton = () => (
   </div>
 );
 
-const NotificationItem = ({ n, isSelecting, isSelected, onToggleSelect, onDelete, onMarkRead, formatTimeCompact, getNotificationIcon }) => {
+const NotificationItem = ({ n, isSelecting, isSelected, onToggleSelect, onDelete, onMarkRead, onAccept, onDecline, formatTimeCompact, getNotificationIcon }) => {
   const navigate = useNavigate();
   const x = useMotionValue(0);
   const deleteOpacity = useTransform(x, [-100, -50, 0], [1, 0.5, 0]);
@@ -109,6 +109,22 @@ const NotificationItem = ({ n, isSelecting, isSelected, onToggleSelect, onDelete
             <span className="text-white/90 font-medium">{n.content}</span>
             <span className="text-gray-500 ml-1.5 whitespace-nowrap text-[11px] sm:text-xs">{formatTimeCompact(n.createdAt)}</span>
           </p>
+          {n.type === 'like' && !isSelecting && (
+            <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+              <button 
+                onClick={() => onAccept(n.fromUser?._id, n._id)}
+                className="px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-[10px] font-black uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-md"
+              >
+                Accept
+              </button>
+              <button 
+                onClick={() => onDecline(n.fromUser?._id, n._id)}
+                className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-wider hover:bg-white/10 active:scale-95 transition-all"
+              >
+                Decline
+              </button>
+            </div>
+          )}
         </div>
 
         {!n.isRead && (
@@ -181,6 +197,37 @@ const Notifications = () => {
       });
       setNotifications(prev => prev.filter(n => n._id !== id));
     } catch (err) { console.error(err); }
+  };
+
+  const acceptRequest = async (userId, notificationId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiFetch(`${API_URL}/api/interactions/accept/${userId}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => n._id === notificationId ? { ...n, type: 'match', content: 'Connection request accepted! You are now connected!' } : n));
+        await fetchGlobalNotifications(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const declineRequest = async (userId, notificationId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiFetch(`${API_URL}/api/interactions/decline/${userId}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (response.ok) {
+        setNotifications(prev => prev.filter(n => n._id !== notificationId));
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const deleteBulk = async () => {
@@ -370,6 +417,8 @@ const Notifications = () => {
                         onToggleSelect={toggleSelect}
                         onDelete={deleteOne}
                         onMarkRead={markAsRead}
+                        onAccept={acceptRequest}
+                        onDecline={declineRequest}
                         formatTimeCompact={formatTimeCompact}
                         getNotificationIcon={getNotificationIcon}
                       />

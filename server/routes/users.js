@@ -7,6 +7,7 @@ const User = require('../models/User');
 const Connection = require('../models/Connection');
 const Message = require('../models/Message');
 const Notification = require('../models/Notification');
+const Like = require('../models/Like');
 
 const auth = require('../middleware/auth');
 
@@ -66,6 +67,10 @@ router.get('/discover', auth, async (req, res) => {
  
       lastSeen: {
         $gte: recentTime
+      },
+
+      username: {
+        $not: /^(test|dummy)/i
       }
     };
  
@@ -242,6 +247,43 @@ router.get('/blocked/list', auth, async (req, res) => {
 
 
 // ======================================================
+// SEARCH USERS
+// ======================================================
+
+router.get('/search', auth, async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.json([]);
+    }
+
+    const currentUser = await User.findById(req.userId, 'blockedUsers').lean();
+    const blockedUsers = currentUser?.blockedUsers || [];
+
+    const users = await User.find({
+      _id: { $nin: [req.userId, ...blockedUsers] },
+      role: 'user',
+      status: 'active',
+      isShadowBanned: false,
+      $and: [
+        { username: { $regex: q, $options: 'i' } },
+        { username: { $not: /^(test|dummy)/i } }
+      ]
+    })
+      .select('username fullName profilePic age gender bio onlineStatus isPremium location interests')
+      .limit(20)
+      .lean();
+
+    res.json(users);
+  } catch (error) {
+    console.error('[SEARCH USERS ERROR]:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+
+// ======================================================
 // GET SINGLE USER
 // ======================================================
 
@@ -310,9 +352,37 @@ router.get('/:id', auth, async (req, res) => {
         users: req.params.id
       });
 
+    // Check connection status with current user
+    let connectionStatus = 'none'; // none, pending_sent, pending_received, active
+    let connectionId = null;
+
+    if (req.userId.toString() !== req.params.id.toString()) {
+      const sortedIds = [req.userId, req.params.id].sort();
+      const pairKey = sortedIds.join('_');
+      const conn = await Connection.findOne({ pairKey }).lean();
+      
+      if (conn) {
+        connectionStatus = conn.status;
+        connectionId = conn._id;
+      } else {
+        // Check for pending likes (connection requests)
+        const likeSent = await Like.findOne({ fromUser: req.userId, toUser: req.params.id }).lean();
+        if (likeSent) {
+          connectionStatus = 'pending_sent';
+        } else {
+          const likeReceived = await Like.findOne({ fromUser: req.params.id, toUser: req.userId }).lean();
+          if (likeReceived) {
+            connectionStatus = 'pending_received';
+          }
+        }
+      }
+    }
+
     res.json({
       ...user,
-      connectionCount
+      connectionCount,
+      connectionStatus,
+      connectionId
     });
 
   } catch (error) {

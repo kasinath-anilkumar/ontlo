@@ -68,7 +68,7 @@ router.get('/', auth, async (req, res) => {
     
     const query = { 
       user: new mongoose.Types.ObjectId(req.userId),
-      type: { $in: ['match', 'announcement', 'alert', 'system', 'info', 'security'] }
+      type: { $in: ['match', 'like', 'announcement', 'alert', 'system', 'info', 'security'] }
     };
 
     // Debugging: Explain query if requested

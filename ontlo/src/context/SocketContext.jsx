@@ -398,8 +398,8 @@ export const SocketProvider = ({ children }) => {
 
     // Rich Toast Notification Listener
     newSocket.on('new-notification', (notification) => {
-      // Filter out unwanted types (message, like, ping) as per user request
-      const allowedTypes = ['match', 'announcement', 'alert', 'system', 'info', 'security'];
+      // Filter out unwanted types as per user request (allow like for connection requests)
+      const allowedTypes = ['match', 'like', 'announcement', 'alert', 'system', 'info', 'security'];
       if (!allowedTypes.includes(notification.type)) return;
 
       showToast(notification);

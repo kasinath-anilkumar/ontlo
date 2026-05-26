@@ -9,6 +9,17 @@ const Connection = require('../models/Connection');
 const cacheUtil = require('../utils/cache');
 const { logger } = require('../utils/logger');
 
+const icebreakerQuestions = [
+  { id: 1, question: "Would you rather travel to the future or the past?", options: ["Future 🚀", "Past 🏛️"] },
+  { id: 2, question: "Are you a morning person or a night owl?", options: ["Morning 🌅", "Night Owl 🦉"] },
+  { id: 3, question: "Would you rather have infinite money or infinite knowledge?", options: ["Infinite Money 💵", "Infinite Knowledge 🧠"] },
+  { id: 4, question: "Do you prefer mountains or beaches?", options: ["Mountains 🏔️", "Beaches 🏖️"] },
+  { id: 5, question: "Which is better: sweet or savory?", options: ["Sweet 🍫", "Savory 🍕"] },
+  { id: 6, question: "Would you rather explore space or the deep ocean?", options: ["Space 🌌", "Deep Ocean 🐙"] },
+  { id: 7, question: "Do you prefer books or movies?", options: ["Books 📚", "Movies 🎬"] },
+  { id: 8, question: "Would you rather always be 15 minutes late or 20 minutes early?", options: ["15m Late 🏃‍♂️", "20m Early ⏱️"] }
+];
+
 class Matchmaker {
 
   constructor() {
@@ -302,6 +313,13 @@ class Matchmaker {
             u2.isShadowBanned
           ) {
 
+            continue;
+          }
+
+          // Call mode filter (Audio vs Video)
+          const u1Mode = u1.callMode || 'video';
+          const u2Mode = u2.callMode || 'video';
+          if (u1Mode !== u2Mode) {
             continue;
           }
 
@@ -658,6 +676,8 @@ class Matchmaker {
           `You both like ${topic}! What's your favorite thing about it?`;
       }
 
+      const randomQuestion = icebreakerQuestions[Math.floor(Math.random() * icebreakerQuestions.length)];
+
       // Emit
       user1.emit(
         'match-found',
@@ -665,8 +685,9 @@ class Matchmaker {
           roomId,
           role: 'caller',
           icebreaker,
-          remoteUserId:
-            user2.userId
+          icebreakerQuestion: randomQuestion,
+          remoteUserId: user2.userId,
+          callMode: user1.callMode || 'video'
         }
       );
 
@@ -676,8 +697,9 @@ class Matchmaker {
           roomId,
           role: 'receiver',
           icebreaker,
-          remoteUserId:
-            user1.userId
+          icebreakerQuestion: randomQuestion,
+          remoteUserId: user1.userId,
+          callMode: user2.callMode || 'video'
         }
       );
 

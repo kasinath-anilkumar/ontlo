@@ -650,8 +650,8 @@ module.exports = (io) => {
         socket.on(
           'join-queue',
 
-          () => {
-
+          (payload) => {
+            socket.callMode = payload?.callMode || 'video';
             matchmaker.joinQueue(
               socket
             );
@@ -745,6 +745,26 @@ module.exports = (io) => {
                 'webrtc-ice-candidate',
                 {
                   candidate
+                }
+              );
+          }
+        );
+
+        socket.on(
+          'icebreaker-vote',
+
+          ({
+            roomId,
+            option
+          }) => {
+
+            socket
+              .to(roomId)
+              .emit(
+                'peer-icebreaker-vote',
+                {
+                  userId: socket.userId,
+                  option
                 }
               );
           }

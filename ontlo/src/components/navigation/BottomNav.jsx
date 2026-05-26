@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, Video, Heart, MessageSquare, User, Bell } from "lucide-react";
+import { Home, Radio, Heart, MessageSquare, User, Search } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
 
 const BottomNav = () => {
@@ -7,8 +7,8 @@ const BottomNav = () => {
 
   const navItems = [
     { name: "Home", path: "/", icon: Home },
-    { name: "Video", path: "/video", icon: Video },
-    { name: "Activity", path: "/notifications", icon: Bell, badge: counts.notifications },
+    { name: "Connect", path: "/video", icon: Radio },
+    { name: "Search", path: "/search", icon: Search },
     { name: "Messages", path: "/messages", icon: MessageSquare, badge: counts.messages },
     { name: "Profile", path: "/profile", icon: User },
   ];
@@ -20,7 +20,7 @@ const BottomNav = () => {
         translate-y-0 opacity-100
       `}
     >
-      <div className="flex items-center justify-around py-3 px-2 relative">
+      <div className="flex items-center justify-between py-3 px-1 relative w-full">
         <div className="absolute inset-0 bg-gradient-to-t from-purple-600/5 to-transparent pointer-events-none"></div>
 
         {navItems.map((item) => (
@@ -28,7 +28,7 @@ const BottomNav = () => {
             key={item.name}
             to={item.path}
             className={({ isActive }) => `
-              relative flex flex-col items-center justify-center py-1 px-4 rounded-2xl transition-all 
+              relative flex flex-col items-center justify-center py-1 px-1 flex-1 min-w-0 transition-all 
               ${isActive 
                 ? "text-white" 
                 : "text-gray-500 hover:text-gray-300"
@@ -49,7 +49,7 @@ const BottomNav = () => {
                     <span>{item.badge > 99 ? "99+" : item.badge}</span>
                   </span>
                 </div>
-                <span className={`text-[9px] mt-1 font-black uppercase tracking-widest transition-all duration-300 ${isActive ? "opacity-100 translate-y-0" : "opacity-40"}`}>
+                <span className={`text-[8px] sm:text-[9px] mt-1 font-black uppercase tracking-wider text-center truncate w-full transition-all duration-300 ${isActive ? "opacity-100 translate-y-0" : "opacity-40"}`}>
                   {item.name}
                 </span>
               </>

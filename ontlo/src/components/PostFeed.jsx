@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, MoreHorizontal, Send, X, Users, Smile, Trash2, ChevronDown, Camera, Maximize2, Minimize2, Check } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Send, X, Users, Smile, Trash2, ChevronDown, Camera, Maximize2, Minimize2, Check, AlertTriangle } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import Skeleton from './ui/Skeleton';
 import API_URL, { apiFetch } from '../utils/api';
@@ -14,9 +14,32 @@ const getOptimizedUrl = (url, width = 1200) => {
 
 const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostDeleted }) => {
   const navigate = useNavigate();
-  const { user } = useSocket();
+  const { user, socket } = useSocket();
   const [posts, setPosts] = useState(initialPosts || []);
   const [loading, setLoading] = useState(!initialPosts);
+  const [showScreenshotWarning, setShowScreenshotWarning] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (
+        e.key === 'PrintScreen' || 
+        (e.key === 's' && (e.metaKey || e.ctrlKey) && e.shiftKey) ||
+        (e.key === 's' && (e.metaKey || e.ctrlKey))
+      ) {
+        if (e.key === 'PrintScreen') {
+          setShowScreenshotWarning(true);
+        } else {
+          e.preventDefault();
+          setShowScreenshotWarning(true);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     if (!initialPosts) {
@@ -36,6 +59,42 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
       setTimeout(doScroll, 350);
     }
   }, [scrollToId, posts]);
+
+  // Handle Socket Events
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewPost = (newPost) => {
+      setPosts(prev => [newPost, ...prev]);
+    };
+
+    const handlePostUpdated = ({ postId, likes, comments }) => {
+      setPosts(prev => prev.map(post => {
+        if (post._id === postId) {
+          const updated = { ...post };
+          if (likes !== undefined) updated.likes = likes;
+          if (comments !== undefined) updated.comments = comments;
+          return updated;
+        }
+        return post;
+      }));
+    };
+
+    const handlePostDeleted = ({ postId }) => {
+      setPosts(prev => prev.filter(post => post._id !== postId));
+      if (onPostDeleted) onPostDeleted(postId);
+    };
+
+    socket.on('new-post', handleNewPost);
+    socket.on('post-updated', handlePostUpdated);
+    socket.on('post-deleted', handlePostDeleted);
+
+    return () => {
+      socket.off('new-post', handleNewPost);
+      socket.off('post-updated', handlePostUpdated);
+      socket.off('post-deleted', handlePostDeleted);
+    };
+  }, [socket, onPostDeleted]);
 
   const fetchFeed = async () => {
     try {
@@ -231,6 +290,26 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
           </>
         )}
       </div>
+
+      {showScreenshotWarning && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-[#151923]/95 backdrop-blur-xl border border-red-500/40 p-8 rounded-[32px] shadow-2xl text-center max-w-sm">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-white font-black text-xl mb-2 uppercase tracking-tight">Private Content</h3>
+            <p className="text-gray-400 text-xs leading-relaxed mb-6">
+              Screenshots and screen recordings are discouraged to protect the privacy of your connections in Ontlo.
+            </p>
+            <button 
+              onClick={() => setShowScreenshotWarning(false)} 
+              className="w-full py-3 bg-red-500 hover:bg-red-600 rounded-xl text-white font-bold text-xs uppercase tracking-wider transition-all"
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -381,6 +460,8 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           alt="Post Media"
           loading="lazy"
         />
+
+
 
         {/* Double Tap Heart Animation Overlay */}
         {showHeartAnim && (

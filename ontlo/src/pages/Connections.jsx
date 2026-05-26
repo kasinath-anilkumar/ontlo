@@ -1,7 +1,6 @@
 import { Heart, Loader2, MessageSquare, MoreVertical, ShieldAlert, User, Users, UserX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import ProfileModal from "../components/profile/ProfileModal";
 import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
 
@@ -9,7 +8,6 @@ const Connections = () => {
   const { socket, connections, setConnections, fetchGlobalConnections } = useSocket();
   const [loading, setLoading] = useState(connections.length === 0);
   const [activeMenu, setActiveMenu] = useState(null);
-  const [selectedProfile, setSelectedProfile] = useState(null);
   const navigate = useNavigate();
 
   const fetchConnections = async () => {
@@ -167,7 +165,7 @@ const Connections = () => {
                     <div className="fixed inset-0 z-20" onClick={(e) => { e.stopPropagation(); setActiveMenu(null); }}></div>
                     <div className="absolute right-0 top-12 w-48 bg-[#151923] border border-[#1e293b] rounded-2xl shadow-2xl z-30 py-2 overflow-hidden animate-in zoom-in-95 duration-200">
                       <button 
-                        onClick={(e) => { e.stopPropagation(); setSelectedProfile(conn.user._id); setActiveMenu(null); }}
+                        onClick={(e) => { e.stopPropagation(); navigate("/profile", { state: { userProfile: conn.user } }); setActiveMenu(null); }}
                         className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-[#1e293b] hover:text-white flex items-center gap-2 transition"
                       >
                         <Users className="w-4 h-4 text-purple-400" /> View Profile
@@ -194,11 +192,6 @@ const Connections = () => {
         ))}
       </div>
 
-      <ProfileModal 
-        userId={selectedProfile} 
-        onClose={() => setSelectedProfile(null)} 
-        onMessage={() => navigate("/messages", { state: { selectId: connections.find(c => c.user._id === selectedProfile)?.id } })}
-      />
     </div>
   );
 };

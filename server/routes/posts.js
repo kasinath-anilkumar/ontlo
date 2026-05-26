@@ -109,6 +109,16 @@ router.post('/', auth, async (req, res) => {
 
     const populatedPost = await post.populate('user', 'username profilePic');
 
+    if (req.io) {
+      const connections = await Connection.find({ users: req.userId, status: 'active' }).lean();
+      const connectionIds = connections.map(conn => 
+        conn.users.find(id => id.toString() !== req.userId.toString())
+      );
+      connectionIds.forEach(id => {
+        req.io.to(`user_${id}`).emit('new-post', populatedPost);
+      });
+    }
+
     res.status(201).json(populatedPost);
   } catch (error) {
     console.error('[CREATE POST ERROR]:', error);
@@ -134,6 +144,18 @@ router.post('/:id/like', auth, async (req, res) => {
     }
 
     await post.save();
+
+    if (req.io) {
+      const connections = await Connection.find({ users: post.user, status: 'active' }).lean();
+      const connectionIds = connections.map(conn => 
+        conn.users.find(id => id.toString() !== post.user.toString())
+      );
+      connectionIds.push(post.user);
+      connectionIds.forEach(id => {
+        req.io.to(`user_${id}`).emit('post-updated', { postId: post._id, likes: post.likes });
+      });
+    }
+
     res.json({ likes: post.likes.length, isLiked: index === -1 });
   } catch (error) {
     console.error('[LIKE POST ERROR]:', error);
@@ -163,7 +185,20 @@ router.post('/:id/comment', auth, async (req, res) => {
     await post.save();
     
     const populatedPost = await post.populate('comments.user', 'username profilePic');
-    res.json(populatedPost.comments[populatedPost.comments.length - 1]);
+    const newComment = populatedPost.comments[populatedPost.comments.length - 1];
+
+    if (req.io) {
+      const connections = await Connection.find({ users: post.user, status: 'active' }).lean();
+      const connectionIds = connections.map(conn => 
+        conn.users.find(id => id.toString() !== post.user.toString())
+      );
+      connectionIds.push(post.user);
+      connectionIds.forEach(id => {
+        req.io.to(`user_${id}`).emit('post-updated', { postId: post._id, comments: populatedPost.comments });
+      });
+    }
+
+    res.json(newComment);
   } catch (error) {
     console.error('[COMMENT POST ERROR]:', error);
     res.status(500).json({ error: 'Server error' });
@@ -183,6 +218,17 @@ router.delete('/:id', auth, async (req, res) => {
     }
 
     await Post.findByIdAndDelete(req.params.id);
+
+    if (req.io) {
+      const connections = await Connection.find({ users: req.userId, status: 'active' }).lean();
+      const connectionIds = connections.map(conn => 
+        conn.users.find(id => id.toString() !== req.userId.toString())
+      );
+      connectionIds.forEach(id => {
+        req.io.to(`user_${id}`).emit('post-deleted', { postId: req.params.id });
+      });
+    }
+
     res.json({ message: 'Post deleted successfully' });
   } catch (error) {
     console.error('[DELETE POST ERROR]:', error);

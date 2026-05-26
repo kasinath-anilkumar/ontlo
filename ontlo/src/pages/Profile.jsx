@@ -13,7 +13,8 @@ import {
   Star,
   Heart,
   Users,
-  Plus
+  Plus,
+  Loader2
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
@@ -22,13 +23,15 @@ import API_URL, { apiFetch } from "../utils/api";
 import PostFeed from "../components/PostFeed";
 
 const Profile = () => {
-  const { user, setUser, connections } = useSocket();
+  const { user, setUser, connections, socket } = useSocket();
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
 
-  const profileUser = location.state?.userProfile || user;
-  const isSelf = !location.state?.userProfile || location.state?.userProfile?._id === user?._id;
+  const profileUserFromState = location.state?.userProfile;
+  const isSelf = !profileUserFromState || profileUserFromState?._id === user?._id;
+  const [profileUser, setProfileUser] = useState(isSelf ? user : profileUserFromState);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const [uploading, setUploading] = useState(false);
   const [moments, setMoments] = useState([]);
@@ -39,6 +42,63 @@ const Profile = () => {
   const [loadingFavorites, setLoadingFavorites] = useState(true);
 
   useEffect(() => {
+    if (!isSelf && profileUserFromState?._id) {
+       const fetchProfile = async () => {
+          try {
+             const token = localStorage.getItem("token");
+             const response = await apiFetch(`${API_URL}/api/users/${profileUserFromState._id}`, {
+               headers: { Authorization: `Bearer ${token}` }
+             });
+             if (response.ok) {
+                const data = await response.json();
+                setProfileUser(data);
+             }
+          } catch(err) {
+             console.error(err);
+          }
+       };
+       fetchProfile();
+    } else if (isSelf) {
+       setProfileUser(user);
+    }
+  }, [isSelf, profileUserFromState?._id, user]);
+
+  // Realtime updates for connection status
+  useEffect(() => {
+    if (!socket || isSelf || !profileUser) return;
+
+    const handleNewMatch = (payload) => {
+      if (payload.userId === profileUser._id || payload.matchedUser?._id === profileUser._id) {
+        setProfileUser(prev => prev ? { ...prev, connectionStatus: 'active' } : null);
+      }
+    };
+    
+    const handleNewConnection = (connection) => {
+      const users = typeof connection.users[0] === 'object' ? connection.users.map(u => u._id || u) : connection.users;
+      if (users.includes(profileUser._id)) {
+        setProfileUser(prev => prev ? { ...prev, connectionStatus: 'active' } : null);
+      }
+    };
+
+    const handleNotification = (notif) => {
+      if ((notif.type === 'like' || notif.type === 'connection_request') && (notif.fromUser?._id === profileUser._id || notif.fromUser === profileUser._id)) {
+        setProfileUser(prev => prev ? { ...prev, connectionStatus: 'pending_received' } : null);
+      }
+    };
+
+    socket.on('new-match', handleNewMatch);
+    socket.on('new-connection', handleNewConnection);
+    socket.on('new-notification', handleNotification);
+
+    return () => {
+      socket.off('new-match', handleNewMatch);
+      socket.off('new-connection', handleNewConnection);
+      socket.off('new-notification', handleNotification);
+    };
+  }, [socket, isSelf, profileUser?._id]);
+
+  useEffect(() => {
+    if (!profileUser?._id) return;
     const fetchMoments = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -112,6 +172,124 @@ const Profile = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleConnect = async () => {
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiFetch(`${API_URL}/api/interactions/${profileUser._id}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProfileUser(prev => ({ ...prev, connectionStatus: data.isMatch ? 'active' : 'pending_sent' }));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAccept = async () => {
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiFetch(`${API_URL}/api/interactions/accept/${profileUser._id}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (response.ok) {
+        setProfileUser(prev => ({ ...prev, connectionStatus: 'active' }));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiFetch(`${API_URL}/api/interactions/decline/${profileUser._id}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (response.ok) {
+        setProfileUser(prev => ({ ...prev, connectionStatus: 'none' }));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const renderActionButtons = (isDesktop = false) => {
+    if (isSelf) return null;
+    
+    if (profileUser?.connectionStatus === 'active') {
+      return (
+        <button
+          onClick={() => navigate("/messages", { state: { selectId: profileUser._id } })}
+          className={`flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isDesktop ? 'px-5 h-10 rounded-full bg-white text-black text-sm font-semibold hover:bg-white/90' : 'flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-sm py-3 rounded-2xl shadow-[0_4px_20px_rgba(168,85,247,0.3)]'}`}
+        >
+          <MessageSquare size={isDesktop ? 15 : 18} />
+          <span>Message {isDesktop ? '' : profileUser.username}</span>
+        </button>
+      );
+    }
+    
+    if (profileUser?.connectionStatus === 'pending_sent') {
+      return (
+        <button
+          disabled
+          className={`flex items-center justify-center gap-2 cursor-not-allowed border border-white/10 text-gray-400 font-bold ${isDesktop ? 'px-5 h-10 rounded-full bg-white/5 text-sm' : 'flex-1 bg-white/5 text-sm py-3 rounded-2xl'}`}
+        >
+          <span>Requested</span>
+        </button>
+      );
+    }
+    
+    if (profileUser?.connectionStatus === 'pending_received') {
+      return (
+        <div className={`flex gap-2 ${isDesktop ? '' : 'w-full'}`}>
+          <button
+            onClick={handleAccept}
+            disabled={actionLoading}
+            className={`flex items-center justify-center gap-2 font-bold transition-all disabled:opacity-50 ${isDesktop ? 'px-4 h-10 rounded-full bg-purple-600 text-white text-sm hover:bg-purple-700' : 'flex-1 bg-gradient-to-r from-purple-600 to-pink-500 text-white text-sm py-3 rounded-2xl'}`}
+          >
+            {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {!actionLoading && <span>Accept</span>}
+          </button>
+          <button
+            onClick={handleDecline}
+            disabled={actionLoading}
+            className={`flex items-center justify-center gap-2 font-bold transition-all disabled:opacity-50 border border-white/10 text-white hover:bg-white/10 ${isDesktop ? 'px-4 h-10 rounded-full bg-white/5 text-sm' : 'flex-1 bg-white/5 text-sm py-3 rounded-2xl'}`}
+          >
+            {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {!actionLoading && <span>Decline</span>}
+          </button>
+        </div>
+      );
+    }
+    
+    // Default none
+    return (
+      <button
+        onClick={handleConnect}
+        disabled={actionLoading}
+        className={`flex items-center justify-center gap-2 transition-all duration-300 disabled:opacity-50 ${isDesktop ? 'px-5 h-10 rounded-full bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700' : 'flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-sm py-3 rounded-2xl shadow-[0_4px_20px_rgba(168,85,247,0.3)]'}`}
+      >
+        {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+        {!actionLoading && <Users size={isDesktop ? 15 : 18} />}
+        {!actionLoading && <span>Connect</span>}
+      </button>
+    );
   };
 
 
@@ -270,33 +448,7 @@ const Profile = () => {
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={() =>
-                    navigate("/messages", {
-                      state: { selectId: profileUser._id },
-                    })
-                  }
-                  className="
-          px-5
-          h-10
-          rounded-full
-          bg-white
-          hover:bg-white/90
-          text-black
-          text-sm
-          font-semibold
-          flex
-          items-center
-          gap-2
-          transition-all
-          duration-300
-          hover:scale-[1.02]
-          active:scale-[0.98]
-        "
-                >
-                  <MessageSquare size={15} />
-                  <span>Message</span>
-                </button>
+                renderActionButtons(true)
               )}
             </div>
           </div>
@@ -328,7 +480,9 @@ const Profile = () => {
                     </div>
                   </div>
                   {/* Online Green Badge */}
-                  <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 w-5 h-5 bg-green-500 rounded-full border-4 border-[#121420] shadow-md" />
+                  {profileUser?.onlineStatus === 'online' && (
+                    <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 w-5 h-5 bg-green-500 rounded-full border-4 border-[#121420] shadow-md" />
+                  )}
                 </div>
 
                 {/* IDENTITY & BIO */}
@@ -359,10 +513,16 @@ const Profile = () => {
                       </>
                     )}
                     <span className="text-white/20">•</span>
-                    <span className="flex items-center gap-1.5 text-green-400 font-semibold">
-                      <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                      Online
-                    </span>
+                    {profileUser?.onlineStatus === 'online' ? (
+                      <span className="flex items-center gap-1.5 text-green-400 font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                        Online
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-gray-500 font-semibold">
+                        Offline
+                      </span>
+                    )}
                   </div>
 
                   {/* BIO */}
@@ -436,13 +596,7 @@ const Profile = () => {
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={() => navigate("/messages", { state: { selectId: profileUser._id } })}
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-sm py-3 rounded-2xl transition-all shadow-[0_4px_20px_rgba(168,85,247,0.3)] flex items-center justify-center gap-2"
-                >
-                  <MessageSquare size={18} />
-                  <span>Message {profileUser.username}</span>
-                </button>
+                renderActionButtons(false)
               )}
             </div>
 

@@ -3,13 +3,14 @@ import { useSocket } from "../../context/SocketContext";
 import logo from "../../assets/ontlo_Logo.png";
 import { 
   Home, 
-  Video, 
+  Radio, 
   Heart, 
   MessageSquare, 
   Star, 
   User,
   ChevronRight,
-  Bell
+  Bell,
+  Search
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -18,7 +19,8 @@ const Sidebar = () => {
 
   const navItems = [
     { name: "Home", path: "/", icon: Home },
-    { name: "Video Chat", path: "/video", icon: Video },
+    { name: "Connect", path: "/video", icon: Radio },
+    { name: "Search", path: "/search", icon: Search },
     { name: "Notifications", path: "/notifications", icon: Bell, badge: counts.notifications },
     { name: "Connections", path: "/connections", icon: Heart, badge: counts.connections },
     { name: "Messages", path: "/messages", icon: MessageSquare, badge: counts.messages },

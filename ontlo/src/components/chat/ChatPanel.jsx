@@ -2,7 +2,7 @@ import { Check, CheckCheck, ChevronLeft, Loader2, MessageSquare, MoreHorizontal,
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocket } from "../../context/SocketContext";
 import API_URL, { apiFetch } from "../../utils/api";
-import ProfileModal from "../profile/ProfileModal";
+import { useNavigate } from "react-router-dom";
 import Skeleton from "../ui/Skeleton";
 
 const ICEBREAKERS = [
@@ -25,7 +25,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  const navigate = useNavigate();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const messagesContainerRef = useRef(null);
@@ -473,7 +473,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
                   <div className="fixed inset-0 z-20" onClick={() => setShowMenu(false)}></div>
                   <div className="absolute right-0 top-10 w-48 bg-[#151923] border border-[#1e293b] rounded-2xl shadow-2xl z-30 py-2 overflow-hidden animate-in zoom-in-95 duration-200">
                     <button
-                      onClick={() => { setShowProfileModal(true); setShowMenu(false); }}
+                      onClick={() => { navigate("/profile", { state: { userProfile: remoteUser } }); setShowMenu(false); }}
                       className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-[#1e293b] hover:text-white flex items-center gap-2 transition"
                     >
                       <Users className="w-4 h-4 text-purple-400" /> View Profile
@@ -684,12 +684,6 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
         </form>
       </div>
 
-      {showProfileModal && (
-        <ProfileModal
-          userId={remoteUser?._id || remoteUser?.id}
-          onClose={() => setShowProfileModal(false)}
-        />
-      )}
     </div>
   );
 };
