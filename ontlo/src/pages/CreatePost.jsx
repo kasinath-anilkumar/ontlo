@@ -104,7 +104,7 @@ const CreatePost = () => {
             >
               <ChevronLeft size={18} className="text-white" />
             </button>
-            <h1 className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-white/80">New Moment</h1>
+            <h1 className="text-sm md:text-lg font-thin tracking-wide  text-white/80">Post Moments</h1>
           </div>
           
           <button 
@@ -128,10 +128,10 @@ const CreatePost = () => {
             
             {/* User Info - Compact */}
             <div className="flex-none flex items-center gap-3">
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl p-0.5 bg-gradient-to-tr from-purple-500 to-pink-500">
+              <div className="w-12 h-12 md:w-14 md:h-14 rounded-full p-0.5">
                 <img 
-                  src={user?.profilePic || 'https://via.placeholder.com/150'} 
-                  className="w-full h-full rounded-[8px] md:rounded-[10px] border-2 border-[#0B0E14] object-cover" 
+                  src={user?.profilePic} 
+                  className="w-full h-full rounded-full border-2 border-[#0B0E14] object-cover" 
                   alt="Profile"
                 />
               </div>

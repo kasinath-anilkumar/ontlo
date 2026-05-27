@@ -701,32 +701,51 @@ const Profile = () => {
 
                 {/* TAB 1: POSTS GRID */}
                 {activeTab === "posts" && (
-                  <div className="grid grid-cols-3 gap-1 sm:gap-1.5 animate-in fade-in duration-300">
-                    {loadingMoments ? (
-                      <div className="col-span-3 py-20 text-center text-gray-500 text-sm animate-pulse">Loading photos...</div>
-                    ) : moments.length > 0 ? (
-                      moments.map((m) => (
-                        <div
-                          key={m._id}
-                          onClick={() => setViewingPostId(m._id)}
-                          className="aspect-square bg-[#1a1f30] rounded-sm overflow-hidden relative group cursor-pointer border border-white/5 shadow-sm"
-                        >
-                          <img
-                            src={m.imageUrl}
-                            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105 group-hover:opacity-90"
-                            alt="Photo"
-                          />
-                        </div>
-                      ))
-                    ) : (
-                      <div className="col-span-3 py-16 text-center bg-white/[0.02] border border-dashed border-white/5 rounded-3xl">
-                        <ImageIcon size={32} className="mx-auto mb-3 text-purple-400 opacity-60" />
-                        <p className="text-sm font-bold text-white mb-1">No photos captured</p>
-                        <p className="text-xs text-gray-500 font-medium">Photos uploaded to your feed will appear here</p>
-                      </div>
-                    )}
-                  </div>
-                )}
+  <div className="grid grid-cols-3 gap-1 sm:gap-1.5 animate-in fade-in duration-300">
+    {loadingMoments ? (
+      [...Array(9)].map((_, i) => (
+    <div
+      key={i}
+      className="aspect-square rounded-sm overflow-hidden border border-white/[0.03] bg-white/[0.02] relative"
+    >
+      {/* Ultra light smooth shimmer */}
+      <div className="absolute inset-0">
+        <div className="h-full w-full bg-white/[0.015]" />
+
+        <div className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/[0.035] to-transparent" />
+      </div>
+    </div>
+  ))
+    ) : moments.length > 0 ? (
+      moments.map((m) => (
+        <div
+          key={m._id}
+          onClick={() => setViewingPostId(m._id)}
+          className="aspect-square bg-[#1a1f30] rounded-sm overflow-hidden relative group cursor-pointer border border-white/5 shadow-sm"
+        >
+          <img
+            src={m.imageUrl}
+            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105 group-hover:opacity-90"
+            alt="Photo"
+          />
+        </div>
+      ))
+    ) : (
+      <div className="col-span-3 py-16 text-center bg-white/[0.02] border border-dashed border-white/5 rounded-3xl">
+        <ImageIcon
+          size={32}
+          className="mx-auto mb-3 text-purple-400 opacity-60"
+        />
+        <p className="text-sm font-bold text-white mb-1">
+          No photos captured
+        </p>
+        <p className="text-xs text-gray-500 font-medium">
+          Photos uploaded to your feed will appear here
+        </p>
+      </div>
+    )}
+  </div>
+)}
 
                 {/* TAB 2: CONNECTIONS LIST */}
                 {activeTab === "connections" && (

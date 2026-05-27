@@ -53,7 +53,7 @@ const UserRow = ({ item, onStatusChange }) => {
         updateStatus('active');
       }
     };
-    
+
     const handleNewConnection = (connection) => {
       const connectionUserId =
         connection?.user?._id ||
@@ -155,7 +155,7 @@ const UserRow = ({ item, onStatusChange }) => {
   };
 
   return (
-    <div 
+    <div
       onClick={() => navigate("/profile", { state: { userProfile: item } })}
       className="flex items-center justify-between p-3.5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-all rounded-2xl cursor-pointer"
     >
@@ -186,7 +186,7 @@ const UserRow = ({ item, onStatusChange }) => {
       {/* Button */}
       <div className="shrink-0">
         {status === 'active' && (
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); navigate("/messages"); }}
             className="px-4 py-1.5 rounded-full border border-white/10 hover:bg-white/5 text-xs font-bold text-white tracking-tight active:scale-95 transition-all"
           >
@@ -194,7 +194,7 @@ const UserRow = ({ item, onStatusChange }) => {
           </button>
         )}
         {status === 'pending_sent' && (
-          <button 
+          <button
             onClick={handleCancelRequest}
             disabled={loading}
             className="px-4 py-1.5 rounded-full border border-white/10 hover:bg-white/5 text-xs font-bold text-gray-400 hover:text-white tracking-tight active:scale-95 transition-all disabled:opacity-50"
@@ -203,7 +203,7 @@ const UserRow = ({ item, onStatusChange }) => {
           </button>
         )}
         {status === 'pending_received' && (
-          <button 
+          <button
             onClick={handleAccept}
             disabled={loading}
             className="px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-xs font-bold text-white tracking-tight active:scale-95 transition-all disabled:opacity-50"
@@ -212,7 +212,7 @@ const UserRow = ({ item, onStatusChange }) => {
           </button>
         )}
         {status === 'none' && (
-          <button 
+          <button
             onClick={handleConnect}
             disabled={loading}
             className="px-4 py-1.5 rounded-full bg-purple-600 hover:bg-purple-700 text-xs font-bold text-white tracking-tight active:scale-95 transition-all disabled:opacity-50"
@@ -327,7 +327,7 @@ const Search = () => {
 
   return (
     <div className="h-full bg-[#0B0E14] flex flex-col overflow-hidden">
-      
+
       {/* Instagram style minimal search bar header */}
       <div className="sticky top-0 z-40 bg-[#0B0E14]/95 backdrop-blur-xl px-4 py-4 flex items-center gap-3 shrink-0">
         {/* <button
@@ -336,7 +336,7 @@ const Search = () => {
         >
           <ChevronLeft className="w-5 h-5" />
         </button> */}
-        
+
         <div className="relative flex-1">
           <input
             type="text"
@@ -352,9 +352,29 @@ const Search = () => {
       {/* Content area */}
       <div className="flex-1 h-screen overflow-y-auto px-4 pb-20 scrollbar-hide">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-40">
-            <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-white">Searching...</span>
+          <div className="flex flex-col gap-2 mt-4">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 px-2 py-2 rounded-2xl"
+              >
+                {/* Avatar */}
+                <div className="relative w-12 h-12 rounded-full overflow-hidden bg-white/[0.02]">
+                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" />
+                </div>
+
+                {/* Text */}
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="relative h-3 w-28 rounded-full overflow-hidden bg-white/[0.02]">
+                    <div className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" />
+                  </div>
+
+                  <div className="relative h-2.5 w-20 rounded-full overflow-hidden bg-white/[0.015]">
+                    <div className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/[0.03] to-transparent" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : query.trim() === "" ? (
           /* Explore suggestions (Instagram explorer style) */
@@ -371,9 +391,9 @@ const Search = () => {
             ) : (
               <div className="flex flex-col gap-1">
                 {suggestions.map((user) => (
-                  <UserRow 
-                    key={user._id} 
-                    item={user} 
+                  <UserRow
+                    key={user._id}
+                    item={user}
                     onStatusChange={updateUserStatus}
                   />
                 ))}
@@ -388,9 +408,9 @@ const Search = () => {
           /* Search results list */
           <div className="mt-4 flex flex-col gap-1">
             {results.map((user) => (
-              <UserRow 
-                key={user._id} 
-                item={user} 
+              <UserRow
+                key={user._id}
+                item={user}
                 onStatusChange={updateUserStatus}
               />
             ))}
