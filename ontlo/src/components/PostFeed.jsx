@@ -389,7 +389,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           className="flex items-center gap-3 cursor-pointer group"
         >
           <div className="w-9 h-9 rounded-full overflow-hidden border border-white/10 group-hover:border-purple-500 transition">
-            <img src={getOptimizedUrl(post.user?.profilePic, 200) || 'https://via.placeholder.com/150'} className="w-full h-full object-contain" alt="User" loading="lazy" />
+            <img src={getOptimizedUrl(post.user?.profilePic, 200)} className="w-full h-full object-contain" alt="User" loading="lazy" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -553,7 +553,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
               <div key={idx} className="flex gap-2 items-start animate-in fade-in duration-300">
                 <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 mt-0.5 border border-white/10">
                   <img
-                    src={getOptimizedUrl(comment.user?.profilePic, 100) || 'https://via.placeholder.com/150'}
+                    src={getOptimizedUrl(comment.user?.profilePic, 100)}
                     className="w-full h-full object-cover"
                     alt="User"
                     loading="lazy"
@@ -624,7 +624,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
                   <div key={idx} className="space-y-4">
                     <div className="flex gap-3 relative group/comment">
                       <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
-                        <img src={getOptimizedUrl(comment.user?.profilePic, 200) || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="User" loading="lazy" />
+                        <img src={getOptimizedUrl(comment.user?.profilePic, 200)} className="w-full h-full object-cover" alt="User" loading="lazy" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-start justify-between">
@@ -665,7 +665,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
                           <div key={ridx} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300">
                             <div className="w-6 h-6 rounded-full overflow-hidden border border-white/5 flex-shrink-0 mt-0.5">
                               <img
-                                src={reply.user?.profilePic || 'https://via.placeholder.com/150'}
+                                src={reply.user?.profilePic}
                                 className="w-full h-full object-cover"
                                 alt="User"
                               />
@@ -737,7 +737,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           </div>
           <div className="flex items-center gap-3">
             <div className="w-7 h-7 rounded-full overflow-hidden border border-white/5 flex-shrink-0">
-              <img src={currentUser?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="User" />
+              <img src={currentUser?.profilePic} className="w-full h-full object-cover" alt="User" />
             </div>
             <div className="flex-1 relative">
               <input

@@ -513,7 +513,7 @@ const Profile = () => {
                 <div className="relative group flex-shrink-0">
                   <div className="w-32 h-32 sm:w-44 sm:h-44 ">
                     <div className="w-full h-full rounded-full overflow-hidden bg-[#151923] relative">
-                      <img src={profileUser?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="Profile" />
+                      <img src={profileUser?.profilePic} className="w-full h-full object-cover" alt="Profile" />
                     </div>
                   </div>
                   {/* Online Green Badge */}

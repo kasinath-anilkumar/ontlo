@@ -629,7 +629,7 @@ const VideoContainer = () => {
                     <div className="relative flex items-center justify-center gap-6 mb-8">
                       {/* Avatar Current User */}
                       <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-purple-500 animate-in slide-in-from-left duration-700 shadow-xl">
-                        <img src={user?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                        <img src={user?.profilePic} className="w-full h-full object-cover" />
                       </div>
 
                       {/* Connected Glowing Thread */}
@@ -639,7 +639,7 @@ const VideoContainer = () => {
 
                       {/* Avatar Remote User */}
                       <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-pink-500 animate-in slide-in-from-right duration-700 shadow-xl">
-                        <img src={remoteUser?.profilePic || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                        <img src={remoteUser?.profilePic} className="w-full h-full object-cover" />
                       </div>
                     </div>
 
