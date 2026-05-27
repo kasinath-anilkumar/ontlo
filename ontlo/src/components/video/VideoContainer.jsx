@@ -321,7 +321,7 @@ const VideoContainer = () => {
       // IMMEDIATE SAFETY BLUR
       setInCall(true);
       setIsBlurred(true);
-      setSafetyBlurTimer(3);
+      setSafetyBlurTimer(3); 
 
       setShowConnectRequest(false);
       setConnectionStatus(null);
@@ -838,13 +838,13 @@ const VideoContainer = () => {
                     )}
 
                     {/* Stream Watermarking overlay */}
-                    <div className="absolute inset-0 pointer-events-none select-none opacity-[0.03] overflow-hidden flex flex-wrap gap-8 rotate-[-25px] scale-125 items-center justify-center z-20">
+                    {/* <div className="absolute inset-0 pointer-events-none select-none opacity-[0.03] overflow-hidden flex flex-wrap gap-8 rotate-[-25px] scale-125 items-center justify-center z-20">
                       {Array.from({ length: 48 }).map((_, i) => (
                         <span key={i} className="text-white text-[8px] font-black uppercase tracking-widest whitespace-nowrap">
                           @{user?.username || 'user'} • ONTLO LIVE
                         </span>
                       ))}
-                    </div>
+                    </div> */}
 
                     {/* Safety Blur UI Overlay */}
                     {safetyBlurTimer > 0 && matchedCallMode !== 'audio' && (
@@ -853,10 +853,7 @@ const VideoContainer = () => {
                           <div className="absolute inset-0 bg-purple-500/20 rounded-full animate-ping" />
                           <Shield className="w-10 h-10 text-white relative z-10" />
                         </div>
-                        <h2 className="text-white text-2xl font-black uppercase tracking-tighter mb-3 italic">Safety Verification</h2>
-                        <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.3em] max-w-[280px] leading-relaxed mb-6">
-                          Ensuring a safe environment for everyone. Full visibility will return in:
-                        </p>
+                        <h2 className="text-white text-2xl font-black uppercase tracking-tighter mb-3 italic">Safety Blur</h2>
                         <div className="px-8 py-3 bg-white/5 border border-white/10 rounded-2xl">
                           <span className="text-white text-3xl font-black italic tracking-widest">{safetyBlurTimer}s</span>
                         </div>
@@ -866,7 +863,7 @@ const VideoContainer = () => {
                     <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-30">
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2.5 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5 shadow-xl">
-                          <img src={remoteUser?.profilePic || 'https://api.dicebear.com/7.x/avataaars/svg'} className="w-8 h-8 rounded-full border border-white/10 object-cover" />
+                          <img src={remoteUser?.profilePic} className="w-8 h-8 rounded-full border border-white/10 object-cover" />
                           <div className="flex flex-col">
                             <div className="flex items-center gap-1">
                               <span className="text-xs font-bold text-white">{remoteUser?.fullName || 'Connecting...'}</span>
