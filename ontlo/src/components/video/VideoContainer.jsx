@@ -836,16 +836,6 @@ const VideoContainer = () => {
                         className="absolute inset-0 w-full h-full object-cover transition-all duration-[2000ms] ease-in-out z-10"
                       />
                     )}
-
-                    {/* Stream Watermarking overlay */}
-                    {/* <div className="absolute inset-0 pointer-events-none select-none opacity-[0.03] overflow-hidden flex flex-wrap gap-8 rotate-[-25px] scale-125 items-center justify-center z-20">
-                      {Array.from({ length: 48 }).map((_, i) => (
-                        <span key={i} className="text-white text-[8px] font-black uppercase tracking-widest whitespace-nowrap">
-                          @{user?.username || 'user'} • ONTLO LIVE
-                        </span>
-                      ))}
-                    </div> */}
-
                     {/* Safety Blur UI Overlay */}
                     {safetyBlurTimer > 0 && matchedCallMode !== 'audio' && (
                       <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md px-8 text-center animate-in fade-in zoom-in duration-700">
