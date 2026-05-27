@@ -22,7 +22,7 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (
-        e.key === 'PrintScreen' || 
+        e.key === 'PrintScreen' ||
         (e.key === 's' && (e.metaKey || e.ctrlKey) && e.shiftKey) ||
         (e.key === 's' && (e.metaKey || e.ctrlKey))
       ) {
@@ -243,7 +243,7 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
         </div>
       )} */}
 
-       <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
         {posts.length === 0 ? (
           <div className="bg-[#151923]/40 border border-dashed border-white/5 rounded-[32px] p-12 text-center">
             <Camera size={32} className="mx-auto mb-4 text-gray-700" />
@@ -267,7 +267,7 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
             ))}
 
             {/* Premium "You're All Caught Up" Message */}
-            <div className="w-full max-w-xl mx-auto px-6 flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4 duration-1000 ">
+            <div className="w-full max-w-xl mt-12 mx-auto px-6 flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4 duration-1000 ">
               <div className="relative mb-6">
                 {/* Glowing background ring */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 rounded-full blur-[20px] opacity-40 animate-pulse" />
@@ -301,8 +301,8 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
             <p className="text-gray-400 text-xs leading-relaxed mb-6">
               Screenshots and screen recordings are discouraged to protect the privacy of your connections in Ontlo.
             </p>
-            <button 
-              onClick={() => setShowScreenshotWarning(false)} 
+            <button
+              onClick={() => setShowScreenshotWarning(false)}
               className="w-full py-3 bg-red-500 hover:bg-red-600 rounded-xl text-white font-bold text-xs uppercase tracking-wider transition-all"
             >
               I Understand
@@ -381,7 +381,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
   const previewComments = filteredComments.slice(-2);
 
   return (
-    <div className="bg-transparent border-b border-white/[0.05] pb-8 mb-4 animate-in fade-in duration-700 w-full max-w-xl mx-auto flex flex-col my-4">
+    <div className="bg-transparent border-b border-white/[0.05] pb-4 animate-in fade-in duration-700 w-full max-w-xl mx-auto flex flex-col ">
       {/* Author Header */}
       <div className="flex-none flex items-center justify-between p-2 pt-0 sm:px-2 md:px-0">
         <div
@@ -393,10 +393,10 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="text-[13px] font-bold text-white tracking-tight group-hover:text-purple-400 transition">{post.user?.username}</h4>
-              <div className="w-3 h-3 bg-purple-500 rounded-full flex items-center justify-center">
+              <h4 className="text-[14px] text-white tracking-wider group-hover:text-purple-400 transition">{post.user?.username}</h4>
+              {/* <div className="w-3 h-3 bg-purple-500 rounded-full flex items-center justify-center">
                 <Send size={7} className="text-white fill-current" />
-              </div>
+              </div> */}
             </div>
             <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
               <span>{new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -439,7 +439,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
 
       {/* Caption */}
       {post.caption && (
-        <div className="flex-none px-2 pb-2 sm:px-2 md:px-0">
+        <div className="flex-none px-2 pb-0 sm:px-2 md:px-0">
           <p className="text-sm text-gray-300 leading-relaxed font-medium">
             {post.caption}
           </p>
@@ -528,9 +528,31 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
       {/* Interactions & Comments Footer */}
       <div className="flex-none space-y-2 pt-2 pb-2">
         <div className="flex items-center gap-6 px-2 sm:px-2 md:px-0">
-          <button onClick={onLike} className={`flex items-center gap-2 transition-all ${isLiked ? 'text-pink-500' : 'text-gray-400 hover:text-white'}`}>
-            <Heart size={24} fill={isLiked ? "currentColor" : "none"} />
-            <span className="text-sm font-bold tracking-tight">{post.likes?.length || 0} Likes</span>
+          <button
+            onClick={onLike}
+            className={`flex items-center gap-2 transition-all ${isLiked ? "" : "text-gray-400 hover:text-white"
+              }`}
+          >
+            <Heart
+              size={24}
+              className={isLiked ? "text-transparent" : ""}
+              fill={isLiked ? "url(#likeGradient)" : "none"}
+              stroke={isLiked ? "url(#likeGradient)" : "currentColor"}
+            />
+
+            <span className="text-sm font-bold tracking-tight">
+              {post.likes?.length || 0} Likes
+            </span>
+
+            <svg width="0" height="0">
+              <defs>
+                <linearGradient id="likeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ff255f" />
+                  <stop offset="50%" stopColor="#c026ff" />
+                  <stop offset="100%" stopColor="#5b2dff" />
+                </linearGradient>
+              </defs>
+            </svg>
           </button>
           <button onClick={() => setShowFullComments(true)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-all">
             <MessageCircle size={24} />
@@ -616,76 +638,139 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
 
             {/* Modal Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6 pb-32">
-              {filteredComments.map((comment, idx) => {
-                const commentUserId = typeof comment.user === 'object' ? comment.user?._id : comment.user;
-                const canDelete = currentUser?._id === post.user?._id || currentUser?._id === commentUserId;
+              {filteredComments.length === 0 ? (
+                <div className="flex items-center justify-center py-20 opacity-40">
+                  <p className="text-lg  text-gray-500">
+                    No comments yet
+                  </p>
+                </div>
+              ) : (
+                filteredComments.map((comment, idx) => {
+                  const commentUserId =
+                    typeof comment.user === "object"
+                      ? comment.user?._id
+                      : comment.user;
 
-                return (
-                  <div key={idx} className="space-y-4">
-                    <div className="flex gap-3 relative group/comment">
-                      <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
-                        <img src={getOptimizedUrl(comment.user?.profilePic, 200)} className="w-full h-full object-cover" alt="User" loading="lazy" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <p className="text-[13px] text-gray-200">
-                              <span className="font-bold text-white mr-2">{typeof comment.user === 'object' ? comment.user?.username : 'User'}</span>
-                              {comment.text}
-                            </p>
-                            <div className="flex items-center gap-4">
-                              <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{new Date(comment.createdAt).toLocaleDateString()}</span>
-                              <button
-                                onClick={() => setReplyingTo({ commentId: comment._id, username: typeof comment.user === 'object' ? comment.user?.username : 'User' })}
-                                className="text-[10px] font-black text-gray-500 hover:text-purple-400"
-                              >
-                                Reply
-                              </button>
+                  const canDelete =
+                    currentUser?._id === post.user?._id ||
+                    currentUser?._id === commentUserId;
+
+                  return (
+                    <div key={idx} className="space-y-4">
+                      <div className="flex gap-3 relative group/comment">
+                        <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
+                          <img
+                            src={getOptimizedUrl(comment.user?.profilePic, 200)}
+                            className="w-full h-full object-cover"
+                            alt="User"
+                            loading="lazy"
+                          />
+                        </div>
+
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <p className="text-[13px] text-gray-200">
+                                <span className="font-bold text-white mr-2">
+                                  {typeof comment.user === "object"
+                                    ? comment.user?.username
+                                    : "User"}
+                                </span>
+                                {comment.text}
+                              </p>
+
+                              <div className="flex items-center gap-4">
+                                <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">
+                                  {new Date(comment.createdAt).toLocaleDateString()}
+                                </span>
+
+                                <button
+                                  onClick={() =>
+                                    setReplyingTo({
+                                      commentId: comment._id,
+                                      username:
+                                        typeof comment.user === "object"
+                                          ? comment.user?.username
+                                          : "User",
+                                    })
+                                  }
+                                  className="text-[10px] font-black text-gray-500 hover:text-purple-400"
+                                >
+                                  Reply
+                                </button>
+                              </div>
                             </div>
+
+                            {canDelete && (
+                              <button
+                                onClick={() =>
+                                  onDeleteComment(post._id, comment._id)
+                                }
+                                className="text-gray-800 hover:text-red-500 transition-colors p-1"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
-                          {canDelete && (
-                            <button onClick={() => onDeleteComment(post._id, comment._id)} className="text-gray-800 hover:text-red-500 transition-colors p-1">
-                              <Trash2 size={14} />
-                            </button>
-                          )}
                         </div>
                       </div>
-                    </div>
 
-                    {/* Replies in Modal - Premium Thread UI */}
-                    {comment.replies && comment.replies.length > 0 && (
-                      <div className="ml-4 space-y-4 pt-2 border-l border-white/10 pl-6 mt-1">
-                        {comment.replies.filter(reply => {
-                          const rUid = typeof reply.user === 'object' ? reply.user?._id : reply.user;
-                          if (post.user?._id === currentUser?._id) return true;
-                          if (rUid === currentUser?._id) return true;
-                          if (rUid === post.user?._id && commentUserId === currentUser?._id) return true;
-                          return false;
-                        }).map((reply, ridx) => (
-                          <div key={ridx} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300">
-                            <div className="w-6 h-6 rounded-full overflow-hidden border border-white/5 flex-shrink-0 mt-0.5">
-                              <img
-                                src={reply.user?.profilePic}
-                                className="w-full h-full object-cover"
-                                alt="User"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-[11px] text-gray-300 leading-normal">
-                                <span className="font-bold text-white mr-2">{reply.user?.username}</span>
-                                {reply.text}
-                              </p>
-                              <span className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1 inline-block">
-                                {new Date(reply.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      {/* Replies in Modal */}
+                      {comment.replies && comment.replies.length > 0 && (
+                        <div className="ml-4 space-y-4 pt-2 border-l border-white/10 pl-6 mt-1">
+                          {comment.replies
+                            .filter((reply) => {
+                              const rUid =
+                                typeof reply.user === "object"
+                                  ? reply.user?._id
+                                  : reply.user;
+
+                              if (post.user?._id === currentUser?._id) return true;
+                              if (rUid === currentUser?._id) return true;
+                              if (
+                                rUid === post.user?._id &&
+                                commentUserId === currentUser?._id
+                              )
+                                return true;
+
+                              return false;
+                            })
+                            .map((reply, ridx) => (
+                              <div
+                                key={ridx}
+                                className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300"
+                              >
+                                <div className="w-6 h-6 rounded-full overflow-hidden border border-white/5 flex-shrink-0 mt-0.5">
+                                  <img
+                                    src={reply.user?.profilePic}
+                                    className="w-full h-full object-cover"
+                                    alt="User"
+                                  />
+                                </div>
+
+                                <div className="flex-1">
+                                  <p className="text-[11px] text-gray-300 leading-normal">
+                                    <span className="font-bold text-white mr-2">
+                                      {reply.user?.username}
+                                    </span>
+                                    {reply.text}
+                                  </p>
+
+                                  <span className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1 inline-block">
+                                    {new Date(reply.createdAt).toLocaleDateString([], {
+                                      month: "short",
+                                      day: "numeric",
+                                    })}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             {/* Modal Sticky Input Box */}
@@ -708,9 +793,33 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
                 <button
                   onClick={handleSubmitComment}
                   disabled={!commentText.trim()}
-                  className={`p-2 transition-all ${commentText.trim() ? 'text-purple-400 scale-110' : 'text-gray-800'}`}
+                  className={`p-2 transition-all ${commentText.trim()
+                      ? "scale-110 hover:cursor-pointer"
+                      : "text-gray-800"
+                    }`}
                 >
-                  <Send size={20} className="rotate-[-10deg] fill-current opacity-80" />
+                  <svg width="0" height="0">
+                    <defs>
+                      <linearGradient id="sendGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#ff255f" />
+                        <stop offset="50%" stopColor="#c026ff" />
+                        <stop offset="100%" stopColor="#5b2dff" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+
+                  <Send
+                    size={20}
+                    className="rotate-[45deg] opacity-80"
+                    style={
+                      commentText.trim()
+                        ? {
+                          stroke: "url(#sendGradient2)",
+                          fill: "url(#sendGradient2)",
+                        }
+                        : {}
+                    }
+                  />
                 </button>
               </div>
             </div>
@@ -754,9 +863,26 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
                   {commentText.trim() && !isSubmitting && (
                     <button
                       onClick={handleSubmitComment}
-                      className="p-1 text-purple-400 hover:text-purple-300 transition-colors animate-in fade-in zoom-in duration-300"
+                      className="p-1 transition-all animate-in fade-in zoom-in duration-300 hover:scale-110"
                     >
-                      <Send size={18} className="rotate-[45deg] fill-current opacity-80" />
+                      <svg width="0" height="0">
+                        <defs>
+                          <linearGradient id="sendGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#ff255f" />
+                            <stop offset="50%" stopColor="#c026ff" />
+                            <stop offset="100%" stopColor="#5b2dff" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+
+                      <Send
+                        size={18}
+                        className="rotate-[45deg] opacity-90"
+                        style={{
+                          stroke: "url(#sendGradient)",
+                          fill: "url(#sendGradient)",
+                        }}
+                      />
                     </button>
                   )}
                 </div>

@@ -731,7 +731,7 @@ const Profile = () => {
         </div>
       ))
     ) : (
-      <div className="col-span-3 py-16 text-center bg-white/[0.02] border border-dashed border-white/5 rounded-3xl">
+      <div className="col-span-3 py-16 text-center bg-white/[0.02] border border-dashed border-white/5 rounded-3xl mb-5">
         <ImageIcon
           size={32}
           className="mx-auto mb-3 text-purple-400 opacity-60"

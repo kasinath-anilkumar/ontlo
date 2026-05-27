@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Post = require('../models/Post');
+const User = require('../models/User');
 const Connection = require('../models/Connection');
 const auth = require('../middleware/auth');
 const { moderateText } = require('../utils/moderation');
@@ -24,13 +25,23 @@ router.get('/feed', auth, async (req, res) => {
       conn.users.find(id => id.toString() !== userId.toString())
     );
 
+    // 3. Find which connected users have the current user in their favorites
+    const usersWhoFavorited = await User.find({
+      _id: { $in: connectionIds },
+      favorites: userId
+    }).select('_id').lean();
+    const favoritedByIds = usersWhoFavorited.map(u => u._id);
+
     // Add self to the list to see own posts in feed
     const authors = [...connectionIds, userId];
 
-    // 3. Fetch posts from these authors
+    // 4. Fetch posts: connections/public from all authors + favorites from those who favorited us + all own posts
     const posts = await Post.find({
-      user: { $in: authors },
-      visibility: { $in: ['connections', 'public'] }
+      $or: [
+        { user: { $in: authors }, visibility: { $in: ['connections', 'public'] } },
+        { user: { $in: favoritedByIds }, visibility: 'favorites' },
+        { user: userId }
+      ]
     })
     .populate('user', 'username profilePic')
     .populate('comments.user', 'username profilePic')
@@ -69,9 +80,21 @@ router.get('/my-posts', auth, async (req, res) => {
 // ======================================================
 router.get('/user/:userId', auth, async (req, res) => {
   try {
+    const targetUserId = req.params.userId;
+    const viewerId = req.userId;
+
+    // Check if the viewer is in the target user's favorites
+    const targetUser = await User.findById(targetUserId).select('favorites').lean();
+    const isViewerFavorited = targetUser?.favorites?.some(
+      fId => fId.toString() === viewerId.toString()
+    );
+
+    const allowedVisibilities = ['connections', 'public'];
+    if (isViewerFavorited) allowedVisibilities.push('favorites');
+
     const posts = await Post.find({ 
-      user: req.params.userId,
-      visibility: { $in: ['connections', 'public'] }
+      user: targetUserId,
+      visibility: { $in: allowedVisibilities }
     })
       .populate('user', 'username profilePic')
       .populate('comments.user', 'username profilePic')
@@ -110,13 +133,23 @@ router.post('/', auth, async (req, res) => {
     const populatedPost = await post.populate('user', 'username profilePic');
 
     if (req.io) {
-      const connections = await Connection.find({ users: req.userId, status: 'active' }).lean();
-      const connectionIds = connections.map(conn => 
-        conn.users.find(id => id.toString() !== req.userId.toString())
-      );
-      connectionIds.forEach(id => {
-        req.io.to(`user_${id}`).emit('new-post', populatedPost);
-      });
+      if (visibility === 'favorites') {
+        // Only emit to the poster's favorites list
+        const poster = await User.findById(req.userId).select('favorites').lean();
+        const favoriteIds = poster?.favorites || [];
+        favoriteIds.forEach(id => {
+          req.io.to(`user_${id}`).emit('new-post', populatedPost);
+        });
+      } else {
+        // Emit to all connections for connections/public posts
+        const connections = await Connection.find({ users: req.userId, status: 'active' }).lean();
+        const connectionIds = connections.map(conn => 
+          conn.users.find(id => id.toString() !== req.userId.toString())
+        );
+        connectionIds.forEach(id => {
+          req.io.to(`user_${id}`).emit('new-post', populatedPost);
+        });
+      }
     }
 
     res.status(201).json(populatedPost);

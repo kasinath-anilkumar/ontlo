@@ -76,7 +76,7 @@ const PostSchema = new mongoose.Schema(
 
     visibility: {
       type: String,
-      enum: ['connections', 'public', 'private'],
+      enum: ['connections', 'public', 'private', 'favorites'],
       default: 'connections'
     }
   },

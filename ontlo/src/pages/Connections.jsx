@@ -77,7 +77,7 @@ const Connections = () => {
       
       {/* Header */}
       <div className="sticky w-full top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 pb-2 flex items-center justify-between border-b border-white/5 px-4">
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight italic">Connections</h1>
+        <h1 className="text-2xl sm:text-3xl  italic">Connections</h1>
       </div>
 
       {/* Loading State */}
@@ -121,7 +121,7 @@ const Connections = () => {
                 {conn.user.onlineStatus === 'online' && <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0B0E14] rounded-full"></div>}
               </div>
               <div>
-                <h3 className="text-white font-black uppercase tracking-tight mb-0.5">{conn.user.username}</h3>
+                <h3 className="text-white font-thin tracking-wider mb-0.5">{conn.user.username}</h3>
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-bold uppercase tracking-widest ${conn.user.onlineStatus === 'online' ? 'text-green-500' : 'text-gray-500'}`}>
                     {conn.user.onlineStatus === 'online' ? "Online now" : "Offline"}

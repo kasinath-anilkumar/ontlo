@@ -93,7 +93,7 @@ const Home = () => {
         <FeedSkeleton />
       ) : hasPosts ? (
         /* PURE FEED UI (Instagram Style) */
-        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700">
+        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 mt-4 sm:mt-4 md:mt-0">
           <PostFeed
             initialPosts={posts}
             onPostDeleted={(deletedId) => setPosts(prev => prev.filter(p => p._id !== deletedId))}
@@ -171,7 +171,7 @@ const ActionCard = ({ icon, title, desc, onClick, color }) => {
 };
 
 const FeedSkeleton = () => (
-  <div className="space-y-12 animate-in fade-in duration-500 max-w-2xl mx-auto w-full pt-4">
+  <div className="space-y-12 animate-in fade-in duration-500 max-w-2xl mx-auto w-full pt-0">
     {[1, 2].map((i) => (
       <div key={i} className="bg-[#151923]/40  p-4 sm:p-6 space-y-4 shadow-xl backdrop-blur-sm">
         {/* Author Header */}
