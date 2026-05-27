@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
-import logo from "/ontlo_Logo.png";
+import logo from "/ontlo_Logo.webp";
 import { 
   Home, 
   Radio, 

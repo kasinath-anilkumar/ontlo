@@ -578,7 +578,7 @@ const ChatPanel = ({ onClose, connectionId, remoteUser, roomId, persistedMessage
       <div 
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-2 pb-8 md:pb-6 space-y-4 scrollbar-hide bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] bg-fixed"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-2 pb-8 md:pb-6 space-y-4 scrollbar-hide bg-fixed"
       >
         {isLoadingMore && (
           <div className="flex justify-center py-2">

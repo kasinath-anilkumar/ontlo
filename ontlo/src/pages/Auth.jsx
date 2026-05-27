@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
-import logo from "/ontlo_Logo.png";
+import logo from "/ontlo_Logo.webp";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);

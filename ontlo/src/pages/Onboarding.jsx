@@ -4,7 +4,7 @@ import { Camera, User, Sparkles, Upload, Loader2, ChevronRight, ChevronLeft, Glo
 import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
 import LocationAutocomplete from "../components/common/LocationAutocomplete";
-import logo from "../assets/ontlo_Logo.png";
+import logo from "/ontlo_Logo.webp";
 
 const ALL_LANGUAGES = [
   "English",

@@ -390,9 +390,10 @@ const Profile = () => {
     justify-between
     p-4
     sm:px-8
-    min-h-[64px]
+    min-h-16
     transition-all
     duration-300
+    bg-transparent
     ${scrolled
                 ? "backdrop-blur-2xl bg-black/30 border-b border-white/10"
                 : "bg-transparent border-b border-transparent"
