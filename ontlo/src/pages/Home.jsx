@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import banner1 from "../assets/banner1.webp";
 import banner2 from "../assets/banner2.webp";
-import logo from "../assets/ontlo_Logo.webp";
+import logo from "/ontlo_icon.webp";
 import PostFeed from "../components/PostFeed";
 import Skeleton from "../components/ui/Skeleton";
 import { useSocket } from "../context/SocketContext";
@@ -59,7 +59,7 @@ const Home = () => {
       {/* Top Bar Header */}
       <header className="fixed md:hidden top-0 left-0 right-0 z-40 bg-[#0B0E14]/90 backdrop-blur-xl pt-4 sm:pt-0 pb-4 sm:pb-0 -mx-2 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 border-b border-white/5">
         <div className="block sm:hidden flex-shrink-0">
-          <img src={logo} alt="Ontlo" className="h-8 w-auto object-contain drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
+          <img src={logo} alt="Ontlo" className="h-8 w-auto object-contain " />
         </div>
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
           {isInitialLoad ? (

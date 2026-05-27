@@ -1,7 +1,7 @@
 import { AlertTriangle, Camera, Check, Heart, Lock, MessageSquare, Mic, Music, PhoneOff, RefreshCw, Settings, Shield, Timer, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import ontloLogo from "../../assets/ontlo_Logo.webp";
+import ontloLogo from "/ontlo_icon.webp";
 import { useSocket } from "../../context/SocketContext";
 import API_URL, { apiFetch } from "../../utils/api";
 import ChatPanel from "../chat/ChatPanel";
@@ -582,13 +582,9 @@ const VideoContainer = () => {
         </div>
       ) : (
         <>
-          <div className="sticky top-0 left-0 right-0 h-16 shrink-0 flex items-center justify-between px-6 border-b border-[#1e293b] bg-[#0B0E14]">
+          <div className="sticky top-0 left-0 right-0 h-16 shrink-0 flex items-center justify-between  px-2 border-b border-[#1e293b] bg-[#0B0E14]">
             <div className="flex items-center gap-4">
-              <img src={ontloLogo} alt="Ontlo" className="w-12 h-12 sm:block md:hidden" />
-              {/* <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${isConnected ? 'bg-purple-500/10 text-green-400 border-purple-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20 animate-pulse'}`}>
-                <div className={`w-1 h-1 rounded-full ${isConnected ? 'bg-green-400 shadow-[0_0_8px_rgba(168,85,247,0.6)]' : 'bg-orange-400'}`}></div>
-                <span>{isConnected ? 'LIVE' : 'CONNECTING...'}</span>
-              </div> */}
+              <img src={ontloLogo} alt="Ontlo" className="w-8 h-8 sm:block md:hidden" />
             </div>
 
             <div className="flex items-center gap-3">

@@ -134,7 +134,7 @@ const Messages = () => {
               <div 
                 key={conn.id} 
                 onClick={() => conn.status !== 'pending' && setSelectedConnection(conn)}
-                className={`p-4 rounded-2xl transition-all flex items-center justify-between group ${selectedConnection?.id === conn.id ? 'bg-[#151923] shadow-lg border border-[#1e293b]/50' : (conn.status === 'pending' ? 'bg-purple-500/5 cursor-default' : 'hover:bg-[#151923]/40 cursor-pointer')}`}
+                className={`p-4 rounded-2xl transition-all flex items-center justify-between group sm:mx-2 md:mx-4 ${selectedConnection?.id === conn.id ? 'bg-[#151923] shadow-lg border border-[#1e293b]/50' : (conn.status === 'pending' ? 'bg-purple-500/5 cursor-default' : 'hover:bg-[#151923]/40 cursor-pointer')}`}
               >
                 <div className="flex items-center gap-4">
                   <div className="relative">

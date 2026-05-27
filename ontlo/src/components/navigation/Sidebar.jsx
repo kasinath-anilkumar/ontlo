@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
-import logo from "../../assets/ontlo_Logo.png";
+import logo from "/ontlo_Logo.png";
 import { 
   Home, 
   Radio, 
@@ -35,8 +35,8 @@ const Sidebar = () => {
       <div className="absolute top-0 left-0 w-full h-40 bg-purple-600/15 blur-[80px] pointer-events-none"></div>
 
       {/* Logo */}
-      <div className="flex items-center gap-3 px-2 pb-8 cursor-pointer group" onClick={() => navigate("/")}>
-        <img className="w-20" src={logo} alt="Logo" />
+      <div className="flex items-center gap-3 px-2 pb-2 cursor-pointer group" onClick={() => navigate("/")}>
+        <img className="w-24" src={logo} alt="Logo" />
       </div>
 
       {/* Navigation */}

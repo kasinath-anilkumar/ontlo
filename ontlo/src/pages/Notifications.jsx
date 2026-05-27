@@ -339,7 +339,7 @@ const Notifications = () => {
             {!isSelecting ? (
               <div className="flex items-center gap-1 sm:gap-2">
                 {notifications.some(n => !n.isRead) && (
-                  <button onClick={markAllRead} className="text-[12px] sm:text-[13px] font-bold text-blue-500 px-1.5 sm:px-2 py-1">Read all</button>
+                  <button onClick={markAllRead} className="text-[12px] sm:text-[13px]  text-blue-500 px-1.5 sm:px-2 py-1">Read all</button>
                 )}
                 
                 {/* Filter Trigger */}

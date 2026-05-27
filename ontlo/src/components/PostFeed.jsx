@@ -243,7 +243,7 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
         </div>
       )} */}
 
-ui       <div className="flex flex-col gap-2">
+       <div className="flex flex-col gap-2">
         {posts.length === 0 ? (
           <div className="bg-[#151923]/40 border border-dashed border-white/5 rounded-[32px] p-12 text-center">
             <Camera size={32} className="mx-auto mb-4 text-gray-700" />
