@@ -67,19 +67,19 @@ const PrivacyPolicy = () => {
           <section className="bg-indigo-500/10 p-6 rounded-2xl border border-indigo-500/20">
             <h2 className="text-xl font-semibold text-indigo-400 mb-2 font-mono uppercase tracking-wider text-sm">Grievance Redressal Officer</h2>
             <p className="text-sm text-slate-300">
-              As per the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021, the contact details of the Grievance Officer are:
+              Grievance Officer
             </p>
             <div className="mt-4 space-y-1 text-sm font-medium">
               <p>Name: Kasinath Anilkumar</p>
               <p>Designation: Grievance Redressal Officer</p>
-              <p>Email: legal@ontlo.com</p>
-              <p>Address: Ontlo Technologies, Trivandrum, Kerala, India</p>
+              <p>Email: ontlo.app@gmail.com</p>
+              <p>Address: Ontlo, Alappuzha, Keala, India</p>
             </div>
           </section>
         </div>
         
         <div className="mt-12 pt-8 border-t border-slate-800 text-sm text-slate-500">
-          Last updated: May 3, 2026 (Compliant with DPDP Act 2023)
+          Last updated: May 3, 2026
         </div>
       </div>
     </div>

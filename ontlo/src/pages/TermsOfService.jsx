@@ -63,7 +63,7 @@ const TermsOfService = () => {
         </div>
         
         <div className="mt-12 pt-8 border-t border-slate-800 text-sm text-slate-500">
-          Last updated: May 3, 2026 (Compliant with IT Rules 2021)
+          Last updated: May 3, 2026
         </div>
       </div>
     </div>
