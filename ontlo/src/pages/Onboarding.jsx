@@ -64,7 +64,8 @@ const ALL_LANGUAGES = [
   "Icelandic",
   "Irish",
   "Welsh",
-  "Catalan"
+  "Catalan",
+  "Other"
 ];
 
 const ALL_INTERESTS = [
@@ -133,7 +134,8 @@ const ALL_INTERESTS = [
   "Nightlife",
   "Memes",
   "Streaming",
-  "Esports"
+  "Esports",
+  "Other"
 ];
 
 const Onboarding = () => {
@@ -523,7 +525,21 @@ const Onboarding = () => {
                             </button>
                           ))
                         ) : (
-                          <div className="px-4 py-3 text-xs text-gray-500 italic text-center font-medium">No languages found</div>
+                          !formData.languages?.includes("Other") ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleLanguageToggle("Other");
+                                setLangQuery("");
+                              }}
+                              className="w-full px-4 py-2.5 text-left text-xs font-bold text-white hover:bg-purple-600/20 hover:text-purple-400 transition-colors flex items-center justify-between border-b border-white/5 last:border-none"
+                            >
+                              <span>Other</span>
+                              <Plus className="w-3.5 h-3.5 text-purple-400" />
+                            </button>
+                          ) : (
+                            <div className="px-4 py-3 text-xs text-gray-500 italic text-center font-medium">No languages found</div>
+                          )
                         )}
                       </div>
                     )}
@@ -578,7 +594,21 @@ const Onboarding = () => {
                             </button>
                           ))
                         ) : (
-                          <div className="px-4 py-3 text-xs text-gray-500 italic text-center font-medium">No interests found</div>
+                          !formData.interests?.includes("Other") ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleInterestToggle("Other");
+                                setInterestQuery("");
+                              }}
+                              className="w-full px-4 py-2.5 text-left text-xs font-bold text-white hover:bg-purple-600/20 hover:text-purple-400 transition-colors flex items-center justify-between border-b border-white/5 last:border-none"
+                            >
+                              <span>Other</span>
+                              <Plus className="w-3.5 h-3.5 text-purple-400" />
+                            </button>
+                          ) : (
+                            <div className="px-4 py-3 text-xs text-gray-500 italic text-center font-medium">No interests found</div>
+                          )
                         )}
                       </div>
                     )}

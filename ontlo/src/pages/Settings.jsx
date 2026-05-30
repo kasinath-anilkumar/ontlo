@@ -11,7 +11,7 @@ const ALL_LANGUAGES = [
   "Indonesian", "Turkish", "Vietnamese", "Tamil", "Telugu", "Marathi", 
   "Gujarati", "Malayalam", "Kannada", "Punjabi", "Dutch", "Greek", "Polish", 
   "Swedish", "Danish", "Finnish", "Norwegian", "Czech", "Hungarian", "Thai", 
-  "Ukrainian", "Hebrew", "Persian", "Malay", "Swahili", "Tagalog"
+  "Ukrainian", "Hebrew", "Persian", "Malay", "Swahili", "Tagalog", "Other"
 ];
 
 const ALL_INTERESTS = [
@@ -20,7 +20,7 @@ const ALL_INTERESTS = [
   "Hiking", "Coding", "Design", "Anime", "Crypto", "AI", "Startup", "Finance", 
   "Food", "Coffee", "Astronomy", "History", "Philosophy", "Psychology", 
   "Volunteering", "Skateboarding", "Surfing", "Gardening", "Pets", "Meditation", 
-  "Board Games", "Theater", "Architecture", "Automotive", "Nature"
+  "Board Games", "Theater", "Architecture", "Automotive", "Nature", "Other"
 ];
 
 const Settings = () => {
@@ -128,6 +128,7 @@ const Settings = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
     setUser(null);
     navigate("/auth");
@@ -494,7 +495,21 @@ const Settings = () => {
                                     </button>
                                   ))
                                 ) : (
-                                  <div className="px-4 py-3 text-xs text-gray-500 italic text-center font-medium">No interests found</div>
+                                  !editData.interests?.includes("Other") ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditData({ ...editData, interests: [...editData.interests, "Other"] });
+                                        setInterestQuery("");
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-white hover:bg-purple-600/20 hover:text-purple-400 transition-colors flex items-center justify-between border-b border-[#1e293b] last:border-none"
+                                    >
+                                      <span>Other</span>
+                                      <Plus className="w-3.5 h-3.5 text-purple-400" />
+                                    </button>
+                                  ) : (
+                                    <div className="px-4 py-3 text-xs text-gray-500 italic text-center font-medium">No interests found</div>
+                                  )
                                 )}
                               </div>
                             )}
@@ -556,7 +571,21 @@ const Settings = () => {
                                     </button>
                                   ))
                                 ) : (
-                                  <div className="px-4 py-3 text-xs text-gray-500 italic text-center font-medium">No languages found</div>
+                                  !editData.languages?.includes("Other") ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditData({ ...editData, languages: [...editData.languages, "Other"] });
+                                        setLangQuery("");
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-white hover:bg-purple-600/20 hover:text-purple-400 transition-colors flex items-center justify-between border-b border-[#1e293b] last:border-none"
+                                    >
+                                      <span>Other</span>
+                                      <Plus className="w-3.5 h-3.5 text-purple-400" />
+                                    </button>
+                                  ) : (
+                                    <div className="px-4 py-3 text-xs text-gray-500 italic text-center font-medium">No languages found</div>
+                                  )
                                 )}
                               </div>
                             )}
