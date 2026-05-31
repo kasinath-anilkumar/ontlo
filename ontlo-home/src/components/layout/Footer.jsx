@@ -18,7 +18,7 @@ const Footer = () => {
               </span> */}
             </div>
 
-            <p className="text-sm leading-relaxed text-gray-400">
+            <p className="text-sm leading-relaxed text-white">
               The next generation social platform built for privacy, real
               connections, and meaningful experiences.
             </p>
@@ -28,21 +28,21 @@ const Footer = () => {
           <div className="flex items-center gap-8 text-sm font-medium">
             <Link
               to="/privacy"
-              className="text-gray-400 hover:text-white transition-all duration-300"
+              className="text-white hover:text-white transition-all duration-300"
             >
               Privacy
             </Link>
 
             <Link
               to="/terms"
-              className="text-gray-400 hover:text-white transition-all duration-300"
+              className="text-white hover:text-white transition-all duration-300"
             >
               Terms
             </Link>
 
             <Link
               to="/contact"
-              className="text-gray-400 hover:text-white transition-all duration-300"
+              className="text-white hover:text-white transition-all duration-300"
             >
               Contact
             </Link>
@@ -60,7 +60,7 @@ const Footer = () => {
                   bg-white/[0.02]
                   backdrop-blur-xl
                   flex items-center justify-center
-                  text-gray-400
+                  text-white
                   hover:text-white
                   hover:border-fuchsia-500/40
                   hover:bg-fuchsia-500/10
@@ -87,13 +87,13 @@ const Footer = () => {
         {/* BOTTOM */}
         <div className="mt-14 pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
 
-          <p className="text-xs text-gray-600 tracking-wide">
+          <p className="text-xs TEXT-WHITE tracking-wide">
             © 2026 Ontlo. All rights reserved.
           </p>
 
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-fuchsia-400/80 font-semibold">
             <span className="w-2 h-2 rounded-full bg-fuchsia-500 animate-pulse" />
-            Beta Launch Soon
+            Social Media REBUILT
           </div>
         </div>
       </div>

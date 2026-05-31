@@ -114,23 +114,74 @@ const HeroContent = () => {
 
       {/* Join Community hidden on mobile since it's not in the new reference */}
       <div className="mt-2 lg:mt-6 hidden lg:flex flex-col items-center lg:items-start">
-        <h4 className="text-xs font-bold tracking-widest text-gray-500 uppercase mb-4">Join our community</h4>
-        <div className="flex items-center gap-4">
-          <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-            </svg>
-          </a>
-          <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
-            <svg width="18" height="18" viewBox="0 0 127.14 96.36" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.68,2a67.55,67.55,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-19.32-72.1M42.68,68.74c-5.36,0-9.76-4.9-9.76-10.9S37.21,47,42.68,47s9.85,4.9,9.76,10.9-4.32,10.84-9.76,10.84m41.71,0c-5.36,0-9.76-4.9-9.76-10.9S78.93,47,84.39,47s9.85,4.9,9.76,10.9-4.33,10.84-9.76,10.84" />
-            </svg>
-          </a>
-          <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-          </a>
-        </div>
-      </div>
+  <h4 className="text-xs font-bold tracking-widest text-gray-500 uppercase mb-4">
+    Be Part of Ontlo
+  </h4>
+
+  <div className="flex items-center gap-4">
+    {/* X / Twitter */}
+    <a
+      href="https://x.com/ontlo"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Follow Ontlo on X"
+      className="w-10 cursor-pointer h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
+    </a>
+
+    {/* Discord */}
+    {/* <a
+      href="https://discord.gg/your-invite"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Join Ontlo on Discord"
+      className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 127.14 96.36"
+        fill="currentColor"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.68,2a67.55,67.55,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-19.32-72.1M42.68,68.74c-5.36,0-9.76-4.9-9.76-10.9S37.21,47,42.68,47s9.85,4.9,9.76,10.9-4.32,10.84-9.76,10.84m41.71,0c-5.36,0-9.76-4.9-9.76-10.9S78.93,47,84.39,47s9.85,4.9,9.76,10.9-4.33,10.84-9.76,10.84" />
+      </svg>
+    </a> */}
+
+    {/* Instagram */}
+    <a
+      href="https://instagram.com/ontlo"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Follow Ontlo on Instagram"
+      className="w-10 h-10 cursor-pointer rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+      </svg>
+    </a>
+  </div>
+</div>
     </div>
   )
 }
