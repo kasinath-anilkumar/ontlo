@@ -8,22 +8,23 @@
 ## 1. Executive Summary
 
 ### 1.1 Business Objective
-Ontlo is engineered to capture the highly competitive "Instant Social Discovery" market segment within South Asia, specifically focusing on India. The primary objective is to offer synchronous, low-latency (< 200ms round-trip) video communication that bridges spontaneous interactions with robust, scalable infrastructure. 
+Ontlo is engineered to build a privacy-first, community-centric social media platform optimized for authentic human connections and digital experiences. Shifting away from metrics-driven attention economics, the primary objective is to offer secure, interest-based social discovery, rich media sharing (posts, comments), real-time direct messaging, and low-latency, consent-oriented video communication rooms.
 
 ### 1.2 Problem Statement
-The current ecosystem of random video chat platforms (e.g., Omegle equivalents) fails on three major vectors:
-1.  **Safety & Moderation**: Complete lack of identity verification and real-time moderation leading to high toxicity.
-2.  **Latency & Reliability**: Poor WebRTC signaling implementations resulting in high drop rates and connection failures.
-3.  **Compliance**: Zero adherence to modern data protection laws (such as India's DPDP Act 2023), exposing operators to severe legal liabilities.
+Modern social platforms and random video networks are fundamentally broken along three major vectors:
+1.  **Metric-Obsessed Churn**: Design optimized for screen time and vanity metrics (likes, views, followers) rather than actual relationship depth and retention of human experiences.
+2.  **Privacy & Consent Violations**: Massive data harvesting, lack of clear user autonomy over personal data, and a disregard for modern compliance frameworks (such as India's DPDP Act 2023).
+3.  **Unsafe & Toxic Environments**: Inadequate content moderation, lack of robust verification, and sparse tooling for handling safety reports, leading to widespread toxicity.
 
 ### 1.3 Target Audience
 *   **Primary Demographic**: Gen-Z and younger Millennials (18-35).
-*   **Behavioral Segment**: Users seeking high-fidelity, synchronous engagement based on mutual interests rather than asynchronous, curated profile swiping.
+*   **Behavioral Segment**: Users seeking meaningful interactions, close-knit communities, and high-fidelity video/audio connection rooms based on mutual interests rather than superficial swiping or gamified popularity feeds.
 
 ### 1.4 Key Differentiators
+*   **Experience Over Attention**: Refusal to employ dark patterns. Matchmaking, interactions, and feeds are designed around user-controlled parameters and mutual consent (e.g., "Progressive Exposure" video blur to foster conversation).
 *   **"Complete-Then-Create" Authentication Protocol**: Eliminates database pollution of incomplete profiles by holding registration state in memory until the 5-phase onboarding is finalized.
-*   **Compliance-First Data Governance**: Native, hard-coded workflows for "Right to Erasure" (account and media purge) and "Right to Data Portability" (JSON payload generation).
-*   **Hybrid Signaling Architecture**: Utilizes Socket.io for reliable state management and WebRTC for decentralized, low-latency media streams, augmented by Cloudinary for static media AI moderation.
+*   **Compliance-First Data Governance**: Native, hard-coded workflows for "Right to Erasure" (account and media purge) and "Right to Data Portability" (JSON payload generation), natively aligning with the DPDP Act 2023.
+*   **Hybrid Real-Time Architecture**: Utilizes Socket.io for reliable presence and signaling, WebRTC for direct media streaming, and Cloudinary for automated NSFW content detection at upload boundaries.
 
 ---
 
@@ -46,12 +47,12 @@ The Ontlo platform operates on a decoupled, micro-monolithic architecture, segre
     *   **Runtime**: MongoDB Atlas (Cloud-hosted).
     *   **Responsibility**: Persistent storage of user schemas, cryptographic materials, interaction logs, and system configurations.
 
-### 2.2 Data Flow (Step-by-Step Matchmaking & Call)
+### 2.2 Data Flow (Step-by-Step Safe Connection & Matching Room)
 
 1.  **Connection Handshake**: The Client opens a WebSocket connection to the Server, transmitting its valid JWT in the `auth` object. The Server verifies the JWT, extracting the `userId`.
 2.  **Presence Update**: The Server queries MongoDB, updates `onlineStatus: true`, and broadcasts the new online count to all connected clients (throttled).
 3.  **Queue Entry**: The Client emits `join-queue`. The Server places the Socket ID into an in-memory matching pool, along with cached user metadata (age, gender, interests, region).
-4.  **Match Evaluation**: The `Matchmaker` service runs a continuous evaluation loop. When two compatible users are identified (based on admin-configured `ageGap` and `radius`), they are removed from the queue.
+4.  **Match Evaluation**: The `Matchmaker` service runs a continuous evaluation loop. When two compatible users are identified (matching shared interests and satisfying geographic/demographic preferences), they are removed from the queue.
 5.  **Signaling Initiation**: The Server emits a `match-found` event containing a UUID `roomId` to both peers.
 6.  **Offer/Answer Exchange**: 
     *   Peer A (Offeror) creates an SDP Offer and emits `webrtc-offer` via Socket.
@@ -59,8 +60,8 @@ The Ontlo platform operates on a decoupled, micro-monolithic architecture, segre
     *   Peer B generates an SDP Answer and emits `webrtc-answer` via Socket.
     *   Server routes the answer back to Peer A.
 7.  **ICE Negotiation**: Both peers independently gather ICE candidates (network routes) from STUN servers and exchange them via `webrtc-ice-candidate` socket events.
-8.  **P2P Streaming**: The `RTCPeerConnection` on both clients establishes a direct UDP connection, and video/audio tracks are played.
-9.  **Teardown**: Upon a `skip` or disconnect, the Socket server handles cleanup, nullifies the active match, and re-inserts users into the queue if requested.
+8.  **Consent-First Streaming (Curiosity Blur)**: The `RTCPeerConnection` establishes a direct connection. Video tracks are played on both sides but are overlaid with a heavy, server-timed 30-second blur (`curiosityBlurTimer`) to encourage audio dialogue and interest exchange before reveal.
+9.  **Teardown/Transition**: Upon skipping, disconnect, or mutual accept (which transitions the temporary match into a permanent `Connection`), the Socket server manages cleanup.
 
 ### 2.3 Failure Scenarios & Mitigation per Component
 
@@ -472,6 +473,33 @@ ontlo/
 *   **Auth Requirement**: Private
 *   **Response (200 OK)**: `{ "message": "Ping sent successfully" }`
 
+### 6.4 Messages Endpoints (`/api/messages`)
+
+#### `POST /api/messages/:connectionId`
+*   **Description**: Sends a text or image message within an active connection. Run through text moderation (`moderateText()`).
+*   **Auth Requirement**: Private
+*   **Request Body**: `{ "text": "...", "imageUrl": "..." }` (either text or imageUrl is required)
+*   **Response (200 OK)**: `{ "id": "...", "text": "...", "imageUrl": "...", "sender": "...", "createdAt": "...", "isRead": false }`
+
+#### `GET /api/messages/:connectionId`
+*   **Description**: Retrieves paginated chat history for a connection. Supports `limit`, `before` (timestamp), `explain` (execution plan), and `benchmark` parameters.
+*   **Auth Requirement**: Private
+*   **Response (200 OK)**: Array of formatted message objects:
+    ```json
+    [
+      {
+        "id": "...", "text": "...", "imageUrl": "...", "sender": "...",
+        "isSelf": true, "senderInfo": { "_id": "...", "username": "...", "profilePic": "..." },
+        "createdAt": "...", "type": "self", "isRead": false, "readAt": null
+      }
+    ]
+    ```
+
+#### `POST /api/messages/:connectionId/read`
+*   **Description**: Marks all unread messages received from the other user in the connection as read.
+*   **Auth Requirement**: Private
+*   **Response (200 OK)**: `{ "success": true, "count": 1 }`
+
 ### 6.5 Posts & Feed Endpoints (`/api/posts`)
 
 #### `GET /api/posts/feed`
@@ -755,6 +783,26 @@ ontlo/
 *   **Auth Requirement**: Private (SuperAdmin required)
 *   **Response (200 OK)**: Performance metrics JSON payload.
 
+### 6.12 Upload Endpoints (`/api/upload`)
+
+#### `POST /api/upload/profile-pic`
+*   **Description**: Uploads a profile picture to Cloudinary (`ontlo_profiles` folder). Restricts images to JPG/PNG/WEBP and max 5MB.
+*   **Auth Requirement**: Private
+*   **Request Body**: Multipart form data with `image` file field.
+*   **Response (200 OK)**: `{ "url": "...", "width": X, "height": Y }`
+
+#### `POST /api/upload/chat-image`
+*   **Description**: Uploads a chat attachment image to Cloudinary (`ontlo_chat` folder). Restricts images to JPG/PNG/WEBP and max 5MB.
+*   **Auth Requirement**: Private
+*   **Request Body**: Multipart form data with `image` file field.
+*   **Response (200 OK)**: `{ "url": "...", "width": X, "height": Y }`
+
+#### `POST /api/upload/post-image`
+*   **Description**: Uploads a feed post image to Cloudinary (`ontlo_posts` folder). Restricts images to JPG/PNG/WEBP and max 5MB.
+*   **Auth Requirement**: Private
+*   **Request Body**: Multipart form data with `image` file field.
+*   **Response (200 OK)**: `{ "url": "...", "width": X, "height": Y }`
+
 ---
 
 ## 7. Authentication & Authorization
@@ -906,27 +954,27 @@ The Digital Personal Data Protection Act requires explicit consent, purpose limi
 
 ## 17. Retention & Growth Engineering
 
-The Ontlo platform utilizes a series of **Value-Driven Habituation** loops designed to drive high Daily Active User (DAU) and Long-Term Value (LTV) without resorting to predatory or manipulative "dark patterns."
+The Ontlo platform utilizes a series of **Value-Driven Habituation** loops designed to drive high Daily Active User (DAU) and Long-Term Value (LTV) without resorting to predatory or manipulative "dark patterns," prioritizing human experience and the concept of "being remembered."
 
 ### 17.1 Serendipity & Unpredictability (Variable Reward)
-*   **Wildcard Matching**: The matchmaking algorithm (`Matchmaker.js`) includes a 10% "Wildcard" probability that intentionally bypasses user-defined filters (Region/Gender) to create serendipitous human connections.
-*   **Visual Reinforcement**: Wildcard matches are visually flagged with a unique UI badge to frame the encounter as a "rare event," increasing psychological engagement.
+*   **Wildcard Matching**: The matchmaking algorithm (`Matchmaker.js`) includes a 10% "Wildcard" probability that intentionally bypasses user-defined filters (such as region or specific interests) to create serendipitous human connections, expanding people's worlds.
+*   **Visual Reinforcement**: Wildcard matches are visually flagged with a unique UI badge to frame the encounter as a "rare event," highlighting the uniqueness of the discovery.
 
 ### 17.2 Information Gap & Intrigue (Curiosity Loop)
-*   **Progressive Exposure**: Connections begin with a 30-second heavy video blur (`curiosityBlurTimer`).
-*   **Psychological Hook**: By withholding the visual reveal while maintaining the audio/interest context, users are incentivized to initiate conversation to "earn" the visual reveal, reducing instant "looks-based" skipping.
+*   **Progressive Exposure**: Real-time matching room sessions begin with a 30-second heavy video blur (`curiosityBlurTimer`).
+*   **Psychological Hook**: By withholding the visual reveal while highlighting shared interests, users are incentivized to engage in conversation to "earn" the visual reveal, shifting the focus from superficial, looks-based swiping to authentic dialogue.
 
 ### 17.3 Friction Reduction (Conversation Starter)
-*   **Contextual Icebreakers**: Upon `match-found`, the system calculates the intersection of shared interests and emits a tailored prompt (e.g., *"You both like Music! Best concert you've ever been to?"*).
-*   **Impact**: This reduces the cognitive load of the first 10 seconds, which is the highest churn point in video social apps.
+*   **Contextual Icebreakers**: Upon establishing a match, the system analyzes the intersection of shared interests and suggests a tailored icebreaker prompt (e.g., *"You both love Hiking! What's the best trail you've completed?"*).
+*   **Impact**: This reduces the cognitive load of the first 10 seconds, which is the highest churn point in real-time video social spaces, setting the foundation for memorable conversations.
 
 ### 17.4 Social Reciprocity (Social Return Loop)
-*   **Ping/Wave Mechanism**: Implemented a notification-based re-engagement system where users can "Ping" past connections.
-*   **Hook**: This leverages social obligation, bringing dormant users back into the application via contextual, user-generated triggers rather than generic system spam.
+*   **Ping/Wave Mechanism**: Implemented a notification-based re-engagement system where users can "Ping" or wave to past connections to spark new conversations.
+*   **Hook**: This leverages social reciprocity, bringing dormant users back into the application via contextual, user-generated triggers rather than automated system notifications.
 
 ### 17.5 Investment & Validation (Fast Feedback Loop)
 *   **Profile Boosts**: Updating profile bios or media grants a temporary 1-hour priority boost (`lastBoostedAt`) in the matchmaking queue.
-*   **Reward**: This ensures users receive immediate positive reinforcement (more matches/conversations) immediately after investing effort into their digital identity.
+*   **Reward**: This ensures users receive immediate positive reinforcement (more matches/conversations) immediately after investing effort into their digital identity, validating their presence on the platform.
 
 ---
 
