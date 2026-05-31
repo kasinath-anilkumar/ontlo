@@ -4,7 +4,7 @@ import EmailWaitlist from './EmailWaitlist'
 const HeroContent = () => {
   return (
     <div className="max-w-xl px-4 z-10 w-full mx-auto lg:mx-0 text-center lg:text-left pt-10 lg:pt-0">
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-bold tracking-widest text-gray-300 mb-6 lg:mb-8 uppercase shadow-[0_0_15px_rgba(255,255,255,0.05)] backdrop-blur-sm mx-auto lg:mx-0">
+      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-bold tracking-widest text-gray-300 mb-6 lg:mb-4 uppercase shadow-[0_0_15px_rgba(255,255,255,0.05)] backdrop-blur-sm mx-auto lg:mx-0">
         <span className="text-pink-500 text-base leading-none">✦</span> Connected but limited.
       </div>
       
@@ -18,7 +18,7 @@ const HeroContent = () => {
         <span className="text-white">the Ground Up.</span>
       </h1>
       
-      <p className="text-gray-400 text-base md:text-lg mb-8 lg:mb-10 max-w-lg mx-auto lg:mx-0 font-light leading-relaxed">
+      <p className="text-gray-400 text-base md:text-lg mb-4 lg:mb-6 max-w-lg mx-auto lg:mx-0 font-light leading-relaxed">
         The internet became obsessed with being noticed. Ontlo is built around being remembered.
       </p>
 
@@ -64,7 +64,7 @@ const HeroContent = () => {
       <EmailWaitlist />
       
       {/* Join Community hidden on mobile since it's not in the new reference */}
-      <div className="mt-12 lg:mt-16 hidden lg:flex flex-col items-center lg:items-start">
+      <div className="mt-2 lg:mt-6 hidden lg:flex flex-col items-center lg:items-start">
          <h4 className="text-xs font-bold tracking-widest text-gray-500 uppercase mb-4">Join our community</h4>
          <div className="flex items-center gap-4">
            <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors">

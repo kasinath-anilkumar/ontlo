@@ -162,7 +162,7 @@ const HeroSection = () => {
                     items-center
                     justify-between
                     sm:pt-12
-                    md:pt-32
+                    md:pt-28
                     pb-20
                     pointer-events-none
                 "

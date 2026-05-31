@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { SiGoogleplay } from "react-icons/si";
 
 const EmailWaitlist = () => {
   const [toastMessage, setToastMessage] = useState('')
@@ -40,9 +41,7 @@ const EmailWaitlist = () => {
             onClick={handlePlayStoreClick}
             className="w-full sm:w-auto flex items-center justify-center sm:justify-start gap-3 bg-white/[0.03] border border-white/10 hover:border-pink-500/30 hover:bg-white/[0.05] text-white font-medium py-3 px-6 rounded-xl transition-all duration-500 active:scale-95"
           >
-            <svg className="w-5 h-5 text-gray-300 group-hover:text-pink-400 transition-colors duration-500" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M5,3.22V20.78c0,0.44,0.25,0.76,0.63,0.85L15.65,12L5.63,2.37C5.25,2.46,5,2.78,5,3.22z M17.06,10.63l-2.83,1.37 l2.83,1.37l3.6-2.1c0.75-0.44,0.75-1.16,0-1.6L17.06,10.63z M6.43,21.36c0.16,0.04,0.33,0.06,0.51,0.06c0.41,0,0.8-0.16,1.13-0.45 l9.09-5.3L16.29,13L6.43,21.36z M6.43,2.64L16.29,11l0.87-2.67l-9.09-5.3c-0.33-0.29-0.72-0.45-1.13-0.45 C6.76,2.58,6.59,2.6,6.43,2.64z" />
-            </svg>
+            <SiGoogleplay className="w-5 h-5 text-gray-300 group-hover:text-pink-400 transition-colors duration-500" />
             <div className="text-left">
               <div className="text-[9px] text-gray-400 font-extrabold uppercase tracking-widest leading-none">Get it on</div>
               <div className="text-sm font-semibold text-white mt-1">Google Play</div>
