@@ -11,7 +11,7 @@ const HeroSection = () => {
             <WaterInteraction />
 
             {/* NOISE TEXTURE */}
-            <div
+            {/* <div
                 className="
                     absolute
                     inset-0
@@ -26,7 +26,7 @@ const HeroSection = () => {
                     backgroundImage:
                         "url('https://grainy-gradients.vercel.app/noise.svg')",
                 }}
-            />
+            /> */}
 
             {/* ANIMATED AURORA */}
             <div className="absolute inset-0 overflow-hidden z-[3] pointer-events-none">
