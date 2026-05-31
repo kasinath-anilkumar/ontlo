@@ -3,22 +3,22 @@ import React from 'react'
 
 const stats = [
   {
-    value: 'Privacy',
-    label: 'Built into every layer'
+    value: 'Connect',
+    label: 'With purpose'
   },
   {
-    value: 'Real-Time',
-    label: 'Human interaction'
+    value: 'Discover',
+    label: 'New communities'
   },
   {
-    value: 'Meaningful',
-    label: 'Social discovery'
+    value: 'Belong',
+    label: 'Where you matter'
   }
 ]
 
 const AboutSection = () => {
   return (
-    
+
     <section
       id="about"
       className="relative w-full py-24 md:py-32 overflow-hidden border-t border-white/5"
@@ -47,7 +47,7 @@ const AboutSection = () => {
       >
         {/* Top Section */}
         <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-20 items-start">
-          
+
           {/* Left Content */}
           <div>
             {/* Label */}
@@ -77,9 +77,7 @@ const AboutSection = () => {
 
             {/* Intro */}
             <p className="text-gray-300 text-lg md:text-2xl leading-relaxed font-light max-w-3xl">
-              Ontlo is a premium privacy-focused social discovery platform
-              designed for meaningful conversations, immersive interaction, and
-              emotionally real digital experiences.
+              Ontlo is a modern social platform built for meaningful connections, authentic conversations, and communities that matter. Connect, share, and discover without the noise.
             </p>
           </div>
 
@@ -109,21 +107,25 @@ const AboutSection = () => {
               </div>
 
               <p className="text-gray-300 text-lg leading-relaxed font-light">
-                The internet became obsessed with being noticed. Ontlo is built around being remembered.
+                The internet became crowded with noise, distractions, and endless scrolling. We believe social networking should help people connect, not compete for attention.
               </p>
 
               <p className="text-gray-400 leading-relaxed font-light">
-                We are building a new kind of social platform where technology serves human connection rather than competing for human attention.
+                Ontlo is built to bring people closer to the conversations, communities, and ideas that matter most. A place where meaningful interactions matter more than algorithms and where every connection has the opportunity to become something real.
               </p>
 
               <p className="text-gray-400 leading-relaxed font-light">
-                We believe the future of social networking belongs to platforms that help people learn, connect, create, discover, and belong.
+                We're building a social platform designed for discovery, belonging, and authentic human connection—helping people share, learn, create, and grow together.
+              </p>
+
+              <p className="text-gray-400 leading-relaxed font-light">
+                Technology should bring people together, not pull them apart.
               </p>
 
               {/* Bottom Quote */}
               <div className="pt-6 border-t border-white/10">
                 <p className="text-white text-lg leading-relaxed font-light">
-                  “Technology should serve humanity. Humanity should not serve technology.”
+                  “Connect without the noise. ”
                 </p>
               </div>
             </div>
@@ -132,7 +134,7 @@ const AboutSection = () => {
 
         {/* Main Content */}
         <div className="mt-24 grid lg:grid-cols-[0.9fr_1.1fr] gap-16 items-start">
-          
+
           {/* Left Stats */}
           <div className="space-y-6">
             {stats.map((item, index) => (
@@ -172,23 +174,21 @@ const AboutSection = () => {
           {/* Right Long Content */}
           <div className="space-y-8">
             <p className="text-gray-400 text-lg md:text-xl leading-relaxed font-light">
-              Ontlo is a next-generation social networking platform designed to help people communicate, discover, share, and connect in ways that feel meaningful. We are building an ecosystem where conversations, communities, ideas, and people matter more than metrics.
+              Ontlo is where meaningful conversations begin. Connect with people who share your interests, discover communities where you belong, and build relationships that go beyond the noise of traditional social media.            </p>
+
+            <p className="text-gray-400 text-lg md:text-xl leading-relaxed font-light">
+              We believe social networking should open doors to new ideas, people, and communities. Ontlo is built to help you discover, learn, and connect beyond the limits of endless feeds and predictable recommendations.
             </p>
 
             <p className="text-gray-400 text-lg md:text-xl leading-relaxed font-light">
-              We believe discovery should expand people's worlds, not trap them within algorithmic comfort zones. The internet should feel bigger, more diverse, and more inspiring, enabling genuine participation rather than performance.
-            </p>
-
-            <p className="text-gray-400 text-lg md:text-xl leading-relaxed font-light">
-              Trust is the foundation of every meaningful digital experience. Privacy, safety, transparency, and user control are not features on Ontlo — they are infrastructure. We build respectful, responsible environments where you can communicate freely and feel protected.
+              Meaningful connections are built on trust. At Ontlo, privacy, safety, transparency, and user control aren't optional features—they're part of the foundation. We create an environment where you can connect, share, and communicate with confidence, knowing your experience is designed around respect and trust.
             </p>
 
             {/* Final Statement */}
             <div className="pt-8 border-t border-white/10">
               <p className="text-2xl md:text-3xl leading-relaxed font-light text-white max-w-4xl">
-                Ontlo is built for the people who want more than endless scrolling.
-                <br />
-                It is built to create digital experiences worth remembering.
+                Ontlo is built for people who want conversations, communities, and connection—not just another feed.<br />
+                It's built for moments, conversations, and communities that matter.
               </p>
             </div>
           </div>

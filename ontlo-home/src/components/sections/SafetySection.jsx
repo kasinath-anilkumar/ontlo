@@ -2,27 +2,27 @@ import React from 'react'
 
 const safetyPoints = [
   {
-    title: 'Privacy-First Infrastructure',
+    title: 'Trust by Design',
     description:
-      'Ontlo is engineered with modern privacy architecture, secure authentication systems, and user-controlled experiences at its core.'
+      'Privacy, transparency, and user control are built into the foundation of Ontlo, creating a space where people can connect with confidence.'
   },
 
   {
-    title: 'Advanced Safety Systems',
+    title: 'Safe & Respectful Communities',
     description:
-      'Intelligent moderation workflows, reporting systems, and proactive safety technologies help create a more respectful environment.'
+      'Thoughtful moderation tools and community standards help foster meaningful conversations and create a welcoming environment for everyone.'
   },
 
   {
-    title: 'Secure Real-Time Communication',
+    title: 'Secure Communication',
     description:
-      'From direct messaging to live audio and video conversations, every interaction is designed with security and trust in mind.'
+      'Whether through messages, voice, or video, every interaction is designed to feel safe, reliable, and respectful.'
   },
 
   {
-    title: 'Transparent Data Practices',
+    title: 'Clear & Transparent Practices',
     description:
-      'We believe users should understand how their information is handled, stored, and protected — without hidden practices.'
+      'We believe trust starts with transparency. Users should always understand how their information is handled and have control over their experience.'
   }
 ]
 
@@ -89,25 +89,35 @@ const SafetySection = () => {
           <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-transparent to-red-500/5 pointer-events-none" />
 
           {/* Top Content */}
+
           <div className="relative z-10 max-w-4xl mb-14">
             <h3 className="text-2xl md:text-3xl font-semibold text-white mb-6 tracking-tight">
-              Our Commitment
+              Built on Trust
             </h3>
 
             <div className="space-y-6 text-gray-400 text-base md:text-lg leading-relaxed font-light">
               <p>
-                Modern social platforms were built around attention extraction. Ontlo is built around people.
+                Most social platforms compete for attention. Ontlo is built to help
+                people connect, discover, and belong.
               </p>
 
               <p>
-                We believe the internet should be open, but it should also be responsible. People should be free to communicate, but they should also feel protected. Trust is not a feature on Ontlo — trust is infrastructure.
+                We believe meaningful conversations thrive in environments where people
+                feel respected, empowered, and in control. That's why trust,
+                transparency, privacy, and safety are built into the foundation of
+                everything we create.
               </p>
 
               <p>
-                Creating this balance requires thoughtful design, strong moderation systems, transparent data practices, and long-term responsibility. We are committed to building environments where you feel safe participating without sacrificing the genuine openness that makes social networking valuable.
+                Our commitment is simple: create a social experience where communities
+                feel welcoming, conversations feel genuine, and people can express
+                themselves with confidence. Technology should bring people together —
+                not stand between them.
               </p>
             </div>
           </div>
+
+
 
           {/* Feature Grid */}
           <div className="relative z-10 grid md:grid-cols-2 gap-6">
@@ -157,8 +167,7 @@ const SafetySection = () => {
           {/* Bottom Statement */}
           <div className="relative z-10 mt-14 pt-10 border-t border-white/10">
             <p className="text-gray-300 text-lg md:text-xl leading-relaxed font-light max-w-4xl">
-              Ontlo is designed to help people connect more freely —
-              without sacrificing privacy, dignity, or trust.
+              Ontlo is designed to bring people closer through meaningful conversations, authentic communities, and trusted connections.
             </p>
           </div>
         </div>

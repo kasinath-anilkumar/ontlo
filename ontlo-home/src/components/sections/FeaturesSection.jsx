@@ -2,31 +2,9 @@ import React from 'react'
 
 const featuresData = [
   {
-    title: 'Privacy First Architecture',
+    title: 'Meaningful Connections',
     description:
-      'Designed with modern privacy standards, secure infrastructure, and user-controlled experiences from the very beginning.',
-    color: 'from-blue-500 to-indigo-500',
-    iconColor: 'text-blue-400',
-    icon: (
-      <svg
-        className="w-6 h-6 stroke-current transition-all duration-500"
-        viewBox="0 0 24 24"
-        fill="none"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        <circle cx="12" cy="11" r="2" className="animate-pulse" />
-        <path d="M12 13v3" />
-      </svg>
-    )
-  },
-
-  {
-    title: 'Real-Time Human Discovery',
-    description:
-      'Meet people through immersive video and audio conversations designed to feel spontaneous, natural, and emotionally real.',
+      'Build genuine relationships through conversations, shared interests, and authentic interactions that go beyond likes and endless scrolling.',
     color: 'from-fuchsia-500 to-pink-500',
     iconColor: 'text-fuchsia-400',
     icon: (
@@ -47,30 +25,9 @@ const featuresData = [
   },
 
   {
-    title: 'Immersive Audio Spaces',
+    title: 'Discover Communities',
     description:
-      'Sometimes a voice creates a deeper connection than a profile ever could. Explore meaningful conversations beyond visuals.',
-    color: 'from-violet-500 to-purple-500',
-    iconColor: 'text-violet-400',
-    icon: (
-      <svg
-        className="w-6 h-6 stroke-current transition-all duration-500"
-        viewBox="0 0 24 24"
-        fill="none"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M12 1v22" />
-        <path d="M17 5H9a4 4 0 0 0 0 8h6a4 4 0 0 1 0 8H7" />
-      </svg>
-    )
-  },
-
-  {
-    title: 'Intelligent Social Discovery',
-    description:
-      'Shared interests, meaningful interactions, and adaptive discovery systems help conversations feel more intentional.',
+      'Explore communities, ideas, and conversations that match your interests and help you connect with people who share your passions.',
     color: 'from-emerald-500 to-teal-500',
     iconColor: 'text-emerald-400',
     icon: (
@@ -89,9 +46,52 @@ const featuresData = [
   },
 
   {
-    title: 'Safety & Moderation',
+    title: 'Conversations That Matter',
     description:
-      'Advanced moderation systems, reporting workflows, and proactive protection technologies create a more respectful environment.',
+      'Join  conversations designed to encourage meaningful discussion, new perspectives, and deeper human connection.',
+    color: 'from-violet-500 to-purple-500',
+    iconColor: 'text-violet-400',
+    icon: (
+      <svg
+        className="w-6 h-6 stroke-current transition-all duration-500"
+        viewBox="0 0 24 24"
+        fill="none"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 1v22" />
+        <path d="M17 5H9a4 4 0 0 0 0 8h6a4 4 0 0 1 0 8H7" />
+      </svg>
+    )
+  },
+
+  {
+    title: 'Trust by Design',
+    description:
+      'Privacy, transparency, safety, and user control are built into the foundation of Ontlo, creating a space where connections can grow with confidence.',
+    color: 'from-blue-500 to-indigo-500',
+    iconColor: 'text-blue-400',
+    icon: (
+      <svg
+        className="w-6 h-6 stroke-current transition-all duration-500"
+        viewBox="0 0 24 24"
+        fill="none"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <circle cx="12" cy="11" r="2" />
+        <path d="M12 13v3" />
+      </svg>
+    )
+  },
+
+  {
+    title: 'Safe & Respectful Spaces',
+    description:
+      'Thoughtful moderation tools and community standards help create an environment where everyone can participate with confidence.',
     color: 'from-orange-500 to-rose-500',
     iconColor: 'text-orange-400',
     icon: (
@@ -110,9 +110,9 @@ const featuresData = [
   },
 
   {
-    title: 'Built for the Future',
+    title: 'Built Around People',
     description:
-      'Ontlo is engineered for the next generation of social interaction with scalable real-time infrastructure and modern experiences.',
+      'Technology should strengthen human connection, not compete for attention. Every part of Ontlo is designed to help people connect, discover, and belong.',
     color: 'from-indigo-500 to-fuchsia-500',
     iconColor: 'text-indigo-400',
     icon: (
