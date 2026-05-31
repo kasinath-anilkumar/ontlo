@@ -65,7 +65,7 @@ const AboutSection = () => {
               <br />
 
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-fuchsia-400 to-indigo-500">
-                real human
+                authentic 
               </span>
 
               <br />
