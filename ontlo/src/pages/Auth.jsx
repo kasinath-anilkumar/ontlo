@@ -301,9 +301,9 @@ const Auth = () => {
                 }}
                 className="group text-[9px] font-black text-gray-500 hover:text-white uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 mx-auto"
               >
-                <div className="w-8 h-px bg-white/5 group-hover:w-12 group-hover:bg-purple-500/50 transition-all"></div>
+                <div className="w-8 text-white h-px bg-white/5 group-hover:w-12 group-hover:bg-purple-500/50 transition-all"></div>
                 {isLogin ? "Create Account" : "Back to Login"}
-                <div className="w-8 h-px bg-white/5 group-hover:w-12 group-hover:bg-purple-500/50 transition-all"></div>
+                <div className="w-8 text-white h-px bg-white/5 group-hover:w-12 group-hover:bg-purple-500/50 transition-all"></div>
               </button>
             </div>
           </div>
@@ -311,14 +311,14 @@ const Auth = () => {
           <div className="mt-6 text-center space-x-4">
             <button
               onClick={() => navigate('/privacy')}
-              className="text-[8px] font-black text-gray-500 hover:text-white uppercase tracking-[0.3em] transition-all"
+              className="text-[8px] font-black text-white hover:text-purple-500 uppercase tracking-[0.3em] transition-all"
             >
               Privacy Policy
             </button>
-            <span className="text-gray-800">•</span>
+            <span className="text-white">•</span>
             <button
               onClick={() => navigate('/terms')}
-              className="text-[8px] font-black text-gray-500 hover:text-white uppercase tracking-[0.3em] transition-all"
+              className="text-[8px] font-black text-white hover:text-purple-500 uppercase tracking-[0.3em] transition-all"
             >
               Terms of Service
             </button>
