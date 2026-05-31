@@ -19,6 +19,8 @@ const HeroSection = () => {
                     mix-blend-soft-light
                     z-[2]
                     pointer-events-none
+                    sm:hidden
+                    md:block
                 "
                 style={{
                     backgroundImage:
