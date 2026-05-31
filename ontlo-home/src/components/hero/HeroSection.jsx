@@ -97,7 +97,7 @@ const HeroSection = () => {
             {/* DESKTOP BACKGROUND IMAGE (WITH WEBGL WATER RIPPLES) */}
             <div className="hidden lg:block absolute inset-0 w-full h-full z-[1]">
                 <WaterWave
-                    imageUrl="/hero1.png"
+                    imageUrl="/hero1.webp"
                     dropRadius={35}
                     perturbance={0.04}
                     resolution={600}
