@@ -134,8 +134,8 @@ const Auth = () => {
       <div className="hidden lg:flex flex-1 flex-col justify-center px-12 xl:px-20 relative z-10">
         <div className="max-w-xl">
           <div className="flex items-center gap-4 mb-6">
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl">
-              <img src={logo} alt="Logo" className="w-10 h-10" />
+            <div className="p-1 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl">
+              <img src={logo} alt="Logo" className="w-14 h-14 drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]" />
             </div>
             <div className="h-6 w-px bg-white/10"></div>
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Social Media, Rebuilt</span>
@@ -165,8 +165,8 @@ const Auth = () => {
 
           {/* Mobile Logo in natural flow */}
           <div className="flex items-center justify-center gap-3 mb-6 lg:hidden">
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl">
-              <img src={logo} alt="Logo" className="w-8 h-8 drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]" />
+            <div className="p-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl">
+              <img src={logo} alt="Logo" className="w-14 drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]" />
             </div>
             {/* <span className="text-sm font-black tracking-widest uppercase text-white">Ontlo</span> */}
           </div>

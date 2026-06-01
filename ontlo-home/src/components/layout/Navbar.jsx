@@ -44,7 +44,7 @@ const Navbar = () => {
             {/* Glow */}
             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-pink-500/5 pointer-events-none" />
 
-            <div className="relative flex items-center justify-between px-6 py-2">
+            <div className="relative flex items-center justify-between px-6 py-1">
 
               {/* Logo */}
               <Link
@@ -56,7 +56,7 @@ const Navbar = () => {
                   <div className="absolute inset-0 bg-purple-500 blur-xl opacity-60 group-hover:opacity-100 transition duration-500" />
                 </div>
 
-                <img src="/ontlo_logo.webp" className='w-12' alt="logo" />
+                <img src="/ontlo_logo.webp" className='w-16' alt="logo" />
               </Link>
 
               {/* Desktop Nav */}

@@ -12,7 +12,7 @@ const Footer = () => {
           {/* LEFT */}
           <div className="text-center md:text-left max-w-sm">
             <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-              <img src="/ontlo_transp.png" className="w-12" alt="logo" />
+              <img src="/ontlo_logo.webp" className="w-16" alt="logo" />
               {/* <span className="text-white font-semibold tracking-wide text-lg">
                 Ontlo
               </span> */}
