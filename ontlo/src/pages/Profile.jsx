@@ -41,23 +41,23 @@ const Profile = () => {
 
   useEffect(() => {
     if (!isSelf && profileUserFromState?._id) {
-       const fetchProfile = async () => {
-          try {
-             const token = localStorage.getItem("token");
-             const response = await apiFetch(`${API_URL}/api/users/${profileUserFromState._id}`, {
-               headers: { Authorization: `Bearer ${token}` }
-             });
-             if (response.ok) {
-                const data = await response.json();
-                setProfileUser(data);
-             }
-          } catch(err) {
-             console.error(err);
+      const fetchProfile = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const response = await apiFetch(`${API_URL}/api/users/${profileUserFromState._id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setProfileUser(data);
           }
-       };
-       fetchProfile();
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      fetchProfile();
     } else if (isSelf) {
-       setProfileUser(user);
+      setProfileUser(user);
     }
   }, [isSelf, profileUserFromState?._id, user]);
 
@@ -70,7 +70,7 @@ const Profile = () => {
         setProfileUser(prev => prev ? { ...prev, connectionStatus: 'active' } : null);
       }
     };
-    
+
     const handleNewConnection = (connection) => {
       const users = typeof connection.users[0] === 'object' ? connection.users.map(u => u._id || u) : connection.users;
       if (users.includes(profileUser._id)) {
@@ -96,11 +96,7 @@ const Profile = () => {
   }, [socket, isSelf, profileUser?._id]);
 
   useEffect(() => {
-    if (!profileUser?._id) {
-      setLoadingMoments(false);
-      return;
-    }
-    setLoadingMoments(true);
+    if (!profileUser?._id) return;
     const fetchMoments = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -241,7 +237,7 @@ const Profile = () => {
 
   const renderActionButtons = (isDesktop = false) => {
     if (isSelf) return null;
-    
+
     if (profileUser?.connectionStatus === 'active') {
       return (
         <div className={`flex items-center gap-2 ${isDesktop ? '' : 'w-full'}`}>
@@ -288,7 +284,7 @@ const Profile = () => {
         </div>
       );
     }
-    
+
     if (profileUser?.connectionStatus === 'pending_sent') {
       return (
         <button
@@ -301,7 +297,7 @@ const Profile = () => {
         </button>
       );
     }
-    
+
     if (profileUser?.connectionStatus === 'pending_received') {
       return (
         <div className={`flex gap-2 ${isDesktop ? '' : 'w-full'}`}>
@@ -324,7 +320,7 @@ const Profile = () => {
         </div>
       );
     }
-    
+
     // Default none
     return (
       <button
@@ -705,51 +701,51 @@ const Profile = () => {
 
                 {/* TAB 1: POSTS GRID */}
                 {activeTab === "posts" && (
-  <div className="grid grid-cols-3 gap-1 sm:gap-1.5 animate-in fade-in duration-300">
-    {loadingMoments ? (
-      [...Array(9)].map((_, i) => (
-    <div
-      key={i}
-      className="aspect-square rounded-sm overflow-hidden border border-white/[0.03] bg-white/[0.02] relative"
-    >
-      {/* Ultra light smooth shimmer */}
-      <div className="absolute inset-0">
-        <div className="h-full w-full bg-white/[0.015]" />
+                  <div className="grid grid-cols-3 gap-1 sm:gap-1.5 animate-in fade-in duration-300">
+                    {loadingMoments ? (
+                      [...Array(9)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="aspect-square rounded-sm overflow-hidden border border-white/[0.03] bg-white/[0.02] relative"
+                        >
+                          {/* Ultra light smooth shimmer */}
+                          <div className="absolute inset-0">
+                            <div className="h-full w-full bg-white/[0.015]" />
 
-        <div className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/[0.035] to-transparent" />
-      </div>
-    </div>
-  ))
-    ) : moments.length > 0 ? (
-      moments.map((m) => (
-        <div
-          key={m._id}
-          onClick={() => setViewingPostId(m._id)}
-          className="aspect-square bg-[#1a1f30] rounded-sm overflow-hidden relative group cursor-pointer border border-white/5 shadow-sm"
-        >
-          <img
-            src={m.imageUrl}
-            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105 group-hover:opacity-90"
-            alt="Photo"
-          />
-        </div>
-      ))
-    ) : (
-      <div className="col-span-3 py-16 text-center bg-white/[0.02] border border-dashed border-white/5 rounded-3xl mb-5">
-        <ImageIcon
-          size={32}
-          className="mx-auto mb-3 text-purple-400 opacity-60"
-        />
-        <p className="text-sm font-bold text-white mb-1">
-          No posts yet
-        </p>
-        <p className="text-xs text-gray-500 font-medium">
-          Posts uploaded will appear here
-        </p>
-      </div>
-    )}
-  </div>
-)}
+                            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/[0.035] to-transparent" />
+                          </div>
+                        </div>
+                      ))
+                    ) : moments.length > 0 ? (
+                      moments.map((m) => (
+                        <div
+                          key={m._id}
+                          onClick={() => setViewingPostId(m._id)}
+                          className="aspect-square bg-[#1a1f30] rounded-sm overflow-hidden relative group cursor-pointer border border-white/5 shadow-sm"
+                        >
+                          <img
+                            src={m.imageUrl}
+                            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105 group-hover:opacity-90"
+                            alt="Photo"
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-3 py-16 text-center bg-white/[0.02] border border-dashed border-white/5 rounded-3xl mb-5">
+                        <ImageIcon
+                          size={32}
+                          className="mx-auto mb-3 text-purple-400 opacity-60"
+                        />
+                        <p className="text-sm font-bold text-white mb-1">
+                          No posts yet
+                        </p>
+                        <p className="text-xs text-gray-500 font-medium">
+                          Posts uploaded will appear here
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* TAB 2: CONNECTIONS LIST */}
                 {activeTab === "connections" && (
