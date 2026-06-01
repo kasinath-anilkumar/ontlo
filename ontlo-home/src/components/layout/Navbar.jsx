@@ -56,7 +56,7 @@ const Navbar = () => {
                   <div className="absolute inset-0 bg-purple-500 blur-xl opacity-60 group-hover:opacity-100 transition duration-500" />
                 </div>
 
-                <img src="/ontlo_transp_nav.webp" className='w-12' alt="logo" />
+                <img src="/ontlo_logo.webp" className='w-12' alt="logo" />
               </Link>
 
               {/* Desktop Nav */}
