@@ -741,10 +741,10 @@ const Profile = () => {
           className="mx-auto mb-3 text-purple-400 opacity-60"
         />
         <p className="text-sm font-bold text-white mb-1">
-          No photos captured
+          No posts yet
         </p>
         <p className="text-xs text-gray-500 font-medium">
-          Photos uploaded to your feed will appear here
+          Posts uploaded will appear here
         </p>
       </div>
     )}
