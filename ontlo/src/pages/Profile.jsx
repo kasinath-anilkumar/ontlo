@@ -96,7 +96,11 @@ const Profile = () => {
   }, [socket, isSelf, profileUser?._id]);
 
   useEffect(() => {
-    if (!profileUser?._id) return;
+    if (!profileUser?._id) {
+      setLoadingMoments(false);
+      return;
+    }
+    setLoadingMoments(true);
     const fetchMoments = async () => {
       try {
         const token = localStorage.getItem("token");

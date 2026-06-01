@@ -691,7 +691,7 @@ router.post(
       if (
         req.body.profilePic &&
         typeof req.body.profilePic ===
-          'string'
+        'string'
       ) {
 
         // Prevent RAM abuse
@@ -737,15 +737,15 @@ router.post(
           location:
             req.body.location,
 
-          locationCoordinates: 
+          locationCoordinates:
             req.body.lat && req.body.lng
               ? {
-                  type: 'Point',
-                  coordinates: [
-                    Number(req.body.lng),
-                    Number(req.body.lat)
-                  ]
-                }
+                type: 'Point',
+                coordinates: [
+                  Number(req.body.lng),
+                  Number(req.body.lat)
+                ]
+              }
               : { type: 'Point', coordinates: [0, 0] },
 
           interests:
@@ -800,7 +800,7 @@ router.post(
             user.username
         }
 
-      }).catch(() => {});
+      }).catch(() => { });
 
       const { accessToken, refreshToken } =
         await generateTokens(
@@ -977,7 +977,7 @@ router.post(
   async (req, res) => {
     const label = `refresh_${Date.now()}`;
     console.log(`[Auth] Refresh attempt - Cookies:`, req.cookies, `Body:`, req.body);
-    
+
     console.time(label);
     try {
       const refreshToken = req.cookies.refreshToken || req.body.refreshToken || req.headers['x-refresh-token'];
@@ -1001,9 +1001,9 @@ router.post(
 
       // 2. Load user using the NEW index: { "refreshTokens.token": 1 }
       const user = await User.findOne(
-        { 
-          _id: decoded.id, 
-          "refreshTokens.token": refreshToken 
+        {
+          _id: decoded.id,
+          "refreshTokens.token": refreshToken
         },
         "_id username"
       ).lean();
@@ -1198,7 +1198,7 @@ router.post(
 
         req
 
-      }).catch(() => {});
+      }).catch(() => { });
 
       res.json({
 
