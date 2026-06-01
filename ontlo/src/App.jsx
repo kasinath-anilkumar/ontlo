@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SocketProvider, useSocket } from "./context/SocketContext";
+import { FeedProvider } from "./context/FeedContext";
 import { Loader2 } from "lucide-react";
 import { lazyWithRetry as lazy } from "./utils/lazyRetry";
 
@@ -54,37 +55,39 @@ const ProtectedRoute = ({ children, requiresProfile = true }) => {
 function App() {
   return (
     <SocketProvider>
-      <Router>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/terms" element={<TermsOfService />} />
-            <Route path="/onboarding" element={<Onboarding />} />
+      <FeedProvider>
+        <Router>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/onboarding" element={<Onboarding />} />
 
-            <Route path="/*" element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/video" element={<Video />} />
-                    <Route path="/connections" element={<Connections />} />
-                    <Route path="/messages" element={<Messages />} />
-                    {/* <Route path="/who-liked-you" element={<WhoLikedYou />} /> */}
-                    <Route path="/favorites" element={<Favorites />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/create-post" element={<CreatePost />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/search" element={<Search />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </Suspense>
-      </Router>
+              <Route path="/*" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/video" element={<Video />} />
+                      <Route path="/connections" element={<Connections />} />
+                      <Route path="/messages" element={<Messages />} />
+                      {/* <Route path="/who-liked-you" element={<WhoLikedYou />} /> */}
+                      <Route path="/favorites" element={<Favorites />} />
+                      <Route path="/notifications" element={<Notifications />} />
+                      <Route path="/create-post" element={<CreatePost />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/search" element={<Search />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </Suspense>
+        </Router>
+      </FeedProvider>
     </SocketProvider>
   );
 }

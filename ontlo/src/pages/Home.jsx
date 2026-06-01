@@ -7,14 +7,14 @@ import logo from "/ontlo_icon.webp";
 import PostFeed from "../components/PostFeed";
 import Skeleton from "../components/ui/Skeleton";
 import { useSocket } from "../context/SocketContext";
+import { useFeed } from "../context/FeedContext";
 import API_URL, { apiFetch } from "../utils/api";
 
 const Home = () => {
   const navigate = useNavigate();
   const { socket, user, counts, onlineUsers: contextOnlineUsers, isInitialLoad } = useSocket();
+  const { posts, postsLoading, fetchFeed } = useFeed();
   const [onlineCount, setOnlineCount] = useState(0);
-  const [posts, setPosts] = useState([]);
-  const [postsLoading, setPostsLoading] = useState(true);
 
   useEffect(() => {
     if (!socket) return;
@@ -23,30 +23,16 @@ const Home = () => {
   }, [socket]);
 
   useEffect(() => {
-    fetchPosts();
+    fetchFeed();
 
     const handleRefresh = () => {
-      fetchPosts();
+      fetchFeed(true);
     };
     window.addEventListener('app:refresh', handleRefresh);
     return () => {
       window.removeEventListener('app:refresh', handleRefresh);
     };
   }, []);
-
-  const fetchPosts = async () => {
-    try {
-      const res = await apiFetch(`${API_URL}/api/posts/feed`);
-      if (res.ok) {
-        const data = await res.json();
-        setPosts(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch posts', err);
-    } finally {
-      setPostsLoading(false);
-    }
-  };
 
   const hasPosts = posts.length > 0;
 
@@ -94,10 +80,7 @@ const Home = () => {
       ) : hasPosts ? (
         /* PURE FEED UI (Instagram Style) */
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 mt-4 sm:mt-4 md:mt-0">
-          <PostFeed
-            initialPosts={posts}
-            onPostDeleted={(deletedId) => setPosts(prev => prev.filter(p => p._id !== deletedId))}
-          />
+          <PostFeed />
         </div>
       ) : (
         /* DISCOVERY HUB UI (Standard Style) */

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, MoreHorizontal, Send, X, Users, Smile, Trash2, ChevronDown, Camera, Maximize2, Minimize2, Check, AlertTriangle } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
+import { useFeed } from '../context/FeedContext';
 import Skeleton from './ui/Skeleton';
 import API_URL, { apiFetch } from '../utils/api';
 
@@ -15,8 +16,23 @@ const getOptimizedUrl = (url, width = 1200) => {
 const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostDeleted }) => {
   const navigate = useNavigate();
   const { user, socket } = useSocket();
-  const [posts, setPosts] = useState(initialPosts || []);
-  const [loading, setLoading] = useState(!initialPosts);
+  const {
+    posts: contextPosts,
+    postsLoading: contextLoading,
+    fetchFeed,
+    handleLike: contextHandleLike,
+    handleComment: contextHandleComment,
+    handleDeleteComment: contextHandleDeleteComment,
+    handleDeletePost: contextHandleDeletePost,
+    handleReply: contextHandleReply
+  } = useFeed();
+
+  const isLocalMode = !!initialPosts;
+  const [localPosts, setLocalPosts] = useState(initialPosts || []);
+  const [localLoading, setLocalLoading] = useState(!initialPosts);
+
+  const posts = isLocalMode ? localPosts : contextPosts;
+  const loading = isLocalMode ? localLoading : contextLoading;
   const [showScreenshotWarning, setShowScreenshotWarning] = useState(false);
 
   useEffect(() => {
@@ -42,10 +58,10 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
   }, []);
 
   useEffect(() => {
-    if (!initialPosts) {
+    if (!isLocalMode && contextPosts.length === 0) {
       fetchFeed();
     }
-  }, [initialPosts]);
+  }, [isLocalMode, contextPosts.length]);
 
   useEffect(() => {
     if (scrollToId && posts.length > 0) {
@@ -60,28 +76,33 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
     }
   }, [scrollToId, posts]);
 
-  // Handle Socket Events
+  // Handle Socket Events (only in Local Mode, e.g. Profile view)
   useEffect(() => {
-    if (!socket) return;
+    if (!isLocalMode || !socket) return;
 
     const handleNewPost = (newPost) => {
-      setPosts(prev => [newPost, ...prev]);
+      setLocalPosts((prev) => {
+        if (prev.some((p) => p._id === newPost._id)) return prev;
+        return [newPost, ...prev];
+      });
     };
 
     const handlePostUpdated = ({ postId, likes, comments }) => {
-      setPosts(prev => prev.map(post => {
-        if (post._id === postId) {
-          const updated = { ...post };
-          if (likes !== undefined) updated.likes = likes;
-          if (comments !== undefined) updated.comments = comments;
-          return updated;
-        }
-        return post;
-      }));
+      setLocalPosts((prev) =>
+        prev.map((post) => {
+          if (post._id === postId) {
+            const updated = { ...post };
+            if (likes !== undefined) updated.likes = likes;
+            if (comments !== undefined) updated.comments = comments;
+            return updated;
+          }
+          return post;
+        })
+      );
     };
 
     const handlePostDeleted = ({ postId }) => {
-      setPosts(prev => prev.filter(post => post._id !== postId));
+      setLocalPosts((prev) => prev.filter((post) => post._id !== postId));
       if (onPostDeleted) onPostDeleted(postId);
     };
 
@@ -94,128 +115,88 @@ const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostD
       socket.off('post-updated', handlePostUpdated);
       socket.off('post-deleted', handlePostDeleted);
     };
-  }, [socket, onPostDeleted]);
+  }, [socket, isLocalMode, onPostDeleted]);
 
-  const fetchFeed = async () => {
-    try {
-      const res = await apiFetch(`${API_URL}/api/posts/feed`);
-      if (res.ok) {
-        const data = await res.json();
-        setPosts(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch feed', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Wrapped Actions
   const handleLike = async (postId) => {
-    try {
-      const res = await apiFetch(`${API_URL}/api/posts/${postId}/like`, {
-        method: 'POST'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPosts(posts.map(post =>
+    contextHandleLike(postId);
+    if (isLocalMode) {
+      const currentUserId = user?._id || user?.id;
+      setLocalPosts((prev) =>
+        prev.map((post) =>
           post._id === postId
-            ? { ...post, likes: data.isLiked ? [...post.likes, user._id] : post.likes.filter(id => id !== user._id) }
+            ? {
+                ...post,
+                likes: post.likes.includes(currentUserId)
+                  ? post.likes.filter((id) => id !== currentUserId)
+                  : [...post.likes, currentUserId]
+              }
             : post
-        ));
-      }
-    } catch (err) {
-      console.error('Failed to like post', err);
+        )
+      );
     }
   };
 
   const handleComment = async (postId, text) => {
-    if (!text.trim()) return;
-    try {
-      const res = await apiFetch(`${API_URL}/api/posts/${postId}/comment`, {
-        method: 'POST',
-        body: JSON.stringify({ text })
-      });
-      if (res.ok) {
-        const newComment = await res.json();
-        // Update local state instantly
-        setPosts(posts.map(post =>
+    const newComment = await contextHandleComment(postId, text);
+    if (newComment && isLocalMode) {
+      setLocalPosts((prev) =>
+        prev.map((post) =>
           post._id === postId
             ? { ...post, comments: [...(post.comments || []), newComment] }
             : post
-        ));
-        return true;
-      }
-    } catch (err) {
-      console.error('Failed to post comment', err);
+        )
+      );
     }
-    return false;
+    return !!newComment;
   };
 
   const handleDeleteComment = async (postId, commentId) => {
-    try {
-      const res = await apiFetch(`${API_URL}/api/posts/${postId}/comment/${commentId}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        setPosts(posts.map(post =>
+    await contextHandleDeleteComment(postId, commentId);
+    if (isLocalMode) {
+      setLocalPosts((prev) =>
+        prev.map((post) =>
           post._id === postId
-            ? { ...post, comments: post.comments.filter(c => c._id !== commentId) }
+            ? { ...post, comments: post.comments.filter((c) => c._id !== commentId) }
             : post
-        ));
-      }
-    } catch (err) {
-      console.error('Failed to delete comment', err);
+        )
+      );
     }
   };
 
   const handleDeletePost = async (postId) => {
-    try {
-      const res = await apiFetch(`${API_URL}/api/posts/${postId}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        // Remove the post from local state instantly
-        setPosts(posts.filter(post => post._id !== postId));
-        if (onPostDeleted) onPostDeleted(postId);
-      }
-    } catch (err) {
-      console.error('Failed to delete post', err);
+    await contextHandleDeletePost(postId);
+    if (isLocalMode) {
+      setLocalPosts((prev) => prev.filter((post) => post._id !== postId));
+      if (onPostDeleted) onPostDeleted(postId);
     }
   };
 
   const handleReply = async (postId, commentId, text) => {
-    if (!text.trim()) return;
-    try {
-      const res = await apiFetch(`${API_URL}/api/posts/${postId}/comment/${commentId}/reply`, {
-        method: 'POST',
-        body: JSON.stringify({ text })
-      });
-      if (res.ok) {
-        const newReply = await res.json();
-        setPosts(posts.map(post =>
+    const newReply = await contextHandleReply(postId, commentId, text);
+    if (newReply && isLocalMode) {
+      setLocalPosts((prev) =>
+        prev.map((post) =>
           post._id === postId
             ? {
-              ...post,
-              comments: post.comments.map(c =>
-                c._id === commentId
-                  ? { ...c, replies: [...(c.replies || []), newReply] }
-                  : c
-              )
-            }
+                ...post,
+                comments: post.comments.map((c) =>
+                  c._id === commentId
+                    ? { ...c, replies: [...(c.replies || []), newReply] }
+                    : c
+                )
+              }
             : post
-        ));
-        return true;
-      }
-    } catch (err) {
-      console.error('Failed to reply', err);
+        )
+      );
     }
-    return false;
+    return !!newReply;
   };
 
   if (loading) {
     return (
       <div className="space-y-6">
-        {[1, 2].map(i => (
+        {[1, 2].map((i) => (
           <div key={i} className="bg-[#151923]/60 rounded-3xl p-4 space-y-4">
             <div className="flex items-center gap-3">
               <Skeleton circle={true} className="w-10 h-10" />
