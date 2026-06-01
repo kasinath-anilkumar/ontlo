@@ -5,64 +5,52 @@ import useSEO from '../../hooks/useSEO'
 
 const privacySections = [
   {
-    icon: '🔐',
+    icon: '🇮🇳',
+    title: 'DPDP Act Compliance & Data Fiduciary',
+    content:
+      'In accordance with India\'s Digital Personal Data Protection (DPDP) Act, 2023, Ontlo acts as the "Data Fiduciary" for the personal data collected on the platform. The user acts as the "Data Principal" with corresponding legal rights, obligations, and duties.'
+  },
+  {
+    icon: '🔍',
     title: 'Information We Collect',
     content:
-      'We collect information you provide when creating and using your Ontlo account, including profile details, interests, profile photos, posts, messages, account settings, and other information necessary to provide platform functionality.'
+      'We collect personal data that you voluntarily provide to construct your profile, including your name, email address, optional phone number, profile photo, bio, interest tags, and user-generated posts. We also collect technical session identifiers to support platform functionality.'
+  },
+  {
+    icon: '⚖️',
+    title: 'Legal Basis & Purpose of Processing',
+    content:
+      'We process your digital personal data solely based on your explicit, specific, and unconditional consent. The processing is done to enable social discovery, user connections, community building, communication features, and to prevent spam or fraudulent activity on the platform.'
   },
   {
     icon: '🛡️',
-    title: 'Privacy By Design',
+    title: 'Your Rights as a Data Principal',
     content:
-      'Privacy is built into Ontlo from the beginning. We minimize unnecessary data collection, prioritize user control, and design experiences that respect personal boundaries and digital wellbeing.'
+      'Under the DPDP Act, 2023, you have the right to request (1) a summary of your personal data being processed, (2) correction, completion, or updating of your data, (3) erasure of data that is no longer required for processing, and (4) the right to nominate someone else to manage your data in case of death or incapacity.'
+  },
+  {
+    icon: '❌',
+    title: 'Consent Withdrawal & Erasure',
+    content:
+      'You have the right to withdraw your consent to data processing at any time. If you withdraw consent or delete your account, we will erase your personal data from our servers and instruct our data processors to do the same, unless retention is mandated under Indian laws (e.g., IT Act, CERT-In guidelines).'
   },
   {
     icon: '💬',
-    title: 'Messaging & Communication',
+    title: 'Real-time Messaging & Call Metadata',
     content:
-      'Messages and interactions are processed only to deliver platform functionality, investigate abuse reports, maintain security, and ensure reliable communication services.'
+      'Ontlo provides real-time messaging, audio, and video sessions. We process metadata (such as timestamps and connection logs) to establish and maintain calls. Real-time media streams are encrypted and are not recorded or stored on our servers unless explicitly requested by the users.'
   },
   {
-    icon: '📹',
-    title: 'Video & Audio Sessions',
+    icon: '🏢',
+    title: 'Intermediary Data Sharing',
     content:
-      'Ontlo uses real-time communication technologies to support audio and video interactions. Technical session information may be processed to establish connections and maintain service quality.'
+      'We do not sell your personal data. Data is shared only with trusted infrastructure providers (Data Processors) under strict data protection agreements. We may share information with law enforcement agencies if required by a valid legal order under Section 69 of the Information Technology Act, 2000.'
   },
   {
-    icon: '📍',
-    title: 'Location Information',
+    icon: '👨‍💼',
+    title: 'Grievance Officer Details',
     content:
-      'Location preferences help improve discovery experiences and connect users with relevant communities. Users maintain control over visibility and sharing preferences.'
-  },
-  {
-    icon: '🤖',
-    title: 'Safety & Moderation',
-    content:
-      'Automated systems, moderation tools, and user reports help us prevent abuse, investigate violations, and maintain a respectful environment across the platform.'
-  },
-  {
-    icon: '☁️',
-    title: 'Media Storage',
-    content:
-      'Uploaded media such as profile photos and posts may be securely processed and stored using trusted cloud infrastructure providers.'
-  },
-  {
-    icon: '📦',
-    title: 'Data Portability',
-    content:
-      'Users may request a copy of their account information and personal data through available platform controls.'
-  },
-  {
-    icon: '🗑️',
-    title: 'Account Deletion',
-    content:
-      'Users can permanently delete their account and associated data. Requests are processed according to legal and operational requirements.'
-  },
-  {
-    icon: '🇮🇳',
-    title: 'DPDP Act Compliance',
-    content:
-      'Ontlo supports user rights under India’s Digital Personal Data Protection Act, 2023, including access, correction, deletion, and grievance redressal rights.'
+      'If you have any queries, complaints, or wish to exercise your rights under the DPDP Act, you can contact our Grievance Officer, Kasinath Anilkumar, at ontlo.app@gmail.com. In line with the IT Rules, 2021, we acknowledge grievances within 24 hours and resolve them within 15 days.'
   }
 ]
 

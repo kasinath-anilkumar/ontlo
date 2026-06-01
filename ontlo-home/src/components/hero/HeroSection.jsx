@@ -1,14 +1,26 @@
-import React from 'react'
+import React, { useState, useEffect, lazy, Suspense } from 'react'
 import HeroContent from './HeroContent'
 import WaterInteraction from '../ui/WaterInteraction'
-import WaterWave from 'react-water-wave'
+
+const WaterWave = lazy(() => import('react-water-wave'))
 
 const HeroSection = () => {
+    const [isDesktop, setIsDesktop] = useState(false)
+
+    useEffect(() => {
+        const checkIsDesktop = () => {
+            setIsDesktop(window.innerWidth >= 1024)
+        }
+        checkIsDesktop()
+        window.addEventListener('resize', checkIsDesktop)
+        return () => window.removeEventListener('resize', checkIsDesktop)
+    }, [])
+
     return (
         <section className="relative w-full min-h-screen bg-[#04010D]">
 
             {/* WATER INTERACTION */}
-            <WaterInteraction />
+            {isDesktop && <WaterInteraction />}
 
             {/* NOISE TEXTURE */}
             {/* <div
@@ -97,18 +109,22 @@ const HeroSection = () => {
             </div>
 
             {/* DESKTOP BACKGROUND IMAGE (WITH WEBGL WATER RIPPLES) */}
-            <div className="hidden lg:block absolute inset-0 w-full h-full z-[1]">
-                <WaterWave
-                    imageUrl="/hero1.webp"
-                    dropRadius={35}
-                    perturbance={0.04}
-                    resolution={600}
-                    className="w-full h-full"
-                    style={{ backgroundSize: 'cover', backgroundPosition: 'right' }}
-                >
-                    {() => <div className="w-full h-full pointer-events-none" />}
-                </WaterWave>
-            </div>
+            {isDesktop && (
+                <div className="hidden lg:block absolute inset-0 w-full h-full z-[1]">
+                    <Suspense fallback={<div className="w-full h-full bg-[#04010D]" />}>
+                        <WaterWave
+                            imageUrl="/hero1.webp"
+                            dropRadius={35}
+                            perturbance={0.04}
+                            resolution={600}
+                            className="w-full h-full"
+                            style={{ backgroundSize: 'cover', backgroundPosition: 'right' }}
+                        >
+                            {() => <div className="w-full h-full pointer-events-none" />}
+                        </WaterWave>
+                    </Suspense>
+                </div>
+            )}
 
             {/* DESKTOP OVERLAY */}
             <div

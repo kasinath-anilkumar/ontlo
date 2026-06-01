@@ -5,88 +5,58 @@ import useSEO from '../../hooks/useSEO'
 
 const termsSections = [
   {
-    icon: '✅',
-    title: 'Acceptance of Terms',
+    icon: '🇮🇳',
+    title: 'Intermediary Status & Acceptance',
     content:
-      'By creating an account, accessing, or using Ontlo, you agree to these Terms of Service and all applicable laws, regulations, and platform policies.'
+      'Ontlo is an "Intermediary" as defined under Section 2(1)(w) of the Indian Information Technology Act, 2000. These Terms of Service are published in accordance with Rule 3(1) of the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021.'
   },
   {
-    icon: '👤',
-    title: 'Eligibility',
+    icon: '🔞',
+    title: 'Eligibility & Contracts',
     content:
-      'You must be at least 18 years old to use Ontlo. By using the platform, you confirm that you meet all eligibility requirements and can legally enter into this agreement.'
-  },
-  {
-    icon: '🔐',
-    title: 'Account Responsibility',
-    content:
-      'You are responsible for maintaining the security of your account credentials and all activities that occur under your account.'
-  },
-  {
-    icon: '🤝',
-    title: 'Respectful Conduct',
-    content:
-      'Users must treat others with respect and may not engage in harassment, hate speech, threats, exploitation, impersonation, or abusive behavior.'
+      'To use Ontlo, you must be at least 18 years of age and legally competent to enter into a contract under the Indian Contract Act, 1872. If you are under 18, you are not permitted to register an account or use our communication features.'
   },
   {
     icon: '🚫',
-    title: 'Prohibited Activities',
+    title: 'Prohibited Content & Intermediary Guidelines',
     content:
-      'You may not use Ontlo for illegal activities, spam, fraud, malware distribution, unauthorized data collection, or any activity that harms users or platform integrity.'
-  },
-  {
-    icon: '💬',
-    title: 'Content & Communication',
-    content:
-      'Users retain ownership of their content while granting Ontlo the limited rights necessary to operate, display, moderate, and improve platform functionality.'
+      'Under Rule 3(1)(b) of the IT Rules, 2021, you agree not to host, display, upload, modify, publish, transmit, store, update, or share any information that: (1) belongs to another person; (2) is defamatory, obscene, pornographic, pedophilic, invasive of another\'s privacy, bodily harmful, harassing on the basis of gender, libellous, racially objectionable, or encourages money laundering or gambling; (3) harms minors; (4) infringes intellectual property rights; (5) contains malware/viruses; (6) threatens the security, integrity, or defense of India, friendly relations with foreign states, or public order; or (7) is patently false or misleading.'
   },
   {
     icon: '🛡️',
-    title: 'Safety & Moderation',
+    title: 'Platform Moderation & Content Removal',
     content:
-      'Ontlo may investigate reports, moderate content, remove material, suspend accounts, or restrict platform access when necessary to maintain community safety.'
+      'As an intermediary, Ontlo reserves the right to immediately remove, disable access to, or restrict any content that violates these Terms or is flagged by government/judicial orders under Section 79(3)(b) of the IT Act, 2000. Violation of these terms may result in account suspension or termination.'
   },
   {
-    icon: '📹',
-    title: 'Real-Time Communication',
+    icon: '🗣️',
+    title: 'Real-Time Communication Rules',
     content:
-      'Audio, video, and messaging services are provided for legitimate social interaction. Abuse of communication systems may result in account restrictions.'
+      'Our audio, video, and text communication tools are meant for authentic interaction. You are strictly prohibited from recording, capturing, or sharing screenshots of other users during private voice or video sessions without their express, verifiable consent.'
   },
   {
-    icon: '⚠️',
-    title: 'Platform Availability',
+    icon: '📜',
+    title: 'Intellectual Property & Licensing',
     content:
-      'While we strive for reliability, Ontlo does not guarantee uninterrupted service availability and may perform maintenance, upgrades, or emergency interventions.'
-  },
-  {
-    icon: '📦',
-    title: 'Data & Privacy',
-    content:
-      'Your use of Ontlo is also governed by our Privacy Policy, which explains how information is collected, processed, protected, and managed.'
-  },
-  {
-    icon: '🗑️',
-    title: 'Account Termination',
-    content:
-      'Users may delete their accounts at any time. Ontlo may suspend, restrict, or terminate accounts that violate these Terms or compromise platform safety.'
+      'You retain ownership of the content you post on Ontlo. However, by uploading content, you grant Ontlo a non-exclusive, royalty-free, worldwide license to host, distribute, display, and run your content solely to deliver our social networking services.'
   },
   {
     icon: '⚖️',
-    title: 'Limitation of Liability',
+    title: 'Limitation of Liability & Safe Harbor',
     content:
-      'Ontlo is provided on an as-is basis. To the maximum extent permitted by law, Ontlo shall not be liable for indirect, incidental, or consequential damages arising from platform use.'
+      'To the maximum extent permitted under Section 79 of the IT Act, 2000, Ontlo shall not be liable for user-generated content, messages, or activities. The platform is provided on an "as-is" basis, and we disclaim all warranties regarding service uptime, reliability, or safety.'
   },
   {
-    icon: '📢',
-    title: 'Changes to Terms',
+    icon: '🏛️',
+    title: 'Governing Law & Dispute Jurisdiction',
     content:
-      'We may update these Terms periodically to reflect legal requirements, platform improvements, or operational changes. Continued use of Ontlo indicates acceptance of updated Terms.'
+      'These Terms are governed by and construed in accordance with the laws of India. Any disputes, claims, or legal proceedings arising out of your use of Ontlo shall be subject to the exclusive jurisdiction of the competent courts in Bengaluru, Karnataka, India.'
   },
   {
-    icon: '📧',
-    title: 'Contact Information',
+    icon: '📬',
+    title: 'Grievance Officer & Redressal Mechanism',
     content:
-      'Questions regarding these Terms may be directed to Ontlo through the official support and contact channels available on the platform.'
+      'Pursuant to Rule 3(2) of the IT Rules, 2021 and the DPDP Act, 2023, any grievances or reports of violations can be sent to our Grievance Officer, Kasinath Anilkumar, at ontlo.app@gmail.com. We will acknowledge receipt of your complaint within 24 hours and resolve it within 15 days.'
   }
 ]
 
@@ -110,9 +80,6 @@ const TermsOfService = () => {
 
         {/* Grid */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:60px_60px] opacity-20 pointer-events-none" />
-
-        {/* Noise */}
-        {/* <div className="absolute inset-0 opacity-[0.025] bg-[url('/noise.png')] pointer-events-none" /> */}
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 md:px-12 lg:px-20 py-24 md:py-32">
 

@@ -31,9 +31,6 @@ const AboutSection = () => {
       {/* Grid Overlay */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:60px_60px] opacity-20 pointer-events-none" />
 
-      {/* Noise */}
-      {/* <div className="absolute inset-0 opacity-[0.025] bg-[url('/noise.png')] pointer-events-none" /> */}
-
       <div
         className="
           relative z-10
