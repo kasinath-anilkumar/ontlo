@@ -1,21 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset
-  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
->
-
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://ontlo.in/</loc>
     <priority>1.0</priority>
   </url>
-
+  <url>
+    <loc>https://www.ontlo.in/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.ontlo.in/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/auth</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/connections</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/createpost</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/favorites</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/home</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/messages</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/notifications</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/onboarding</loc>
+    <priority>0.8</priority>
+  </url>
   <url>
     <loc>https://ontlo.in/privacy</loc>
     <priority>0.8</priority>
   </url>
-
+  <url>
+    <loc>https://ontlo.in/profile</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/search</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/settings</loc>
+    <priority>0.8</priority>
+  </url>
   <url>
     <loc>https://ontlo.in/terms</loc>
     <priority>0.8</priority>
   </url>
-
+  <url>
+    <loc>https://ontlo.in/video</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ontlo.in/wholikedyou</loc>
+    <priority>0.8</priority>
+  </url>
 </urlset>
