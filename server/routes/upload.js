@@ -41,12 +41,10 @@ const handleImageUpload = (folder) => {
         // ======================================================
 
         if (err) {
-
-          console.error(
-            '[UPLOAD ERROR]:',
-            err
-          );
-
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ error: 'Try again' });
+          }
+          console.error('[UPLOAD ERROR]:', err);
           return res.status(500).json({
             error: 'Upload failed'
           });
