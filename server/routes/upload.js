@@ -90,7 +90,7 @@ const handleImageUpload = (folder) => {
 
           return res.status(400).json({
             error:
-              'Image size exceeds 5MB limit'
+              'Try again'
           });
         }
 
