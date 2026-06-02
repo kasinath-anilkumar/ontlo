@@ -84,7 +84,7 @@ const handleImageUpload = (folder) => {
         // ======================================================
 
         const MAX_SIZE =
-          5 * 1024 * 1024; // 5MB
+          20 * 1024 * 1024; // 20MB
 
         if (req.file.size > MAX_SIZE) {
 
