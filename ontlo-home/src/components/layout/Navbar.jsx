@@ -2,6 +2,22 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Instagram, Menu, X } from 'lucide-react'
 
+const safeScrollToTop = () => {
+  try {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch (_error) {
+    window.scrollTo(0, 0)
+  }
+}
+
+const safeScrollIntoView = (element) => {
+  try {
+    element.scrollIntoView({ behavior: 'smooth' })
+  } catch (_error) {
+    element.scrollIntoView()
+  }
+}
+
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
@@ -18,9 +34,9 @@ const Navbar = () => {
 
     const element = document.getElementById(targetId)
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
+      safeScrollIntoView(element)
     } else if (targetId === 'home') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      safeScrollToTop()
     }
 
     window.history.pushState(null, '', `/${path}`)

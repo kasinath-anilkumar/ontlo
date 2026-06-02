@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, MoreHorizontal, Send, X, Users, Smile, Trash2, ChevronDown, Camera, Maximize2, Minimize2, Check, AlertTriangle } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Send, X, Users, Smile, Trash2, ChevronDown, Camera, Maximize2, Minimize2, Check, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useFeed } from '../context/FeedContext';
 import Skeleton from './ui/Skeleton';
@@ -11,6 +11,156 @@ const getOptimizedUrl = (url, width = 1200) => {
   if (!url || typeof url !== 'string' || !url.includes('/upload/')) return url;
   if (url.includes('/upload/q_auto')) return url;
   return url.replace('/upload/', `/upload/q_auto:good,f_auto,w_${width}/`);
+};
+
+const getPostImages = (post) => {
+  if (Array.isArray(post.images) && post.images.length > 0) {
+    return post.images;
+  }
+  if (post.imageUrl) {
+    return [{ imageUrl: post.imageUrl, width: post.width, height: post.height }];
+  }
+  return [];
+};
+
+const SHEET_HEIGHT = {
+  dismiss: 28,
+  half: 55,
+  default: 75,
+  full: 92,
+  maxPx: 720,
+};
+
+const CommentsSheet = ({ open, onClose, children, footer }) => {
+  const [heightVh, setHeightVh] = useState(SHEET_HEIGHT.default);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef({ startY: 0, startHeight: SHEET_HEIGHT.default });
+  const heightVhRef = useRef(heightVh);
+
+  useEffect(() => {
+    heightVhRef.current = heightVh;
+  }, [heightVh]);
+
+  useEffect(() => {
+    if (open) setHeightVh(SHEET_HEIGHT.default);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  const snapSheetHeight = (height) => {
+    if (height < SHEET_HEIGHT.dismiss) {
+      onClose();
+      return SHEET_HEIGHT.default;
+    }
+    if (height < 48) return SHEET_HEIGHT.half;
+    if (height < 68) return SHEET_HEIGHT.default;
+    return SHEET_HEIGHT.full;
+  };
+
+  const beginDrag = (clientY) => {
+    setIsDragging(true);
+    dragRef.current = { startY: clientY, startHeight: heightVhRef.current };
+  };
+
+  const moveDrag = (clientY) => {
+    const deltaVh = ((clientY - dragRef.current.startY) / window.innerHeight) * 100;
+    const next = Math.min(
+      SHEET_HEIGHT.full,
+      Math.max(22, dragRef.current.startHeight - deltaVh)
+    );
+    setHeightVh(next);
+  };
+
+  const endDrag = () => {
+    setIsDragging(false);
+    setHeightVh(snapSheetHeight(heightVhRef.current));
+  };
+
+  useEffect(() => {
+    if (!isDragging) return undefined;
+
+    const onMouseMove = (e) => moveDrag(e.clientY);
+    const onMouseUp = () => endDrag();
+    const onTouchMove = (e) => {
+      e.preventDefault();
+      moveDrag(e.touches[0].clientY);
+    };
+    const onTouchEnd = () => endDrag();
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [isDragging]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <>
+      <div
+        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99] animate-in fade-in duration-200"
+        aria-hidden="true"
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="fixed bottom-0 left-0 right-0 z-[100] flex flex-col bg-[#0B0E14] border-t border-white/10 rounded-t-[24px] shadow-2xl overflow-hidden md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-[min(100%,32rem)] md:rounded-2xl md:border md:border-white/10"
+        style={{
+          height: `min(${heightVh}vh, ${SHEET_HEIGHT.maxPx}px)`,
+          transition: isDragging ? 'none' : 'height 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
+        }}
+      >
+        <div
+          className="shrink-0 touch-none select-none cursor-grab active:cursor-grabbing"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            beginDrag(e.clientY);
+          }}
+          onTouchStart={(e) => beginDrag(e.touches[0].clientY)}
+        >
+          <div className="flex justify-center py-3">
+            <div className="w-10 h-1 rounded-full bg-white/25" />
+          </div>
+          <div className="flex items-center justify-between px-5 pb-3 border-b border-white/5">
+            <h3 className="text-sm font-semibold text-white tracking-wide">Comments</h3>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg"
+              aria-label="Close comments"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
+          {children}
+        </div>
+
+        <div className="shrink-0 border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-[#0B0E14]">
+          {footer}
+        </div>
+      </div>
+    </>,
+    document.body
+  );
 };
 
 const PostFeed = ({ initialPosts, hideHeader = false, scrollToId = null, onPostDeleted }) => {
@@ -307,9 +457,53 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
   const [showFullComments, setShowFullComments] = useState(false);
   const [cropMode, setCropMode] = useState('cover'); // 'cover' or 'contain'
   const [showHeartAnim, setShowHeartAnim] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const touchStartRef = useRef(null);
 
-  const originalRatio = post.width && post.height ? post.width / post.height : 1;
+  const postImages = getPostImages(post);
+  const activeImage = postImages[activeImageIndex] || {};
+  const activeImageUrl = activeImage.imageUrl ? getOptimizedUrl(activeImage.imageUrl, 2000) : '';
+
+  const originalRatio = activeImage.width && activeImage.height ? activeImage.width / activeImage.height : 1;
   const instagramRatio = Math.min(Math.max(originalRatio, 0.8), 1.91);
+
+  const goToPrevImage = () => {
+    setActiveImageIndex((prev) => (prev - 1 + postImages.length) % postImages.length);
+  };
+
+  const goToNextImage = () => {
+    setActiveImageIndex((prev) => (prev + 1) % postImages.length);
+  };
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [post._id]);
+
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [activeImageUrl, activeImageIndex]);
+
+  const handleCarouselTouchStart = (e) => {
+    if (postImages.length <= 1) return;
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleCarouselTouchEnd = (e) => {
+    if (!touchStartRef.current || postImages.length <= 1) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+
+    const SWIPE_THRESHOLD = 50;
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+
+    if (deltaX < 0) goToNextImage();
+    else goToPrevImage();
+  };
 
   const handleDoubleTap = (e) => {
     e.preventDefault();
@@ -319,18 +513,6 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
     setShowHeartAnim(true);
     setTimeout(() => setShowHeartAnim(false), 800);
   };
-
-  // Lock scroll when modal is open to stabilize DOM for external scripts
-  useEffect(() => {
-    if (showFullComments) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showFullComments]);
 
   const handleSubmitComment = async (e) => {
     if (e.key === 'Enter' || e.type === 'click') {
@@ -430,17 +612,59 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
       {/* Media */}
       <div
         onDoubleClick={handleDoubleTap}
-        className="w-full bg-[#151923]/30 relative flex items-center justify-center overflow-hidden my-3 group select-none touch-manipulation"
+        onTouchStart={handleCarouselTouchStart}
+        onTouchEnd={handleCarouselTouchEnd}
+        className="w-full bg-[#151923]/30 relative flex items-center justify-center overflow-hidden my-3 group select-none touch-pan-y"
         style={{
           aspectRatio: cropMode === 'cover' ? instagramRatio : originalRatio
         }}
       >
-        <img
-          src={getOptimizedUrl(post.imageUrl, 2000)}
-          className={`w-full h-full ${cropMode === 'cover' ? 'object-cover' : 'object-contain'} transition-all duration-500 ease-out pointer-events-none`}
-          alt="Post Media"
-          loading="lazy"
-        />
+        {!imageLoaded && activeImageUrl && (
+          <Skeleton className="absolute inset-0 w-full h-full rounded-none z-10" />
+        )}
+        {activeImageUrl && (
+          <img
+            key={activeImageUrl}
+            src={activeImageUrl}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageLoaded(true)}
+            className={`w-full h-full ${cropMode === 'cover' ? 'object-cover' : 'object-contain'} transition-opacity duration-300 ease-out pointer-events-none ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            alt="Post Media"
+            loading="lazy"
+            decoding="async"
+          />
+        )}
+
+        {postImages.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={goToPrevImage}
+              className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/45 text-white rounded-full z-20"
+              aria-label="Previous image"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={goToNextImage}
+              className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/45 text-white rounded-full z-20"
+              aria-label="Next image"
+            >
+              <ChevronRight size={16} />
+            </button>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20">
+              {postImages.map((_, idx) => (
+                <button
+                  key={`${post._id}-dot-${idx}`}
+                  onClick={() => setActiveImageIndex(idx)}
+                  className={`h-1.5 rounded-full transition-all ${activeImageIndex === idx ? 'w-4 bg-white' : 'w-1.5 bg-white/60'}`}
+                  aria-label={`Open image ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
 
 
 
@@ -495,7 +719,7 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
         )}
 
         {/* Aspect Ratio / Crop Toggle Button */}
-        {post.width && post.height && (
+        {activeImage.width && activeImage.height && (
           <button
             onClick={() => setCropMode(prev => prev === 'cover' ? 'contain' : 'cover')}
             className="absolute bottom-4 left-4 p-2.5 bg-black/40 hover:bg-black/60 active:scale-95 text-white/80 hover:text-white rounded-xl backdrop-blur-md border border-white/10 transition-all z-20 flex items-center justify-center opacity-70 md:opacity-0 md:group-hover:opacity-100 duration-300 shadow-lg"
@@ -585,229 +809,177 @@ const PostCard = ({ post, onLike, onComment, onDeleteComment, onDeletePost, onRe
         )}
       </div>
 
-      {/* FULL COMMENT SECTION MODAL / OVERLAY - PORTALED TO TOP LEVEL */}
-      {showFullComments && createPortal(
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={() => {
-              setShowFullComments(false);
-              setReplyingTo(null);
-            }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99] animate-in fade-in duration-300"
-          />
-
-          <div className="fixed bottom-0 top-auto left-0 right-0 h-[75vh] md:h-auto md:inset-y-0 md:left-64 md:right-0 md:xl:right-80 z-[100] bg-[#0B0E14] border-t md:border-t-0 border-white/10 md:border-r md:border-white/5 rounded-t-[24px] md:rounded-t-none animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in flex flex-col shadow-2xl overflow-hidden">
-            {/* Grab Handle for Mobile */}
-            <div className="md:hidden w-full flex justify-center py-2.5 shrink-0 bg-[#0B0E14]">
-              <div className="w-12 h-1 bg-white/20 rounded-full"></div>
-            </div>
-
-            {/* Modal Header */}
-            {/* <div className="flex items-center justify-between p-4 px-5 border-b border-white/5 bg-[#0B0E14] sticky top-0 z-10">
-              <h3 className="text-[11px] font-thin text-white">Comments</h3>
-              <button
-                onClick={() => {
-                  setShowFullComments(false);
-                  setReplyingTo(null);
-                }}
-                className="p-2 text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div> */}
-
-            {/* Modal Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-6 pb-32">
-              {filteredComments.length === 0 ? (
-                <div className="flex items-center justify-center py-20 opacity-40">
-                  <p className="text-lg  text-gray-500">
-                    No comments yet
-                  </p>
-                </div>
-              ) : (
-                filteredComments.map((comment, idx) => {
-                  const commentUserId =
-                    typeof comment.user === "object"
-                      ? comment.user?._id
-                      : comment.user;
-
-                  const canDelete =
-                    currentUser?._id === post.user?._id ||
-                    currentUser?._id === commentUserId;
-
-                  return (
-                    <div key={idx} className="space-y-4">
-                      <div className="flex gap-3 relative group/comment">
-                        <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
-                          <img
-                            src={getOptimizedUrl(comment.user?.profilePic, 200)}
-                            className="w-full h-full object-cover"
-                            alt="User"
-                            loading="lazy"
-                          />
-                        </div>
-
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1">
-                              <p className="text-[13px] text-gray-200">
-                                <span className="font-bold text-white mr-2">
-                                  {typeof comment.user === "object"
-                                    ? comment.user?.username
-                                    : "User"}
-                                </span>
-                                {comment.text}
-                              </p>
-
-                              <div className="flex items-center gap-4">
-                                <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">
-                                  {new Date(comment.createdAt).toLocaleDateString()}
-                                </span>
-
-                                <button
-                                  onClick={() =>
-                                    setReplyingTo({
-                                      commentId: comment._id,
-                                      username:
-                                        typeof comment.user === "object"
-                                          ? comment.user?.username
-                                          : "User",
-                                    })
-                                  }
-                                  className="text-[10px] font-black text-gray-500 hover:text-purple-400"
-                                >
-                                  Reply
-                                </button>
-                              </div>
-                            </div>
-
-                            {canDelete && (
-                              <button
-                                onClick={() =>
-                                  onDeleteComment(post._id, comment._id)
-                                }
-                                className="text-gray-800 hover:text-red-500 transition-colors p-1"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Replies in Modal */}
-                      {comment.replies && comment.replies.length > 0 && (
-                        <div className="ml-4 space-y-4 pt-2 border-l border-white/10 pl-6 mt-1">
-                          {comment.replies
-                            .filter((reply) => {
-                              const rUid =
-                                typeof reply.user === "object"
-                                  ? reply.user?._id
-                                  : reply.user;
-
-                              if (post.user?._id === currentUser?._id) return true;
-                              if (rUid === currentUser?._id) return true;
-                              if (
-                                rUid === post.user?._id &&
-                                commentUserId === currentUser?._id
-                              )
-                                return true;
-
-                              return false;
-                            })
-                            .map((reply, ridx) => (
-                              <div
-                                key={ridx}
-                                className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300"
-                              >
-                                <div className="w-6 h-6 rounded-full overflow-hidden border border-white/5 flex-shrink-0 mt-0.5">
-                                  <img
-                                    src={reply.user?.profilePic}
-                                    className="w-full h-full object-cover"
-                                    alt="User"
-                                  />
-                                </div>
-
-                                <div className="flex-1">
-                                  <p className="text-[11px] text-gray-300 leading-normal">
-                                    <span className="font-bold text-white mr-2">
-                                      {reply.user?.username}
-                                    </span>
-                                    {reply.text}
-                                  </p>
-
-                                  <span className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1 inline-block">
-                                    {new Date(reply.createdAt).toLocaleDateString([], {
-                                      month: "short",
-                                      day: "numeric",
-                                    })}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Modal Sticky Input Box */}
-            <div className="sticky bottom-0 w-full p-4 bg-[#0B0E14] border-t border-white/10 z-20 shadow-[0_-10px_25px_rgba(0,0,0,0.5)]">
-              {replyingTo && (
-                <div className="flex items-center justify-between px-4 py-2 border-l-2 border-purple-500 mb-2 animate-in slide-in-from-bottom-2 duration-300">
-                  <span className="text-[10px] text-purple-400 font-bold tracking-widest">Replying to {replyingTo.username}</span>
-                  <button onClick={() => setReplyingTo(null)} className="text-gray-500"><X size={14} /></button>
-                </div>
-              )}
-              <div className="flex items-center gap-3 bg-[#151923] rounded-2xl px-4 py-2 border border-white/[0.03] shadow-2xl">
-                <input
-                  type="text"
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyDown={handleSubmitComment}
-                  placeholder={replyingTo ? `Reply to ${replyingTo.username}...` : "Add a comment..."}
-                  className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-700"
-                />
-                <button
-                  onClick={handleSubmitComment}
-                  disabled={!commentText.trim()}
-                  className={`p-2 transition-all ${commentText.trim()
-                      ? "scale-110 hover:cursor-pointer"
-                      : "text-gray-800"
-                    }`}
-                >
-                  <svg width="0" height="0">
-                    <defs>
-                      <linearGradient id="sendGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#ff255f" />
-                        <stop offset="50%" stopColor="#c026ff" />
-                        <stop offset="100%" stopColor="#5b2dff" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-
-                  <Send
-                    size={20}
-                    className="rotate-[45deg] opacity-80"
-                    style={
-                      commentText.trim()
-                        ? {
-                          stroke: "url(#sendGradient2)",
-                          fill: "url(#sendGradient2)",
-                        }
-                        : {}
-                    }
-                  />
+      <CommentsSheet
+        open={showFullComments}
+        onClose={() => {
+          setShowFullComments(false);
+          setReplyingTo(null);
+        }}
+        footer={
+          <>
+            {replyingTo && (
+              <div className="flex items-center justify-between px-4 py-2 border-l-2 border-purple-500 mb-2">
+                <span className="text-[10px] text-purple-400 font-bold tracking-widest">
+                  Replying to {replyingTo.username}
+                </span>
+                <button type="button" onClick={() => setReplyingTo(null)} className="text-gray-500">
+                  <X size={14} />
                 </button>
               </div>
+            )}
+            <div className="flex items-center gap-3 bg-[#151923] rounded-2xl px-4 py-2 border border-white/[0.03]">
+              <input
+                type="text"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={handleSubmitComment}
+                placeholder={replyingTo ? `Reply to ${replyingTo.username}...` : 'Add a comment...'}
+                className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-700"
+              />
+              <button
+                type="button"
+                onClick={handleSubmitComment}
+                disabled={!commentText.trim()}
+                className={`p-2 transition-all ${commentText.trim() ? 'scale-110' : 'text-gray-800'}`}
+              >
+                <Send
+                  size={20}
+                  className="rotate-[45deg] opacity-80"
+                  style={
+                    commentText.trim()
+                      ? { stroke: 'url(#sendGradient2)', fill: 'url(#sendGradient2)' }
+                      : {}
+                  }
+                />
+              </button>
+              <svg width="0" height="0" aria-hidden="true">
+                <defs>
+                  <linearGradient id="sendGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#ff255f" />
+                    <stop offset="50%" stopColor="#c026ff" />
+                    <stop offset="100%" stopColor="#5b2dff" />
+                  </linearGradient>
+                </defs>
+              </svg>
             </div>
+          </>
+        }
+      >
+        {filteredComments.length === 0 ? (
+          <div className="flex items-center justify-center py-16 opacity-40">
+            <p className="text-lg text-gray-500">No comments yet</p>
           </div>
-        </>,
-        document.body
-      )}
+        ) : (
+          <div className="space-y-6">
+            {filteredComments.map((comment, idx) => {
+              const commentUserId =
+                typeof comment.user === 'object' ? comment.user?._id : comment.user;
+
+              const canDelete =
+                currentUser?._id === post.user?._id || currentUser?._id === commentUserId;
+
+              return (
+                <div key={comment._id || idx} className="space-y-4">
+                  <div className="flex gap-3 relative group/comment">
+                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 shrink-0">
+                      <img
+                        src={getOptimizedUrl(comment.user?.profilePic, 200)}
+                        className="w-full h-full object-cover"
+                        alt="User"
+                        loading="lazy"
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1 min-w-0">
+                          <p className="text-[13px] text-gray-200 break-words">
+                            <span className="font-bold text-white mr-2">
+                              {typeof comment.user === 'object' ? comment.user?.username : 'User'}
+                            </span>
+                            {comment.text}
+                          </p>
+
+                          <div className="flex items-center gap-4">
+                            <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">
+                              {new Date(comment.createdAt).toLocaleDateString()}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setReplyingTo({
+                                  commentId: comment._id,
+                                  username:
+                                    typeof comment.user === 'object'
+                                      ? comment.user?.username
+                                      : 'User',
+                                })
+                              }
+                              className="text-[10px] font-black text-gray-500 hover:text-purple-400"
+                            >
+                              Reply
+                            </button>
+                          </div>
+                        </div>
+
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteComment(post._id, comment._id)}
+                            className="text-gray-800 hover:text-red-500 transition-colors p-1 shrink-0"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {comment.replies && comment.replies.length > 0 && (
+                    <div className="ml-4 space-y-4 pt-2 border-l border-white/10 pl-6 mt-1">
+                      {comment.replies
+                        .filter((reply) => {
+                          const rUid = typeof reply.user === 'object' ? reply.user?._id : reply.user;
+
+                          if (post.user?._id === currentUser?._id) return true;
+                          if (rUid === currentUser?._id) return true;
+                          if (rUid === post.user?._id && commentUserId === currentUser?._id) return true;
+
+                          return false;
+                        })
+                        .map((reply, ridx) => (
+                          <div key={reply._id || ridx} className="flex gap-3 items-start">
+                            <div className="w-6 h-6 rounded-full overflow-hidden border border-white/5 shrink-0 mt-0.5">
+                              <img
+                                src={reply.user?.profilePic}
+                                className="w-full h-full object-cover"
+                                alt="User"
+                              />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] text-gray-300 leading-normal break-words">
+                                <span className="font-bold text-white mr-2">{reply.user?.username}</span>
+                                {reply.text}
+                              </p>
+
+                              <span className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1 inline-block">
+                                {new Date(reply.createdAt).toLocaleDateString([], {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CommentsSheet>
 
       {/* Main Feed Comment Input (When Modal is Closed) */}
       {!showFullComments && (

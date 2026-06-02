@@ -22,7 +22,6 @@ describe('Auth Endpoints', () => {
         age: 27,
         dob: '1999-01-01',
         gender: 'Other',
-        interests: ['Coding', 'Testing', 'AI']
       });
     
     expect(res.statusCode).toEqual(201);
@@ -37,8 +36,7 @@ describe('Auth Endpoints', () => {
         fullName: 'Test User',
         age: 27,
         dob: '1999-01-01',
-        gender: 'Other',
-        interests: ['Coding']
+        gender: 'Other'
       });
     
     expect(res.statusCode).toEqual(400);

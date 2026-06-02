@@ -138,7 +138,6 @@ router.get('/discover', auth, async (req, res) => {
 
       `
       age
-      interests
       blockedUsers
       matchPreferences
       locationCoordinates
@@ -212,22 +211,6 @@ router.get('/discover', auth, async (req, res) => {
     }
  
     // ======================================================
-    // INTEREST FILTER
-    // ======================================================
- 
-    if (
-      currentUser.matchPreferences
-        ?.interests?.length > 0
-    ) {
- 
-      query.interests = {
-        $in:
-          currentUser.matchPreferences
-            .interests
-      };
-    }
-
-    // ======================================================
     // DISTANCE FILTER (GEOSPATIAL)
     // ======================================================
 
@@ -261,7 +244,6 @@ router.get('/discover', auth, async (req, res) => {
       age
       gender
       bio
-      interests
       onlineStatus
       isPremium
       lastSeen
@@ -397,7 +379,7 @@ router.get('/search', auth, async (req, res) => {
         { fullName: searchRegex }
       ]
     })
-      .select('username fullName profilePic age gender bio onlineStatus isPremium location interests')
+      .select('username fullName profilePic age gender bio onlineStatus isPremium location')
       .sort({
         isPremium: -1,
         username: 1
@@ -449,7 +431,6 @@ router.get('/:id', auth, async (req, res) => {
       age
       gender
       bio
-      interests
       onlineStatus
       isPremium
       lastSeen
@@ -553,7 +534,6 @@ router.patch('/profile/update', auth, async (req, res) => {
       'gender',
       'location',
       'bio',
-      'interests',
       'profilePic',
       'settings',
       'notificationPreferences',
@@ -561,8 +541,7 @@ router.patch('/profile/update', auth, async (req, res) => {
       'lowBandwidth',
       'locationCoordinates',
       'occupation',
-      'education',
-      'languages'
+      'education'
     ];
 
     const updates = {};
@@ -573,6 +552,11 @@ router.patch('/profile/update', auth, async (req, res) => {
         updates[field] = req.body[field];
       }
     });
+
+    if (updates.matchPreferences) {
+      const { interests, ...matchPrefsWithoutInterests } = updates.matchPreferences;
+      updates.matchPreferences = matchPrefsWithoutInterests;
+    }
 
     if (updates.dob) {
       const birth = new Date(updates.dob);

@@ -1,4 +1,4 @@
-import { AlertTriangle, Camera, Check, Heart, Lock, MessageSquare, Mic, Music, PhoneOff, RefreshCw, Settings, Shield, Timer, Volume2 } from "lucide-react";
+import { AlertTriangle, Camera, Check, Headphones, Heart, Lock, MessageSquare, Mic, MicOff, PhoneOff, RefreshCw, Settings, Shield, SwitchCamera, Timer } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ontloLogo from "/ontlo_icon.webp";
@@ -32,6 +32,8 @@ const VideoContainer = () => {
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [callMode, setCallMode] = useState('video');
   const [matchedCallMode, setMatchedCallMode] = useState('video');
+  const [facingMode, setFacingMode] = useState('user');
+  const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
   const [icebreakerQuestion, setIcebreakerQuestion] = useState(null);
   const [localVote, setLocalVote] = useState(null);
   const [remoteVote, setRemoteVote] = useState(null);
@@ -57,7 +59,6 @@ const VideoContainer = () => {
   const [penaltyMessage, setPenaltyMessage] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [cameraRequested, setCameraRequested] = useState(false);
-  const [commonInterests, setCommonInterests] = useState([]);
   const [icebreaker, setIcebreaker] = useState(null);
   const [isWildcard, setIsWildcard] = useState(false);
   const [curiosityBlurTimer, setCuriosityBlurTimer] = useState(0);
@@ -70,7 +71,6 @@ const VideoContainer = () => {
     gender: 'All',
     ageRange: { min: 18, max: 100 },
     region: 'Global',
-    interests: []
   });
 
   const isAlreadyMatched = connections?.some(conn => {
@@ -79,6 +79,13 @@ const VideoContainer = () => {
     return (conn.user?._id?.toString() === remoteId.toString() ||
       conn.user?.id?.toString() === remoteId.toString());
   });
+
+  const buildVideoConstraints = useCallback((facing) => {
+    const base = user?.lowBandwidth
+      ? { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { max: 15 } }
+      : { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24 } };
+    return { ...base, facingMode: { ideal: facing } };
+  }, [user?.lowBandwidth]);
 
   // ── Camera Initialization ──
   useEffect(() => {
@@ -93,9 +100,7 @@ const VideoContainer = () => {
             noiseSuppression: true,
             autoGainControl: true
           },
-          video: isAudioCall ? false : (user?.lowBandwidth
-            ? { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { max: 15 } }
-            : { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24 } })
+          video: isAudioCall ? false : buildVideoConstraints(facingMode)
         };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         if (!mounted) {
@@ -142,7 +147,7 @@ const VideoContainer = () => {
         localStreamRef.current = null;
       }
     };
-  }, [user?.lowBandwidth, cameraRequested, inCall, isMatching, callMode, matchedCallMode]);
+  }, [user?.lowBandwidth, cameraRequested, inCall, isMatching, callMode, matchedCallMode, buildVideoConstraints]);
 
   // ── Call Timers ──
   useEffect(() => {
@@ -217,10 +222,11 @@ const VideoContainer = () => {
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     roomIdRef.current = null;
     setInCall(false); setShowChat(false); setRemoteUser(null); setIsBlurred(false);
-    setIsPrivate(false); setPeerIsPrivate(false); setCommonInterests([]);
+    setIsPrivate(false); setPeerIsPrivate(false);
     setShowConnectRequest(false); setConnectionStatus(null); setCallDuration(0);
     setChatMessages([]); setHasNewMessage(false); setIsMatching(false);
     setLocalVote(null); setRemoteVote(null); setShowIcebreakerGame(false); setIcebreakerQuestion(null);
+    setFacingMode('user');
     if (shouldAutoRejoin) {
       if (rejoinTimerRef.current) clearTimeout(rejoinTimerRef.current);
       rejoinTimerRef.current = setTimeout(() => {
@@ -362,7 +368,6 @@ const VideoContainer = () => {
         return res.json();
       }).then(data => {
         setRemoteUser(data);
-        if (user?.interests && data?.interests) setCommonInterests(user.interests.filter(i => data.interests.includes(i)));
       }).catch((err) => {
         console.warn("User fetch failed or unauthorized:", err);
       });
@@ -535,6 +540,77 @@ const VideoContainer = () => {
   const declineConnection = () => { if (socket && roomIdRef.current) { socket.emit("action-decline", { roomId: roomIdRef.current }); setShowConnectRequest(false); setConnectionStatus(null); } };
   const toggleMic = () => { if (localStreamRef.current) { const t = localStreamRef.current.getAudioTracks()[0]; if (t) { t.enabled = !t.enabled; setMicEnabled(t.enabled); } } };
   const toggleCamera = () => { if (localStreamRef.current) { const t = localStreamRef.current.getVideoTracks()[0]; if (t) { t.enabled = !t.enabled; setCameraEnabled(t.enabled); } } };
+
+  const switchCamera = useCallback(async () => {
+    const isAudioCall = inCall ? matchedCallMode === 'audio' : callMode === 'audio';
+    if (isAudioCall || isSwitchingCamera) return;
+
+    const nextFacing = facingMode === 'user' ? 'environment' : 'user';
+    setIsSwitchingCamera(true);
+
+    try {
+      const tryGetVideo = async (facing) => {
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { ...buildVideoConstraints(facing), facingMode: { exact: facing } }
+          });
+        } catch {
+          return navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: buildVideoConstraints(facing)
+          });
+        }
+      };
+
+      const newVideoStream = await tryGetVideo(nextFacing);
+      const newVideoTrack = newVideoStream.getVideoTracks()[0];
+      if (!newVideoTrack) throw new Error('No video track available');
+
+      const oldStream = localStreamRef.current;
+      const oldVideoTrack = oldStream?.getVideoTracks()[0];
+      const audioTrack = oldStream?.getAudioTracks()[0];
+
+      newVideoTrack.enabled = cameraEnabled;
+
+      const combinedStream = audioTrack
+        ? new MediaStream([audioTrack, newVideoTrack])
+        : newVideoStream;
+
+      localStreamRef.current = combinedStream;
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = combinedStream;
+      }
+
+      const pc = peerConnectionRef.current;
+      if (pc && pc.signalingState !== 'closed') {
+        const videoSender = pc.getSenders().find((s) => s.track?.kind === 'video');
+        if (videoSender) {
+          await videoSender.replaceTrack(newVideoTrack);
+        } else {
+          pc.addTrack(newVideoTrack, combinedStream);
+          if (pc.signalingState === 'stable' && socket && roomIdRef.current) {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.emit('webrtc-offer', { offer: pc.localDescription, roomId: roomIdRef.current });
+          }
+        }
+      }
+
+      if (oldVideoTrack) oldVideoTrack.stop();
+      newVideoStream.getTracks().forEach((track) => {
+        if (track !== newVideoTrack) track.stop();
+      });
+
+      setFacingMode(nextFacing);
+      if (navigator.vibrate) navigator.vibrate(10);
+    } catch (err) {
+      console.error('Failed to switch camera', err);
+    } finally {
+      setIsSwitchingCamera(false);
+    }
+  }, [inCall, matchedCallMode, callMode, isSwitchingCamera, facingMode, buildVideoConstraints, cameraEnabled, socket]);
+
   const toggleChat = () => { setShowChat(p => !p); setHasNewMessage(false); };
 
   const handleIcebreakerVote = (option) => {
@@ -568,18 +644,41 @@ const VideoContainer = () => {
   const isVideoRoute = location.pathname === '/video';
   const isPiP = !isVideoRoute && (inCall || isMatching);
   const isHidden = !isVideoRoute && !inCall && !isMatching;
+  const activeCallMode = inCall ? matchedCallMode : callMode;
+  const isAudioUI = activeCallMode === 'audio';
 
   if (isHidden) return null;
 
   return (
-    <div className={`bg-[#0B0E14] overflow-hidden transition-all duration-500 z-40 overflow-x-hidden overflow-y-hidden   ${isVideoRoute ? "absolute inset-0 h-screen flex flex-col pb-[84px] md:pb-0" : "fixed bottom-24 right-4 w-48 h-72 sm:w-64 sm:h-96 shadow-2xl rounded-2xl z-[100] ring-4 ring-purple-500/50"}`} onClick={isPiP ? () => navigate('/video') : undefined}>
+    <div className={`bg-[#0B0E14] overflow-hidden transition-all duration-500 z-40 overflow-x-hidden overflow-y-hidden   ${isVideoRoute ? "absolute inset-0 h-screen flex flex-col pb-[84px] md:pb-0" : `fixed bottom-24 right-4 shadow-2xl rounded-2xl z-[100] ${isAudioUI && inCall ? 'w-44 h-56 sm:w-52 sm:h-64 ring-4 ring-purple-500/40' : 'w-48 h-72 sm:w-64 sm:h-96 ring-4 ring-purple-500/50'}`}`} onClick={isPiP ? () => navigate('/video') : undefined}>
       {isPiP ? (
+        isAudioUI && inCall ? (
+          <div className="relative w-full h-full rounded-2xl bg-gradient-to-b from-[#0c0f18] via-purple-950/40 to-[#07090e] flex flex-col items-center justify-center p-3">
+            <div className="relative mb-3">
+              <div className="absolute -inset-3 rounded-full bg-purple-500/20 animate-pulse" />
+              <img
+                src={remoteUser?.profilePic || 'https://api.dicebear.com/7.x/avataaars/svg'}
+                alt=""
+                className="relative w-16 h-16 rounded-full object-cover border-2 border-purple-400/50"
+              />
+            </div>
+            <p className="text-[10px] font-bold text-white truncate max-w-full px-1">{remoteUser?.fullName || 'Voice call'}</p>
+            <div className="flex items-center gap-1 mt-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-[8px] font-black uppercase tracking-widest text-purple-300">Audio</span>
+            </div>
+            <div className="absolute bottom-2 right-2 w-9 h-9 rounded-full overflow-hidden border-2 border-white/30">
+              <img src={user?.profilePic} alt="You" className="w-full h-full object-cover" />
+            </div>
+          </div>
+        ) : (
         <div className="relative w-full h-full">
           <video ref={remoteVideoRef} autoPlay playsInline style={{ filter: (isBlurred || peerIsPrivate) ? "blur(60px)" : "none" }} className="w-full h-full object-cover rounded-2xl" />
           <div className="absolute bottom-2 right-2 w-12 h-16 rounded-xl overflow-hidden border-2 border-white/20">
             <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
           </div>
         </div>
+        )
       ) : (
         <>
           <div className="sticky top-0 left-0 right-0 h-16 shrink-0 flex items-center justify-between  px-2 border-b border-[#1e293b] bg-[#0B0E14]">
@@ -661,27 +760,44 @@ const VideoContainer = () => {
 
               <div className="flex-1 relative flex items-stretch">
                 {!inCall ? (
-                  <div className="absolute inset-0 bg-[#0B0E14] overflow-hidden  flex items-center justify-center">
-                    <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1] opacity-20" />
+                  <div className="absolute inset-0 bg-[#0B0E14] overflow-hidden flex items-center justify-center">
+                    {callMode === 'audio' ? (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#0B0E14] via-purple-950/25 to-[#07090E]" />
+                        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-64 h-64 bg-purple-600/10 rounded-full blur-[100px]" />
+                        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-pink-600/10 rounded-full blur-[80px]" />
+                      </>
+                    ) : (
+                      <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1] opacity-20" />
+                    )}
                     <div className="relative z-20 text-center p-6">
                       {isMatching ? (
                         <div className="flex flex-col items-center">
 
                           {/* LOADER */}
                           <div className="relative mb-7">
-                            <div className="w-16 h-16 rounded-full border border-white/10" />
-
-                            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white/90 animate-spin" />
-
-                            <div className="absolute inset-3 rounded-full bg-white/[0.03] backdrop-blur-xl" />
+                            {callMode === 'audio' ? (
+                              <>
+                                <div className="w-20 h-20 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
+                                  <Headphones className="w-9 h-9 text-purple-400 animate-pulse" />
+                                </div>
+                                <div className="absolute -inset-2 rounded-full border border-purple-500/20 animate-ping" />
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-16 h-16 rounded-full border border-white/10" />
+                                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white/90 animate-spin" />
+                                <div className="absolute inset-3 rounded-full bg-white/[0.03] backdrop-blur-xl" />
+                              </>
+                            )}
                           </div>
 
                           <h2 className="text-2xl text-white font-semibold tracking-tight">
-                            Finding Match...
+                            {callMode === 'audio' ? 'Finding Voice Match...' : 'Finding Match...'}
                           </h2>
 
                           <p className="text-white/45 text-sm mt-2">
-                            Connecting anonymously
+                            {callMode === 'audio' ? 'Pairing you for an audio-only call' : 'Connecting anonymously'}
                           </p>
 
                           {/* CANCEL */}
@@ -713,6 +829,19 @@ const VideoContainer = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center">
+                          {callMode === 'audio' && (
+                            <div className="relative mb-8">
+                              <div className="absolute -inset-4 rounded-full bg-purple-500/10 animate-pulse" />
+                              <img
+                                src={user?.profilePic}
+                                alt="Your profile"
+                                className="relative w-24 h-24 rounded-full object-cover border-2 border-purple-500/40 shadow-[0_0_40px_rgba(168,85,247,0.25)]"
+                              />
+                              <div className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-[#151923] border border-purple-500/50 flex items-center justify-center">
+                                <Mic className="w-4 h-4 text-purple-400" />
+                              </div>
+                            </div>
+                          )}
                           {/* Call Mode Toggles */}
                           <div className="flex items-center gap-4 p-1.5 rounded-2xl mb-8">
                             <button
@@ -784,7 +913,7 @@ const VideoContainer = () => {
 
                             <span className="relative z-10 flex items-center gap-3">
                               <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                              Find Match
+                              {callMode === 'audio' ? 'Find Voice Match' : 'Find Match'}
                             </span>
 
                             {/* HOVER SHINE */}
@@ -808,24 +937,37 @@ const VideoContainer = () => {
                 ) : (
                   <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#05070A] shadow-2xl group">
                     {matchedCallMode === 'audio' ? (
-                      <div className="absolute inset-0 bg-[#07090E] z-10 flex flex-col items-center justify-center">
-                        {/* Wave Ring Animations */}
-                        <div className="relative w-44 h-44 flex items-center justify-center">
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 animate-pulse border border-purple-500/20" />
-                          <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600/10 to-pink-600/10 animate-[ping_3s_infinite] border border-pink-500/10" style={{ animationDelay: '1s' }} />
-                          <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-purple-600/5 to-pink-600/5 animate-[ping_3s_infinite] border border-purple-500/5" style={{ animationDelay: '2s' }} />
-
-                          {/* Pulsing Avatar */}
-                          <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-purple-500/30 z-10 bg-black flex items-center justify-center shadow-[0_0_50px_rgba(168,85,247,0.3)]">
+                      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gradient-to-b from-[#0a0d14] via-purple-950/20 to-[#07090e]">
+                        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-72 h-72 bg-purple-600/15 rounded-full blur-[90px] pointer-events-none" />
+                        <div className="relative w-48 h-48 flex items-center justify-center mb-2">
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600/25 to-pink-600/25 animate-pulse border border-purple-500/25" />
+                          <div className="absolute -inset-5 rounded-full border border-purple-500/15 animate-[ping_3s_ease-in-out_infinite]" />
+                          <div className="absolute -inset-10 rounded-full border border-pink-500/10 animate-[ping_3s_ease-in-out_infinite]" style={{ animationDelay: '1.2s' }} />
+                          <div className="w-36 h-36 rounded-full overflow-hidden border-2 border-purple-400/40 z-10 bg-[#11141D] shadow-[0_0_60px_rgba(168,85,247,0.35)]">
                             <img
                               src={remoteUser?.profilePic || 'https://api.dicebear.com/7.x/avataaars/svg'}
-                              className="w-full h-full object-cover animate-[pulse_4s_infinite]"
-                              alt="Avatar"
+                              className="w-full h-full object-cover"
+                              alt={remoteUser?.fullName || 'Caller'}
                             />
                           </div>
                         </div>
-                        <h2 className="text-white text-xl font-black italic mt-6 tracking-tight">{remoteUser?.fullName || 'Connecting...'}</h2>
-                        <p className="text-purple-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2 animate-pulse">Audio Match Connected</p>
+                        <div className="flex items-end justify-center gap-1 h-10 mb-4">
+                          {[0, 1, 2, 3, 4].map((i) => (
+                            <div
+                              key={i}
+                              className="w-1.5 rounded-full bg-gradient-to-t from-purple-600 to-pink-500 animate-[pulse_1s_ease-in-out_infinite]"
+                              style={{
+                                height: `${12 + (i % 3) * 8}px`,
+                                animationDelay: `${i * 0.12}s`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <h2 className="text-white text-2xl font-black italic tracking-tight">{remoteUser?.fullName || 'Connecting...'}</h2>
+                        <div className="flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/25">
+                          <Headphones className="w-3.5 h-3.5 text-purple-400" />
+                          <p className="text-purple-300 text-[10px] font-black uppercase tracking-[0.2em]">Voice call live</p>
+                        </div>
                       </div>
                     ) : (
                       <video
@@ -861,7 +1003,9 @@ const VideoContainer = () => {
                             </div>
                             <div className="flex items-center gap-1">
                               <div className="w-1 h-1 rounded-full bg-green-500"></div>
-                              <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Live</span>
+                              <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">
+                                {matchedCallMode === 'audio' ? 'On call' : 'Live'}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -880,25 +1024,27 @@ const VideoContainer = () => {
                             <span className="text-xs font-black font-mono">{Math.floor(callDuration / 60).toString().padStart(2, '0')}:{(callDuration % 60).toString().padStart(2, '0')}</span>
                           </div>
                         </div>
-                        {commonInterests.length > 0 && (
-                          <div className="bg-black/30 backdrop-blur-md px-2 py-1 rounded-lg border border-blue-500/20 text-[9px] text-blue-200 font-bold flex items-center gap-1">
-                            <Music className="w-2.5 h-2.5" /> {commonInterests[0]}
-                          </div>
-                        )}
                       </div>
                     </div>
 
-                    <div style={{ transform: `translate(${localVideoPos.x}px, ${localVideoPos.y}px)`, transition: isDraggingState ? 'none' : 'transform 0.3s' }} className="absolute bottom-24 right-3 w-24 h-36 sm:w-40 sm:h-56 rounded-xl overflow-hidden border border-white/20 z-40 shadow-2xl cursor-grab bg-black flex flex-col items-center justify-center p-2" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
-                      {matchedCallMode === 'audio' ? (
-                        <div className="text-center flex flex-col items-center justify-center">
-                          <Volume2 className="w-8 h-8 text-purple-400 mb-2 animate-bounce" />
-                          <span className="text-[8px] font-black uppercase tracking-widest text-purple-500">Audio On</span>
+                    {matchedCallMode === 'audio' ? (
+                      <div className="absolute bottom-24 right-4 z-40 flex flex-col items-center gap-2">
+                        <div className="relative">
+                          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/25 shadow-xl bg-[#11141D]">
+                            <img src={user?.profilePic} alt="You" className="w-full h-full object-cover" />
+                          </div>
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full flex items-center justify-center border-2 border-[#0B0E14] ${micEnabled ? 'bg-green-500' : 'bg-red-500'}`}>
+                            {micEnabled ? <Mic className="w-3 h-3 text-white" /> : <MicOff className="w-3 h-3 text-white" />}
+                          </div>
                         </div>
-                      ) : (
+                        <span className="text-[8px] font-black uppercase tracking-widest text-white/70">You</span>
+                      </div>
+                    ) : (
+                    <div style={{ transform: `translate(${localVideoPos.x}px, ${localVideoPos.y}px)`, transition: isDraggingState ? 'none' : 'transform 0.3s' }} className="absolute bottom-24 right-3 w-24 h-36 sm:w-40 sm:h-56 rounded-xl overflow-hidden border border-white/20 z-40 shadow-2xl cursor-grab bg-black flex flex-col items-center justify-center p-2" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
                         <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-                      )}
                       <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/40 rounded-md text-[8px] font-bold text-white uppercase">You</div>
                     </div>
+                    )}
 
                     {showIcebreakerGame && icebreakerQuestion && (
                       <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-[80] w-[90%] max-w-[340px] bg-black/60 backdrop-blur-xl border border-purple-500/30 p-4 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom duration-500">
@@ -964,8 +1110,31 @@ const VideoContainer = () => {
 
                     <div className="absolute bottom-4 left-3 right-3 flex items-center justify-between z-50">
                       <div className="flex gap-2">
-                        <button onClick={toggleMic} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${micEnabled ? "bg-black/40 backdrop-blur-md border border-white/10 text-white" : "bg-red-500 text-white"}`}><Mic className="w-4 h-4" /></button>
-                        <button onClick={toggleCamera} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${cameraEnabled ? "bg-black/40 backdrop-blur-md border border-white/10 text-white" : "bg-red-500 text-white"}`}><Camera className="w-4 h-4" /></button>
+                        <button onClick={toggleMic} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${micEnabled ? "bg-black/40 backdrop-blur-md border border-white/10 text-white" : "bg-red-500 text-white"}`}>
+                          {micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                        </button>
+                        {matchedCallMode !== 'audio' && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={switchCamera}
+                              disabled={isSwitchingCamera}
+                              title={facingMode === 'user' ? 'Switch to back camera' : 'Switch to front camera'}
+                              aria-label="Switch camera"
+                              className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-black/40 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 disabled:opacity-50"
+                            >
+                              <SwitchCamera className={`w-4 h-4 ${isSwitchingCamera ? 'animate-spin' : ''}`} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={toggleCamera}
+                              title={cameraEnabled ? 'Turn camera off' : 'Turn camera on'}
+                              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${cameraEnabled ? "bg-black/40 backdrop-blur-md border border-white/10 text-white" : "bg-red-500 text-white"}`}
+                            >
+                              <Camera className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         {(connectionStatus !== 'accepted' || isAlreadyMatched) && (

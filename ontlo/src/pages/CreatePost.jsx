@@ -23,53 +23,69 @@ const CreatePost = () => {
   const fileInputRef = useRef(null);
 
   const [caption, setCaption] = useState('');
-  const [image, setImage] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [images, setImages] = useState([]);
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
   const [visibility, setVisibility] = useState('Connections');
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        // alert('Please select an image file (JPG, PNG, WEBP, etc.)');
-        e.target.value = ''; // Reset input
-        return;
-      }
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result);
-      reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const validFiles = files.filter((file) => file.type.startsWith('image/'));
+    if (!validFiles.length) {
+      e.target.value = '';
+      return;
     }
+
+    const nextImages = [];
+    let processed = 0;
+    validFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        nextImages.push({ file, preview: reader.result });
+        processed += 1;
+        if (processed === validFiles.length) {
+          setImages((prev) => {
+            const merged = [...prev, ...nextImages].slice(0, 10);
+            setCurrentPreviewIndex(Math.max(0, merged.length - nextImages.length));
+            return merged;
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
   };
 
   const handleSubmit = async () => {
-    if (!image && !caption.trim()) return;
+    if (!images.length && !caption.trim()) return;
     setLoading(true);
     try {
-      let imageUrl = null;
-      let width = null;
-      let height = null;
-      if (image) {
+      const uploadedImages = [];
+      for (const image of images) {
         const formData = new FormData();
-        formData.append('image', image);
+        formData.append('image', image.file);
         const uploadRes = await apiFetch(`${API_URL}/api/upload/post-image`, {
           method: 'POST',
           body: formData
         });
         if (!uploadRes.ok) throw new Error('Upload failed');
         const uploadData = await uploadRes.json();
-        imageUrl = uploadData.url;
-        width = uploadData.width;
-        height = uploadData.height;
+        uploadedImages.push({
+          imageUrl: uploadData.url,
+          width: uploadData.width,
+          height: uploadData.height
+        });
       }
 
       const postRes = await apiFetch(`${API_URL}/api/posts`, {
         method: 'POST',
         body: JSON.stringify({ 
-          imageUrl, 
-          width,
-          height,
+          imageUrl: uploadedImages[0]?.imageUrl || null,
+          width: uploadedImages[0]?.width || null,
+          height: uploadedImages[0]?.height || null,
+          images: uploadedImages,
           caption, 
           visibility: visibility.toLowerCase() === 'everyone' ? 'connections' : visibility.toLowerCase() 
         })
@@ -108,7 +124,7 @@ const CreatePost = () => {
           </div>
           
           <button 
-            disabled={(!image && !caption.trim()) || loading}
+            disabled={(!images.length && !caption.trim()) || loading}
             onClick={handleSubmit}
             className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black uppercase tracking-widest text-[8px] md:text-[9px] shadow-lg shadow-purple-500/10 active:scale-95 transition-all disabled:opacity-20 flex items-center gap-2"
           >
@@ -182,16 +198,22 @@ const CreatePost = () => {
                   <ToolbarBtn 
                     icon={<ImageIcon size={18} />} 
                     onClick={() => fileInputRef.current?.click()}
-                    active={!!preview}
+                    active={images.length > 0}
                     label="Photo"
                   />
                   
                   {/* Thumbnail Preview (Mobile) */}
-                  {preview && (
+                  {images.length > 0 && (
                     <div key="mobile-thumb" className="md:hidden relative w-10 h-10 rounded-lg overflow-hidden border border-white/20 animate-in zoom-in">
-                      <img src={preview} className="w-full h-full object-cover" alt="Thumb" />
+                      <img src={images[currentPreviewIndex]?.preview} className="w-full h-full object-cover" alt="Thumb" />
                       <button 
-                        onClick={() => { setPreview(null); setImage(null); }}
+                        onClick={() => {
+                          setImages((prev) => {
+                            const next = prev.filter((_, idx) => idx !== currentPreviewIndex);
+                            setCurrentPreviewIndex((i) => Math.max(0, Math.min(i, next.length - 1)));
+                            return next;
+                          });
+                        }}
                         className="absolute inset-0 bg-black/40 flex items-center justify-center text-white"
                       >
                         <X size={12} />
@@ -212,11 +234,33 @@ const CreatePost = () => {
               <div className="space-y-3">
                 <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">Preview</h4>
                 <div className="aspect-square w-full bg-white/5 rounded-3xl border-2 border-dashed border-white/5 flex items-center justify-center overflow-hidden relative group">
-                  {preview ? (
+                  {images.length > 0 ? (
                     <>
-                      <img src={preview} className="w-full h-full object-cover" alt="Post Preview" />
+                      <img src={images[currentPreviewIndex]?.preview} className="w-full h-full object-cover" alt="Post Preview" />
+                      {images.length > 1 && (
+                        <>
+                          <button
+                            onClick={() => setCurrentPreviewIndex((prev) => (prev - 1 + images.length) % images.length)}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/60 backdrop-blur-xl rounded-full flex items-center justify-center text-white"
+                          >
+                            <ChevronLeft size={14} />
+                          </button>
+                          <button
+                            onClick={() => setCurrentPreviewIndex((prev) => (prev + 1) % images.length)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/60 backdrop-blur-xl rounded-full flex items-center justify-center text-white"
+                          >
+                            <ChevronLeft size={14} className="rotate-180" />
+                          </button>
+                        </>
+                      )}
                       <button 
-                        onClick={() => { setPreview(null); setImage(null); }}
+                        onClick={() => {
+                          setImages((prev) => {
+                            const next = prev.filter((_, idx) => idx !== currentPreviewIndex);
+                            setCurrentPreviewIndex((i) => Math.max(0, Math.min(i, next.length - 1)));
+                            return next;
+                          });
+                        }}
                         className="absolute top-3 right-3 w-8 h-8 bg-black/60 backdrop-blur-xl rounded-full flex items-center justify-center text-white hover:bg-red-500 transition-all"
                       >
                         <X size={14} />
@@ -258,6 +302,7 @@ const CreatePost = () => {
             ref={fileInputRef} 
             className="hidden" 
             accept="image/*" 
+            multiple
             onChange={handleFileChange} 
           />
         </div>

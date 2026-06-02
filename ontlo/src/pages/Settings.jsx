@@ -1,27 +1,9 @@
-import { Camera, Check, ChevronLeft, ChevronRight, Globe, HelpCircle, Loader2, LogOut, MessageSquare, Settings as SettingsIcon, ShieldCheck, User, X, Plus } from "lucide-react";
+import { Camera, Check, ChevronLeft, ChevronRight, HelpCircle, Loader2, LogOut, MessageSquare, Settings as SettingsIcon, ShieldCheck, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import API_URL, { apiFetch } from "../utils/api";
 import LocationAutocomplete from "../components/common/LocationAutocomplete";
-
-const ALL_LANGUAGES = [
-  "English", "Spanish", "French", "German", "Italian", "Portuguese", "Russian", 
-  "Chinese", "Japanese", "Korean", "Hindi", "Arabic", "Bengali", "Urdu", 
-  "Indonesian", "Turkish", "Vietnamese", "Tamil", "Telugu", "Marathi", 
-  "Gujarati", "Malayalam", "Kannada", "Punjabi", "Dutch", "Greek", "Polish", 
-  "Swedish", "Danish", "Finnish", "Norwegian", "Czech", "Hungarian", "Thai", 
-  "Ukrainian", "Hebrew", "Persian", "Malay", "Swahili", "Tagalog", "Other"
-];
-
-const ALL_INTERESTS = [
-  "Travel", "Music", "Gaming", "Art", "Movies", "Tech", "Cooking", "Fitness", 
-  "Photography", "Reading", "Fashion", "Sports", "Writing", "Dancing", "Yoga", 
-  "Hiking", "Coding", "Design", "Anime", "Crypto", "AI", "Startup", "Finance", 
-  "Food", "Coffee", "Astronomy", "History", "Philosophy", "Psychology", 
-  "Volunteering", "Skateboarding", "Surfing", "Gardening", "Pets", "Meditation", 
-  "Board Games", "Theater", "Architecture", "Automotive", "Nature", "Other"
-];
 
 const Settings = () => {
   const { user, setUser, socket } = useSocket();
@@ -45,8 +27,6 @@ const Settings = () => {
   // Edit Mode State
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [langQuery, setLangQuery] = useState("");
-  const [interestQuery, setInterestQuery] = useState("");
   const [editData, setEditData] = useState({
     fullName: "",
     location: "",
@@ -54,11 +34,9 @@ const Settings = () => {
     age: "",
     gender: "",
     bio: "",
-    interests: [],
     locationCoordinates: { type: "Point", coordinates: [0, 0] },
     occupation: "",
-    education: "",
-    languages: ["English"]
+    education: ""
   });
 
   const [settings, setSettings] = useState({
@@ -83,11 +61,9 @@ const Settings = () => {
         age: user.age || "",
         gender: user.gender || "",
         bio: user.bio || "",
-        interests: user.interests || [],
         locationCoordinates: user.locationCoordinates || { type: "Point", coordinates: [0, 0] },
         occupation: user.occupation || "",
-        education: user.education || "",
-        languages: user.languages || ["English"]
+        education: user.education || ""
       });
 
       if (user.settings) {
@@ -303,11 +279,9 @@ const Settings = () => {
                             age: user.age || "",
                             gender: user.gender || "",
                             bio: user.bio || "",
-                            interests: user.interests || [],
                             locationCoordinates: user.locationCoordinates || { type: "Point", coordinates: [0, 0] },
                             occupation: user.occupation || "",
-                            education: user.education || "",
-                            languages: user.languages || ["English"]
+                            education: user.education || ""
                           });
                         }
                       }}
@@ -445,158 +419,6 @@ const Settings = () => {
                       onChange={(val) => setEditData({ ...editData, education: val })}
                       placeholder="e.g. Stanford University"
                     />
-                  </div>
-
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] ml-1">Interests</label>
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {isEditing ? (
-                        <>
-                          <div className="flex flex-wrap gap-1.5 w-full mb-2">
-                            {editData.interests?.map(tag => (
-                              <span
-                                key={tag}
-                                className="px-3 py-1.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5"
-                              >
-                                {tag}
-                                <button
-                                  type="button"
-                                  onClick={() => setEditData({ ...editData, interests: editData.interests.filter(i => i !== tag) })}
-                                  className="hover:bg-black/20 rounded-full p-0.5 transition-colors"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                          <div className="relative w-full">
-                            <input
-                              type="text"
-                              value={interestQuery}
-                              onChange={(e) => setInterestQuery(e.target.value)}
-                              placeholder="Type an interest (e.g. AI, Music, Tech)..."
-                              className="w-full bg-[#151923] border border-[#1e293b] p-3 rounded-2xl text-white font-semibold text-xs focus:outline-none focus:border-purple-500/50"
-                            />
-                            {interestQuery.trim() && (
-                              <div className="absolute left-0 right-0 top-full mt-1 bg-[#0D1117] border border-[#1e293b] rounded-2xl shadow-2xl overflow-hidden z-50 max-h-40 overflow-y-auto custom-scrollbar">
-                                {ALL_INTERESTS.filter(i => i.toLowerCase().includes(interestQuery.toLowerCase()) && !editData.interests?.includes(i)).length > 0 ? (
-                                  ALL_INTERESTS.filter(i => i.toLowerCase().includes(interestQuery.toLowerCase()) && !editData.interests?.includes(i)).map(interest => (
-                                    <button
-                                      key={interest}
-                                      type="button"
-                                      onClick={() => {
-                                        setEditData({ ...editData, interests: [...editData.interests, interest] });
-                                        setInterestQuery("");
-                                      }}
-                                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-white hover:bg-purple-600/20 hover:text-purple-400 transition-colors flex items-center justify-between border-b border-[#1e293b] last:border-none"
-                                    >
-                                      <span>{interest}</span>
-                                      <Plus className="w-3.5 h-3.5 text-purple-400" />
-                                    </button>
-                                  ))
-                                ) : (
-                                  !editData.interests?.includes("Other") ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setEditData({ ...editData, interests: [...editData.interests, "Other"] });
-                                        setInterestQuery("");
-                                      }}
-                                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-white hover:bg-purple-600/20 hover:text-purple-400 transition-colors flex items-center justify-between border-b border-[#1e293b] last:border-none"
-                                    >
-                                      <span>Other</span>
-                                      <Plus className="w-3.5 h-3.5 text-purple-400" />
-                                    </button>
-                                  ) : (
-                                    <div className="px-4 py-3 text-xs text-gray-500 italic text-center font-medium">No interests found</div>
-                                  )
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        user?.interests?.map(i => (
-                          <span key={i} className="px-3 py-1.5 bg-[#151923] border border-[#1e293b] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em]">{i}</span>
-                        )) || <span className="text-gray-500 italic text-sm">No interests added</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] ml-1">Languages Spoken</label>
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {isEditing ? (
-                        <>
-                          <div className="flex flex-wrap gap-1.5 w-full mb-2">
-                            {editData.languages?.map(lang => (
-                              <span
-                                key={lang}
-                                className="px-3 py-1.5 rounded-2xl bg-purple-600 border border-purple-500 text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5"
-                              >
-                                {lang}
-                                <button
-                                  type="button"
-                                  onClick={() => setEditData({ ...editData, languages: editData.languages.filter(l => l !== lang) })}
-                                  className="hover:bg-black/20 rounded-full p-0.5 transition-colors"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                          <div className="relative w-full">
-                            <input
-                              type="text"
-                              value={langQuery}
-                              onChange={(e) => setLangQuery(e.target.value)}
-                              placeholder="Type a language (e.g. Spanish, French)..."
-                              className="w-full bg-[#151923] border border-[#1e293b] p-3 rounded-2xl text-white font-semibold text-xs focus:outline-none focus:border-purple-500/50"
-                            />
-                            {langQuery.trim() && (
-                              <div className="absolute left-0 right-0 top-full mt-1 bg-[#0D1117] border border-[#1e293b] rounded-2xl shadow-2xl overflow-hidden z-50 max-h-40 overflow-y-auto custom-scrollbar">
-                                {ALL_LANGUAGES.filter(l => l.toLowerCase().includes(langQuery.toLowerCase()) && !editData.languages?.includes(l)).length > 0 ? (
-                                  ALL_LANGUAGES.filter(l => l.toLowerCase().includes(langQuery.toLowerCase()) && !editData.languages?.includes(l)).map(lang => (
-                                    <button
-                                      key={lang}
-                                      type="button"
-                                      onClick={() => {
-                                        setEditData({ ...editData, languages: [...editData.languages, lang] });
-                                        setLangQuery("");
-                                      }}
-                                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-white hover:bg-purple-600/20 hover:text-purple-400 transition-colors flex items-center justify-between border-b border-[#1e293b] last:border-none"
-                                    >
-                                      <span>{lang}</span>
-                                      <Plus className="w-3.5 h-3.5 text-purple-400" />
-                                    </button>
-                                  ))
-                                ) : (
-                                  !editData.languages?.includes("Other") ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setEditData({ ...editData, languages: [...editData.languages, "Other"] });
-                                        setLangQuery("");
-                                      }}
-                                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-white hover:bg-purple-600/20 hover:text-purple-400 transition-colors flex items-center justify-between border-b border-[#1e293b] last:border-none"
-                                    >
-                                      <span>Other</span>
-                                      <Plus className="w-3.5 h-3.5 text-purple-400" />
-                                    </button>
-                                  ) : (
-                                    <div className="px-4 py-3 text-xs text-gray-500 italic text-center font-medium">No languages found</div>
-                                  )
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        user?.languages?.map(l => (
-                          <span key={l} className="px-3 py-1.5 bg-[#151923] border border-[#1e293b] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em]">{l}</span>
-                        )) || <span className="text-gray-500 italic text-sm">No languages added</span>
-                      )}
-                    </div>
                   </div>
 
                   <div className="space-y-3">
@@ -900,7 +722,7 @@ const Settings = () => {
                   <div className="space-y-4 pt-4 border-t border-white/5">
                     <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-1">Frequently Asked</h4>
                     <div className="grid grid-cols-1 gap-3">
-                      <FaqItem question="How does matching work?" answer="Our algorithm connects you with users based on your interests and location settings." />
+                      <FaqItem question="How does matching work?" answer="Our algorithm connects you with users based on your match preferences such as gender, age range, and distance." />
                       <FaqItem question="Is my data secure?" answer="Yes, we use industry-standard encryption to protect all your personal information." />
                       <FaqItem question="How do I report someone?" answer="You can report any user directly from their profile or the chat window." />
                       <FaqItem question="What is Premium?" answer="Premium gives you unlimited discovery, special badges, and priority matching." />

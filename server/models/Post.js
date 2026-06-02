@@ -10,8 +10,7 @@ const PostSchema = new mongoose.Schema(
     },
 
     imageUrl: {
-      type: String,
-      required: true
+      type: String
     },
 
     width: {
@@ -21,6 +20,21 @@ const PostSchema = new mongoose.Schema(
     height: {
       type: Number
     },
+
+    images: [
+      {
+        imageUrl: {
+          type: String,
+          required: true
+        },
+        width: {
+          type: Number
+        },
+        height: {
+          type: Number
+        }
+      }
+    ],
 
     caption: {
       type: String,
@@ -87,5 +101,14 @@ const PostSchema = new mongoose.Schema(
 
 // Index for fetching feed efficiently
 PostSchema.index({ user: 1, createdAt: -1 });
+
+PostSchema.pre('validate', function(next) {
+  const hasLegacyImage = !!this.imageUrl;
+  const hasImagesArray = Array.isArray(this.images) && this.images.length > 0;
+  if (!hasLegacyImage && !hasImagesArray) {
+    return next(new Error('At least one image is required'));
+  }
+  return next();
+});
 
 module.exports = mongoose.model('Post', PostSchema);

@@ -113,19 +113,42 @@ router.get('/user/:userId', auth, async (req, res) => {
 // ======================================================
 router.post('/', auth, async (req, res) => {
   try {
-    const { imageUrl, caption, visibility, width, height } = req.body;
+    const { imageUrl, caption, visibility, width, height, imageUrls, images } = req.body;
 
-    if (!imageUrl) {
-      return res.status(400).json({ error: 'Image is required' });
+    const normalizedImages = Array.isArray(images)
+      ? images
+          .filter((item) => item && typeof item.imageUrl === 'string' && item.imageUrl.trim())
+          .map((item) => ({
+            imageUrl: item.imageUrl.trim(),
+            width: Number.isFinite(item.width) ? item.width : undefined,
+            height: Number.isFinite(item.height) ? item.height : undefined
+          }))
+      : [];
+
+    if (normalizedImages.length === 0 && Array.isArray(imageUrls)) {
+      imageUrls
+        .filter((url) => typeof url === 'string' && url.trim())
+        .forEach((url) => normalizedImages.push({ imageUrl: url.trim() }));
     }
+
+    if (!imageUrl && normalizedImages.length === 0) {
+      return res.status(400).json({ error: 'At least one image is required' });
+    }
+
+    const primaryImage = normalizedImages[0] || {
+      imageUrl,
+      width,
+      height
+    };
 
     const moderation = moderateText(caption || '');
     
     const post = await Post.create({
       user: req.userId,
-      imageUrl,
-      width,
-      height,
+      imageUrl: primaryImage.imageUrl,
+      width: primaryImage.width,
+      height: primaryImage.height,
+      images: normalizedImages.length > 0 ? normalizedImages : [primaryImage],
       caption: moderation.text,
       visibility: visibility || 'connections'
     });

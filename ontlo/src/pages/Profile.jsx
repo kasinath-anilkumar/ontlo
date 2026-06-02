@@ -649,35 +649,6 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/5 space-y-3">
-                  <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide">Interests</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {profileUser?.interests?.length > 0 ? (
-                      profileUser.interests.map((tag) => (
-                        <span key={tag} className="px-3.5 py-1.5 bg-purple-950/40 border border-purple-500/20 text-purple-300 font-semibold text-xs rounded-xl">
-                          {tag}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-gray-500 italic">No interests selected.</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-white/5 space-y-3">
-                  <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide">Languages</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {profileUser?.languages?.length > 0 ? (
-                      profileUser.languages.map((lang) => (
-                        <span key={lang} className="px-3.5 py-1.5 bg-purple-950/40 border border-purple-500/20 text-purple-300 font-semibold text-xs rounded-xl">
-                          {lang}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-gray-500 italic">No languages listed.</span>
-                    )}
-                  </div>
-                </div>
               </div>
 
               {/* TAB HEADERS & CONTENT SECTION */}
@@ -718,17 +689,24 @@ const Profile = () => {
                       ))
                     ) : moments.length > 0 ? (
                       moments.map((m) => (
+                        (() => {
+                          const previewImage = (Array.isArray(m.images) && m.images.length > 0)
+                            ? m.images[0]?.imageUrl
+                            : m.imageUrl;
+                          return (
                         <div
                           key={m._id}
                           onClick={() => setViewingPostId(m._id)}
                           className="aspect-square bg-[#1a1f30] rounded-sm overflow-hidden relative group cursor-pointer border border-white/5 shadow-sm"
                         >
                           <img
-                            src={m.imageUrl}
+                            src={previewImage}
                             className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105 group-hover:opacity-90"
                             alt="Photo"
                           />
                         </div>
+                          );
+                        })()
                       ))
                     ) : (
                       <div className="col-span-3 py-16 text-center bg-white/[0.02] border border-dashed border-white/5 rounded-3xl mb-5">

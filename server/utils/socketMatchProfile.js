@@ -34,7 +34,6 @@ async function attachMatchmakingProfile(
       role
       age
       gender
-      interests
       location
       locationCoordinates
       matchPreferences
@@ -91,13 +90,6 @@ async function attachMatchmakingProfile(
     socket.gender =
       user.gender || null;
 
-    socket.interests =
-      Array.isArray(
-        user.interests
-      )
-        ? user.interests
-        : [];
-
     socket.location =
       user.location || '';
 
@@ -126,9 +118,7 @@ async function attachMatchmakingProfile(
           max: 100
         },
 
-        distance: 500,
-
-        interests: []
+        distance: 500
       };
 
     // ======================================================
@@ -174,9 +164,6 @@ async function attachMatchmakingProfile(
 
       gender:
         socket.gender,
-
-      interests:
-        socket.interests,
 
       preferences:
         socket.matchPreferences,

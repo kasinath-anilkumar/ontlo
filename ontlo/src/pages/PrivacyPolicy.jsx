@@ -32,7 +32,7 @@ const PrivacyPolicy = () => {
               We collect only the minimum necessary information required to provide our social discovery and networking services:
             </p>
             <ul className="list-disc ml-6 mt-2 space-y-1">
-              <li><strong>Profile Information:</strong> Username, email, profile photo, gender, bio, and interests.</li>
+              <li><strong>Profile Information:</strong> Username, email, profile photo, gender, and bio.</li>
               <li><strong>Real-time Media & Permissions:</strong> Camera and microphone access, which are only requested and used during active, user-initiated audio or video calls. We do not record or store these streams.</li>
               <li><strong>User Content:</strong> Public posts, messages, and associated metadata.</li>
               <li><strong>Technical Data:</strong> IP address, device model, and operating system details to ensure platform security, verify user authenticity, and prevent fraud.</li>
@@ -46,7 +46,7 @@ const PrivacyPolicy = () => {
             </p>
             <ul className="list-disc ml-6 mt-2 space-y-1">
               <li>To construct and display your public profile.</li>
-              <li>To match and connect you with other users based on shared interests.</li>
+              <li>To match and connect you with other users based on your preferences and profile.</li>
               <li>To facilitate secure, real-time audio/video communication.</li>
               <li>To verify identity, enforce platform safety rules, and investigate abuse reports.</li>
             </ul>

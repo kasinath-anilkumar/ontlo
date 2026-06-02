@@ -9,6 +9,22 @@ import SafetySection from '../components/sections/SafetySection'
 // import ContactSection from '../components/sections/ContactSection'
 import Footer from '../components/layout/Footer'
 
+const safeScrollToTop = () => {
+  try {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch (_error) {
+    window.scrollTo(0, 0)
+  }
+}
+
+const safeScrollIntoView = (element) => {
+  try {
+    element.scrollIntoView({ behavior: 'smooth' })
+  } catch (_error) {
+    element.scrollIntoView()
+  }
+}
+
 const Home = () => {
   const location = useLocation()
 
@@ -31,12 +47,12 @@ const Home = () => {
       if (element) {
         // Use a slight timeout to ensure components have fully mounted
         const timer = setTimeout(() => {
-          element.scrollIntoView({ behavior: 'smooth' })
+          safeScrollIntoView(element)
         }, 150)
         return () => clearTimeout(timer)
       }
     } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      safeScrollToTop()
     }
   }, [location])
 

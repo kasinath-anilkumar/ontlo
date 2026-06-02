@@ -32,14 +32,12 @@ const registerSchema = z.object({
   }, { message: 'You must be at least 13 years old' }),
   gender: z.enum(['Male', 'Female', 'Other', 'Prefer not to say']).optional(),
   location: z.string().trim().optional(),
-  interests: z.array(z.string().trim()).optional(),
   bio: z.string().trim().optional(),
   profilePic: z.union([z.string().url(), z.string()]).optional(),
   lat: z.number().optional(),
   lng: z.number().optional(),
   occupation: z.string().trim().optional(),
   education: z.string().trim().optional(),
-  languages: z.array(z.string().trim()).optional(),
 }).refine((data) => {
   if (data.dob && data.age) {
     const dobDate = new Date(data.dob);
@@ -85,14 +83,12 @@ const completeProfileSchema = z.object({
   }, { message: 'You must be at least 13 years old' }),
   gender: z.enum(['Male', 'Female', 'Other', 'Prefer not to say']).optional(),
   location: z.string().trim().optional(),
-  interests: z.array(z.string().trim()).optional(),
   bio: z.string().trim().optional(),
   profilePic: z.union([z.string().url(), z.string()]).optional(),
   lat: z.number().optional(),
   lng: z.number().optional(),
   occupation: z.string().trim().optional(),
   education: z.string().trim().optional(),
-  languages: z.array(z.string().trim()).optional(),
 }).refine((data) => {
   if (data.dob && data.age) {
     const dobDate = new Date(data.dob);

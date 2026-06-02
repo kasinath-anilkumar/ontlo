@@ -436,33 +436,6 @@ class Matchmaker {
               continue;
             }
 
-            // ======================================================
-            // INTEREST HARD FILTER
-            // ======================================================
-
-            // Check if User 2 has any interest that User 1 is looking for
-            if (
-              u1.matchPreferences?.interests?.length > 0
-            ) {
-              const hasMatch = u1.matchPreferences.interests.some(
-                interest => (u2.interests || []).includes(interest)
-              );
-              if (!hasMatch) {
-                continue;
-              }
-            }
-
-            // Check if User 1 has any interest that User 2 is looking for
-            if (
-              u2.matchPreferences?.interests?.length > 0
-            ) {
-              const hasMatch = u2.matchPreferences.interests.some(
-                interest => (u1.interests || []).includes(interest)
-              );
-              if (!hasMatch) {
-                continue;
-              }
-            }
           }
 
           let score = 0;
@@ -504,38 +477,6 @@ class Matchmaker {
 
               score += 20;
             }
-          }
-
-          // ======================================================
-          // INTEREST SCORING
-          // ======================================================
-
-          // 1. Similarity (Both have same interests)
-          const commonInterests =
-            (u1.interests || []).filter(
-              interest =>
-                (u2.interests || []).includes(
-                  interest
-                )
-            );
-
-          score +=
-            commonInterests.length * 10;
-
-          // 2. Preferred (U2 has interests U1 is looking for)
-          if (u1.matchPreferences?.interests?.length > 0) {
-            const preferredMatch = (u1.matchPreferences.interests).filter(
-              interest => (u2.interests || []).includes(interest)
-            );
-            score += preferredMatch.length * 25; // Higher boost for specific preferences
-          }
-
-          // 3. Preferred (U1 has interests U2 is looking for)
-          if (u2.matchPreferences?.interests?.length > 0) {
-            const preferredMatch = (u2.matchPreferences.interests).filter(
-              interest => (u1.interests || []).includes(interest)
-            );
-            score += preferredMatch.length * 25;
           }
 
           // Age gap
@@ -659,22 +600,7 @@ class Matchmaker {
       // CONTEXTUAL ICEBREAKERS (Doc Section 17.3)
       // ======================================================
 
-      const commonInterests = (user1.interests || []).filter(
-        interest => (user2.interests || []).includes(interest)
-      );
-
-      let icebreaker = "Say hi and start the conversation!";
-
-      if (commonInterests.length > 0) {
-
-        const topic =
-          commonInterests[
-            Math.floor(Math.random() * commonInterests.length)
-          ];
-
-        icebreaker =
-          `You both like ${topic}! What's your favorite thing about it?`;
-      }
+      const icebreaker = "Say hi and start the conversation!";
 
       const randomQuestion = icebreakerQuestions[Math.floor(Math.random() * icebreakerQuestions.length)];
 

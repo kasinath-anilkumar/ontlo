@@ -748,15 +748,6 @@ router.post(
               }
               : { type: 'Point', coordinates: [0, 0] },
 
-          interests:
-            Array.isArray(
-              req.body.interests
-            )
-
-              ? req.body.interests
-
-              : [],
-
           bio:
             req.body.bio,
 
@@ -771,12 +762,7 @@ router.post(
 
               req.body.gender &&
 
-              req.body.location &&
-
-              (
-                req.body.interests
-                  ?.length || 0
-              ) >= 3
+              req.body.location
             )
         });
 
@@ -832,9 +818,6 @@ router.post(
 
           gender:
             user.gender,
-
-          interests:
-            user.interests,
 
           bio:
             user.bio,
@@ -908,7 +891,6 @@ router.post(
         'dob',
         'gender',
         'location',
-        'interests',
         'bio',
         'profilePic'
       ];
@@ -1080,7 +1062,6 @@ router.post(
           dob
           gender
           location
-          interests
           bio
           settings
           isProfileComplete
@@ -1236,9 +1217,6 @@ router.post(
 
           locationCoordinates:
             user.locationCoordinates,
-
-          interests:
-            user.interests,
 
           bio:
             user.bio,

@@ -1,4 +1,4 @@
-import { X, Check, Globe, Users, Calendar, Heart, Sparkles, MapPin, Search } from "lucide-react";
+import { X, Check, Users, Calendar, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
 import API_URL, { apiFetch } from "../../utils/api";
 import { useSocket } from "../../context/SocketContext";
@@ -8,7 +8,6 @@ const MatchSettingsModal = ({ onClose, currentPreferences, onSave }) => {
     gender: 'All',
     ageRange: { min: 18, max: 100 },
     distance: 500,
-    interests: []
   });
   const [isSaving, setIsSaving] = useState(false);
   const { socket } = useSocket();
@@ -185,40 +184,6 @@ const MatchSettingsModal = ({ onClose, currentPreferences, onSave }) => {
                   {(preferences.distance || 500) >= 500 ? '500+' : preferences.distance}
                 </span>
               </div>
-            </div>
-          </section>
-
-          {/* Interests */}
-          <section className="space-y-3 pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-green-400">
-                <Heart size={14} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Interests ({preferences.interests?.length || 0})</span>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {["Travel", "Music", "Gaming", "Art", "Movies", "Tech", "Cooking", "Fitness", "Photography", "Reading", "Anime", "Crypto", "Fashion", "Nature"].map((interest) => {
-                const isActive = preferences.interests?.includes(interest);
-                return (
-                  <button
-                    key={interest}
-                    onClick={() => {
-                      const currentInterests = preferences.interests || [];
-                      const newInterests = isActive
-                        ? currentInterests.filter(i => i !== interest)
-                        : [...currentInterests, interest];
-                      setPreferences({ ...preferences, interests: newInterests });
-                    }}
-                    className={`px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${
-                      isActive
-                        ? "bg-green-500 border-green-400 text-black shadow-sm scale-105"
-                        : "bg-white/5 border-white/5 text-gray-500 hover:border-white/20 hover:text-gray-300"
-                    }`}
-                  >
-                    {interest}
-                  </button>
-                );
-              })}
             </div>
           </section>
         </div>
