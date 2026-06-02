@@ -45,6 +45,8 @@ const Settings = () => {
     stealthMode: false,
     language: 'en'
   });
+  const [lowBandwidth, setLowBandwidth] = useState(false);
+  const [savingLowBandwidth, setSavingLowBandwidth] = useState(false);
 
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [ticketData, setTicketData] = useState({ subject: "", message: "" });
@@ -69,6 +71,8 @@ const Settings = () => {
       if (user.settings) {
         setSettings(user.settings);
       }
+
+      setLowBandwidth(Boolean(user.lowBandwidth));
 
       fetchMyTickets();
     }
@@ -108,6 +112,36 @@ const Settings = () => {
     localStorage.removeItem("user");
     setUser(null);
     navigate("/auth");
+  };
+
+  const handleToggleLowBandwidth = async () => {
+    const newValue = !lowBandwidth;
+    setLowBandwidth(newValue);
+    setSavingLowBandwidth(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiFetch(`${API_URL}/api/users/profile/update`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ lowBandwidth: newValue }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const updatedUser = { ...user, ...data };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setLowBandwidth(Boolean(updatedUser.lowBandwidth));
+      } else {
+        setLowBandwidth(!newValue);
+      }
+    } catch {
+      setLowBandwidth(!newValue);
+    } finally {
+      setSavingLowBandwidth(false);
+    }
   };
 
   const handleToggleSetting = async (key) => {
@@ -462,6 +496,14 @@ const Settings = () => {
                       toggle
                       checked={settings.stealthMode}
                       onToggle={() => handleToggleSetting('stealthMode')}
+                    />
+                    <SettingItem
+                      label="Low bandwidth mode"
+                      desc="Lower video quality for calls on slow networks (also auto-detected)"
+                      toggle
+                      checked={lowBandwidth}
+                      onToggle={handleToggleLowBandwidth}
+                      disabled={savingLowBandwidth}
                     />
 
                     <div className="mt-4 pt-4 border-t border-[#1e293b]/50">

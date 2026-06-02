@@ -40,9 +40,11 @@ class Matchmaker {
 
       setInterval(() => {
 
-        this.tryMatch();
+        if (this.queue.length >= 2) {
+          this.tryMatch();
+        }
 
-      }, 2500);
+      }, 1500);
     }
   }
 
@@ -604,6 +606,11 @@ class Matchmaker {
 
       const randomQuestion = icebreakerQuestions[Math.floor(Math.random() * icebreakerQuestions.length)];
 
+      const resolvedCallMode =
+        user1.callMode === 'audio' && user2.callMode === 'audio'
+          ? 'audio'
+          : 'video';
+
       // Emit
       user1.emit(
         'match-found',
@@ -613,7 +620,7 @@ class Matchmaker {
           icebreaker,
           icebreakerQuestion: randomQuestion,
           remoteUserId: user2.userId,
-          callMode: user1.callMode || 'video'
+          callMode: resolvedCallMode
         }
       );
 
@@ -625,7 +632,7 @@ class Matchmaker {
           icebreaker,
           icebreakerQuestion: randomQuestion,
           remoteUserId: user1.userId,
-          callMode: user2.callMode || 'video'
+          callMode: resolvedCallMode
         }
       );
 

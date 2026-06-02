@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SocketProvider, useSocket } from "./context/SocketContext";
+import { CallOverlayProvider } from "./context/CallOverlayContext";
 import { FeedProvider } from "./context/FeedContext";
 import { Loader2 } from "lucide-react";
 import { lazyWithRetry as lazy } from "./utils/lazyRetry";
@@ -55,6 +56,7 @@ const ProtectedRoute = ({ children, requiresProfile = true }) => {
 function App() {
   return (
     <SocketProvider>
+      <CallOverlayProvider>
       <FeedProvider>
         <Router>
           <Suspense fallback={<PageLoader />}>
@@ -88,6 +90,7 @@ function App() {
           </Suspense>
         </Router>
       </FeedProvider>
+      </CallOverlayProvider>
     </SocketProvider>
   );
 }

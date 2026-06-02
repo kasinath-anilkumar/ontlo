@@ -43,6 +43,30 @@ const {
 // FREE TIER OPTIMIZED SOCKET ARCHITECTURE
 // ======================================================
 
+// roomId -> Set of socket ids that signaled WebRTC readiness
+const webrtcRoomReady = new Map();
+
+function markPeerCallReady(roomId, socketId, io) {
+  if (!roomId || !socketId) return;
+  if (!webrtcRoomReady.has(roomId)) {
+    webrtcRoomReady.set(roomId, new Set());
+  }
+  const ready = webrtcRoomReady.get(roomId);
+  ready.add(socketId);
+  if (ready.size >= 2) {
+    io.to(roomId).emit('webrtc-peers-ready', { roomId });
+    webrtcRoomReady.delete(roomId);
+  }
+}
+
+function clearWebRtcRoomReadyForSocket(socketId) {
+  webrtcRoomReady.forEach((ready, roomId) => {
+    if (ready.has(socketId)) {
+      webrtcRoomReady.delete(roomId);
+    }
+  });
+}
+
 module.exports = (io) => {
   if (!io) {
     console.error('[SOCKET ERROR]: Socket.IO server instance (io) is undefined!');
@@ -751,6 +775,14 @@ module.exports = (io) => {
         );
 
         socket.on(
+          'webrtc-call-ready',
+
+          ({ roomId }) => {
+            markPeerCallReady(roomId, socket.id, io);
+          }
+        );
+
+        socket.on(
           'icebreaker-vote',
 
           ({
@@ -1010,6 +1042,8 @@ module.exports = (io) => {
           async () => {
 
             try {
+
+              clearWebRtcRoomReadyForSocket(socket.id);
 
               if (
                 !socket.userId

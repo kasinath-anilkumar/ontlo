@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import BottomNav from "../navigation/BottomNav";
 import Sidebar from "../navigation/Sidebar";
-import VideoContainer from "../video/VideoContainer";
+import VideoCallHost from "../video/VideoCallHost";
 import PullToRefresh from "../common/PullToRefresh";
 
 const RightPanel = lazy(() => import("./RightPanel"));
@@ -53,7 +53,7 @@ const AppLayout = ({ children }) => {
             )}
           </main>
 
-          <VideoContainer />
+          <VideoCallHost />
         </div>
 
         {isRightPanelOpen && !isFullscreenPage && location.pathname !== '/video' && (

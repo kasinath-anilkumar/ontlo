@@ -278,6 +278,11 @@ const UserSchema = new mongoose.Schema(
       }
     },
 
+    lowBandwidth: {
+      type: Boolean,
+      default: false
+    },
+
     // ======================================================
     // NOTIFICATION PREFERENCES
     // ======================================================

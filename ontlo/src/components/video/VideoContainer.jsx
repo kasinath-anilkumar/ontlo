@@ -2,13 +2,24 @@ import { AlertTriangle, Camera, Check, Headphones, Heart, Lock, MessageSquare, M
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ontloLogo from "/ontlo_icon.webp";
+import { useCallOverlay } from "../../context/CallOverlayContext";
 import { useSocket } from "../../context/SocketContext";
 import API_URL, { apiFetch } from "../../utils/api";
+import { createPeerConnectionConfig } from "../../utils/webrtcConfig";
+import {
+  applyEncoderBitrates,
+  detectSlowNetwork,
+  stopMediaStream,
+  suggestVideoTier,
+  syncLocalMedia,
+  webrtcLog,
+} from "../../utils/webrtcMedia";
 import ChatPanel from "../chat/ChatPanel";
 import MatchSettingsModal from "./MatchSettingsModal";
 
 const VideoContainer = () => {
   const { socket, isConnected, user, setUser, connections } = useSocket();
+  const { setShouldMountCallUi, setCallSessionActive, requestCallUi } = useCallOverlay();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -67,6 +78,11 @@ const VideoContainer = () => {
   const [localVideoPos, setLocalVideoPos] = useState({ x: 0, y: 0 });
   const [isDraggingState, setIsDraggingState] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
+  const matchedCallModeRef = useRef('video');
+  const callRoleRef = useRef(null);
+  const videoBitrateTierRef = useRef(0);
+  const mediaProfileRef = useRef('');
+  const [sessionLowBandwidth, setSessionLowBandwidth] = useState(false);
   const [matchPreferences, setMatchPreferences] = useState(user?.matchPreferences || {
     gender: 'All',
     ageRange: { min: 18, max: 100 },
@@ -80,74 +96,137 @@ const VideoContainer = () => {
       conn.user?.id?.toString() === remoteId.toString());
   });
 
+  const effectiveLowBandwidth = Boolean(user?.lowBandwidth || sessionLowBandwidth);
+
+  useEffect(() => {
+    if (user?.lowBandwidth || sessionLowBandwidth) return;
+    if (detectSlowNetwork()) setSessionLowBandwidth(true);
+  }, [user?.lowBandwidth, sessionLowBandwidth]);
+
+  useEffect(() => {
+    videoBitrateTierRef.current = effectiveLowBandwidth ? 0 : 1;
+  }, [effectiveLowBandwidth]);
+
+  useEffect(() => {
+    matchedCallModeRef.current = matchedCallMode;
+  }, [matchedCallMode]);
+
   const buildVideoConstraints = useCallback((facing) => {
-    const base = user?.lowBandwidth
+    const base = effectiveLowBandwidth
       ? { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { max: 15 } }
       : { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24 } };
     return { ...base, facingMode: { ideal: facing } };
-  }, [user?.lowBandwidth]);
+  }, [effectiveLowBandwidth]);
 
-  // ── Camera Initialization ──
+  const needsMedia = cameraRequested || inCall || isMatching;
+  const audioOnlyMedia = needsMedia && (inCall ? matchedCallMode === 'audio' : callMode === 'audio');
+  const mediaProfileKey = `${audioOnlyMedia}-${effectiveLowBandwidth}`;
+
+  const attachStreamToPreview = useCallback((stream) => {
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
+    }
+  }, []);
+
+  const stopLocalStream = useCallback(() => {
+    stopMediaStream(localStreamRef.current);
+    localStreamRef.current = null;
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    setCameraReady(false);
+    mediaProfileRef.current = '';
+  }, []);
+
+  // ── Camera / mic (stable stream — no restart on inCall ↔ isMatching) ──
   useEffect(() => {
-    let mounted = true;
-    const startCamera = async () => {
-      if (!cameraRequested && !inCall && !isMatching) return;
+    if (!needsMedia) {
+      stopLocalStream();
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    (async () => {
       try {
-        const isAudioCall = inCall ? (matchedCallMode === 'audio') : (callMode === 'audio');
-        const constraints = {
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          },
-          video: isAudioCall ? false : buildVideoConstraints(facingMode)
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        if (!mounted) {
-          stream.getTracks().forEach(t => t.stop());
+        if (mediaProfileRef.current === mediaProfileKey && localStreamRef.current) {
           return;
         }
-        localStreamRef.current = stream;
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-        setCameraReady(true);
 
-        // If we are already in a call (matched fast), add tracks now
+        const stream = await syncLocalMedia({
+          stream: localStreamRef.current,
+          audioOnly: audioOnlyMedia,
+          facingMode,
+          buildVideoConstraints,
+        });
+
+        if (cancelled) {
+          stopMediaStream(stream);
+          return;
+        }
+
+        localStreamRef.current = stream;
+        mediaProfileRef.current = mediaProfileKey;
+        attachStreamToPreview(stream);
+        setCameraReady(true);
+        setCameraError(null);
+
         const pc = peerConnectionRef.current;
         if (pc && pc.signalingState !== 'closed') {
           const senders = pc.getSenders();
           let tracksAdded = false;
-          stream.getTracks().forEach(track => {
-            const alreadyAdded = senders.find(s => s.track?.id === track.id);
-            if (!alreadyAdded) {
+          stream.getTracks().forEach((track) => {
+            if (!senders.find((s) => s.track?.id === track.id)) {
               pc.addTrack(track, stream);
               tracksAdded = true;
             }
           });
-
-          if (tracksAdded && pc.signalingState === 'stable') {
-            pc.createOffer().then(offer => pc.setLocalDescription(offer)).then(() => {
-              socket.emit("webrtc-offer", { offer: pc.localDescription, roomId: roomIdRef.current });
-            }).catch(e => console.warn("Renegotiation failed:", e));
+          if (tracksAdded && pc.signalingState === 'stable' && socket && roomIdRef.current) {
+            const offer = await pc.createOffer({
+              offerToReceiveAudio: true,
+              offerToReceiveVideo: matchedCallModeRef.current !== 'audio',
+            });
+            await pc.setLocalDescription(offer);
+            socket.emit('webrtc-offer', { offer: pc.localDescription, roomId: roomIdRef.current });
           }
         }
       } catch (err) {
-        console.error("Failed to get local stream", err);
+        if (cancelled) return;
+        console.error('Failed to get local stream', err);
         if (err.name === 'NotAllowedError') setCameraError('Permission Denied');
         else if (err.name === 'NotReadableError' || err.name === 'AbortError') setCameraError('Blocked by System');
         else setCameraError('Camera Error');
       }
-    };
-    startCamera();
+    })();
+
     return () => {
-      mounted = false;
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(t => t.stop());
-        localStreamRef.current = null;
-      }
+      cancelled = true;
     };
-  }, [user?.lowBandwidth, cameraRequested, inCall, isMatching, callMode, matchedCallMode, buildVideoConstraints]);
+  }, [
+    needsMedia,
+    mediaProfileKey,
+    audioOnlyMedia,
+    buildVideoConstraints,
+    attachStreamToPreview,
+    stopLocalStream,
+    socket,
+  ]);
+
+  useEffect(() => () => stopLocalStream(), [stopLocalStream]);
+
+  useEffect(() => {
+    if (cameraRequested || inCall || isMatching) {
+      requestCallUi();
+      setCallSessionActive(true);
+    }
+  }, [cameraRequested, inCall, isMatching, requestCallUi, setCallSessionActive]);
+
+  useEffect(() => {
+    if (!inCall && !isMatching && !cameraRequested && location.pathname !== '/video') {
+      setCallSessionActive(false);
+      const t = setTimeout(() => setShouldMountCallUi(false), 400);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [inCall, isMatching, cameraRequested, location.pathname, setCallSessionActive, setShouldMountCallUi]);
 
   // ── Call Timers ──
   useEffect(() => {
@@ -205,9 +284,10 @@ const VideoContainer = () => {
 
   const startMatching = useCallback(() => {
     if (!socket || !user) return;
+    requestCallUi();
     setIsMatching(true);
     socket.emit("join-queue", { userId: user?.id || user?._id, callMode });
-  }, [socket, user, callMode]);
+  }, [socket, user, callMode, requestCallUi]);
 
   // ── Cleanup Logic ──
   const endCallLocally = useCallback((shouldAutoRejoin = true) => {
@@ -227,6 +307,7 @@ const VideoContainer = () => {
     setChatMessages([]); setHasNewMessage(false); setIsMatching(false);
     setLocalVote(null); setRemoteVote(null); setShowIcebreakerGame(false); setIcebreakerQuestion(null);
     setFacingMode('user');
+    callRoleRef.current = null;
     if (shouldAutoRejoin) {
       if (rejoinTimerRef.current) clearTimeout(rejoinTimerRef.current);
       rejoinTimerRef.current = setTimeout(() => {
@@ -237,27 +318,49 @@ const VideoContainer = () => {
     cleaningUpRef.current = false;
   }, [socket, user?.id]);
 
-  // ── WebRTC Helper ──
-  const createPeerConnection = useCallback((rId) => {
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-        { urls: "stun:stun2.l.google.com:19302" },
-        { urls: "stun:stun3.l.google.com:19302" },
-        { urls: "stun:stun4.l.google.com:19302" },
-        { urls: "stun:stun.services.mozilla.com" },
-        { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
-        { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
-        { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
-      ],
-      iceCandidatePoolSize: 10,
+  const attachLocalTracksToPc = (pc, stream) => {
+    if (!stream || !pc || pc.signalingState === 'closed') return;
+    const senderTrackIds = new Set(pc.getSenders().map((s) => s.track?.id).filter(Boolean));
+    stream.getTracks().forEach((track) => {
+      if (!senderTrackIds.has(track.id)) {
+        pc.addTrack(track, stream);
+        senderTrackIds.add(track.id);
+      }
     });
-    pc.onicecandidate = (e) => { if (e.candidate && roomIdRef.current && socket) socket.emit("webrtc-ice-candidate", { candidate: e.candidate, roomId: roomIdRef.current }); };
+  };
+
+  const sendCallerOffer = useCallback(async () => {
+    const pc = peerConnectionRef.current;
+    const stream = localStreamRef.current;
+    const roomId = roomIdRef.current;
+    if (!pc || !stream || !socket || !roomId || callRoleRef.current !== 'caller') return;
+
+    attachLocalTracksToPc(pc, stream);
+    const isAudio = matchedCallModeRef.current === 'audio';
+    const offer = await pc.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: !isAudio,
+    });
+    await pc.setLocalDescription(offer);
+    socket.emit('webrtc-offer', { offer: pc.localDescription, roomId });
+    webrtcLog('Offer sent', roomId);
+  }, [socket]);
+
+  // ── WebRTC Helper ──
+  const createPeerConnection = useCallback(() => {
+    const pc = new RTCPeerConnection(createPeerConnectionConfig());
+    pc.onicecandidate = (e) => {
+      if (!roomIdRef.current || !socket) return;
+      if (e.candidate) {
+        socket.emit('webrtc-ice-candidate', { candidate: e.candidate, roomId: roomIdRef.current });
+      } else {
+        socket.emit('webrtc-ice-candidate', { candidate: null, roomId: roomIdRef.current });
+      }
+    };
     pc.ontrack = (e) => {
       const el = remoteVideoRef.current;
       if (!el) return;
-      if (e.streams && e.streams.length > 0) {
+      if (e.streams?.length) {
         el.srcObject = e.streams[0];
       } else {
         let stream = el.srcObject;
@@ -267,23 +370,40 @@ const VideoContainer = () => {
         }
         stream.addTrack(e.track);
       }
-      // Mobile / autoplay policies: explicitly try to play remote A/V
       el.play?.().catch(() => { });
     };
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "connected") {
-        const videoSender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-        if (videoSender) {
-          const params = videoSender.getParameters();
-          if (!params.encodings) params.encodings = [{}];
-          params.encodings[0].maxBitrate = user?.lowBandwidth ? 250000 : 750000;
-          videoSender.setParameters(params).catch(() => { });
-        }
+      if (pc.connectionState === 'connected') {
+        applyEncoderBitrates(pc, {
+          lowBandwidth: effectiveLowBandwidth,
+          videoTier: videoBitrateTierRef.current,
+        });
       }
-      if (pc.connectionState === "failed") endCallLocally(true);
+      if (pc.connectionState === 'failed') endCallLocally(true);
     };
     return pc;
-  }, [socket, endCallLocally, user?.lowBandwidth]);
+  }, [socket, endCallLocally, effectiveLowBandwidth]);
+
+  // Adaptive bitrate while in call
+  useEffect(() => {
+    if (!inCall) return undefined;
+    const interval = setInterval(async () => {
+      const pc = peerConnectionRef.current;
+      if (!pc || pc.connectionState !== 'connected') return;
+
+      const nextTier = await suggestVideoTier(pc, videoBitrateTierRef.current, {
+        lowBandwidth: effectiveLowBandwidth,
+      });
+      if (nextTier !== null) {
+        videoBitrateTierRef.current = nextTier;
+        applyEncoderBitrates(pc, {
+          lowBandwidth: effectiveLowBandwidth,
+          videoTier: nextTier,
+        });
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [inCall, effectiveLowBandwidth]);
 
   const iceQueue = useRef([]);
 
@@ -300,25 +420,15 @@ const VideoContainer = () => {
       return localStreamRef.current;
     };
 
-    const attachLocalTracks = (pc, stream) => {
-      if (!stream || !pc || pc.signalingState === 'closed') return;
-      const senderTrackIds = new Set(
-        pc.getSenders().map((s) => s.track?.id).filter(Boolean)
-      );
-      stream.getTracks().forEach((track) => {
-        if (!senderTrackIds.has(track.id)) {
-          pc.addTrack(track, stream);
-          senderTrackIds.add(track.id);
-        }
-      });
-    };
-
     const onMatchFound = async ({ roomId: rId, role, remoteUserId: remoteId, icebreaker: prompt, icebreakerQuestion: question, callMode: remoteCallMode, isWildcard: wildcardFlag }) => {
-      console.log('[MatchFound] Match event received!', { rId, role, remoteId });
+      webrtcLog('Match found', { rId, role, remoteId });
       if (peerConnectionRef.current) endCallLocally(false);
       roomIdRef.current = rId;
+      callRoleRef.current = role;
+      const resolvedMode = remoteCallMode || 'video';
+      matchedCallModeRef.current = resolvedMode;
 
-      setMatchedCallMode(remoteCallMode || 'video');
+      setMatchedCallMode(resolvedMode);
       setIcebreakerQuestion(question || null);
       setLocalVote(null);
       setRemoteVote(null);
@@ -339,8 +449,9 @@ const VideoContainer = () => {
       setCuriosityBlurTimer(0);
       if (navigator.vibrate) navigator.vibrate(100);
 
-      const pc = createPeerConnection(rId); peerConnectionRef.current = pc;
-      iceQueue.current = []; // Reset queue for new match
+      const pc = createPeerConnection();
+      peerConnectionRef.current = pc;
+      iceQueue.current = [];
 
       const stream = (await waitForLocalStream()) || localStreamRef.current;
       if (!stream) {
@@ -348,20 +459,7 @@ const VideoContainer = () => {
         return;
       }
 
-      // Caller: attach local A/V then offer after a short buffer to ensure receiver is in room.
-      if (role === 'caller') {
-        setTimeout(async () => {
-          if (!peerConnectionRef.current) return;
-          attachLocalTracks(peerConnectionRef.current, stream);
-          const offer = await peerConnectionRef.current.createOffer({
-            offerToReceiveAudio: true,
-            offerToReceiveVideo: true
-          });
-          await peerConnectionRef.current.setLocalDescription(offer);
-          socket.emit('webrtc-offer', { offer: peerConnectionRef.current.localDescription, roomId: rId });
-          console.log('[WebRTC] Offer sent to room:', rId);
-        }, 500);
-      }
+      socket.emit('webrtc-call-ready', { roomId: rId });
 
       apiFetch(`${API_URL}/api/users/${remoteId}`).then(res => {
         if (res.status === 401) throw new Error("Unauthorized");
@@ -373,12 +471,14 @@ const VideoContainer = () => {
       });
     };
 
+    const onPeersReady = () => {
+      sendCallerOffer();
+    };
+
     const onOffer = async ({ offer }) => {
-      console.log('[WebRTC] Offer received from peer');
+      webrtcLog('Offer received');
       const pc = peerConnectionRef.current;
       if (!pc) {
-        console.warn('[WebRTC] Offer received but PeerConnection not ready. Queueing...');
-        // We'll wait a bit and try again
         setTimeout(() => onOffer({ offer }), 1000);
         return;
       }
@@ -389,14 +489,15 @@ const VideoContainer = () => {
           return;
         }
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        attachLocalTracks(pc, stream);
+        attachLocalTracksToPc(pc, stream);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit('webrtc-answer', { answer: pc.localDescription, roomId: roomIdRef.current });
-        console.log('[WebRTC] Answer sent to peer');
+        webrtcLog('Answer sent');
 
         while (iceQueue.current.length > 0) {
           const candidate = iceQueue.current.shift();
+          if (candidate === null) continue;
           await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch((e) => console.error('ICE Queue error:', e));
         }
       } catch (err) {
@@ -405,19 +506,18 @@ const VideoContainer = () => {
     };
 
     const onAnswer = async ({ answer }) => {
-      console.log('[WebRTC] Answer received from peer');
+      webrtcLog('Answer received');
       const pc = peerConnectionRef.current;
       if (!pc) return;
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        console.log('[WebRTC] Remote description set (Answer)');
-        // Process queued ICE candidates
         while (iceQueue.current.length > 0) {
           const candidate = iceQueue.current.shift();
-          await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("ICE Queue error:", e));
+          if (candidate === null) continue;
+          await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch((e) => console.error('ICE Queue error:', e));
         }
       } catch (err) {
-        console.error("Failed to handle answer", err);
+        console.error('Failed to handle answer', err);
       }
     };
 
@@ -425,9 +525,13 @@ const VideoContainer = () => {
       const pc = peerConnectionRef.current;
       if (!pc) return;
 
-      if (pc.remoteDescription && pc.remoteDescription.type) {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => { });
-      } else {
+      if (pc.remoteDescription?.type) {
+        if (candidate === null) {
+          await pc.addIceCandidate(null).catch(() => { });
+        } else {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => { });
+        }
+      } else if (candidate !== null) {
         iceQueue.current.push(candidate);
       }
     };
@@ -508,6 +612,7 @@ const VideoContainer = () => {
     socket.on("stop-typing", onPeerStopTyping);
     socket.on("peer-wants-connection", onPeerWantsConnection);
     socket.on("connection-established", onConnectionEstablished);
+    socket.on("webrtc-peers-ready", onPeersReady);
     socket.on("webrtc-offer", onOffer);
     socket.on("webrtc-answer", onAnswer);
     socket.on("webrtc-ice-candidate", onIceCandidate);
@@ -523,6 +628,7 @@ const VideoContainer = () => {
       socket.off("stop-typing", onPeerStopTyping);
       socket.off("peer-wants-connection", onPeerWantsConnection);
       socket.off("connection-established", onConnectionEstablished);
+      socket.off("webrtc-peers-ready", onPeersReady);
       socket.off("webrtc-offer", onOffer);
       socket.off("webrtc-answer", onAnswer);
       socket.off("webrtc-ice-candidate", onIceCandidate);
@@ -531,7 +637,7 @@ const VideoContainer = () => {
       socket.off("peer-disconnected", onPeerDisconnected);
       socket.off("peer-icebreaker-vote", onPeerIcebreakerVote);
     };
-  }, [socket, createPeerConnection, endCallLocally, user]);
+  }, [socket, createPeerConnection, endCallLocally, user, sendCallerOffer]);
 
   // ── Actions ──
   const skipMatch = () => { if (navigator.vibrate) navigator.vibrate(50); endCallLocally(true); };
@@ -646,6 +752,10 @@ const VideoContainer = () => {
   const isHidden = !isVideoRoute && !inCall && !isMatching;
   const activeCallMode = inCall ? matchedCallMode : callMode;
   const isAudioUI = activeCallMode === 'audio';
+  const remotePrivacyOverlay =
+    matchedCallMode !== 'audio' && (isBlurred || peerIsPrivate || safetyBlurTimer > 0);
+  const curiosityOverlayOpacity =
+    curiosityBlurTimer > 0 ? Math.min(curiosityBlurTimer / 5, 0.85) : 0;
 
   if (isHidden) return null;
 
@@ -673,7 +783,12 @@ const VideoContainer = () => {
           </div>
         ) : (
         <div className="relative w-full h-full">
-          <video ref={remoteVideoRef} autoPlay playsInline style={{ filter: (isBlurred || peerIsPrivate) ? "blur(60px)" : "none" }} className="w-full h-full object-cover rounded-2xl" />
+          <div className="relative w-full h-full rounded-2xl overflow-hidden">
+            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            {remotePrivacyOverlay && (
+              <div className="absolute inset-0 z-10 bg-[#0B0E14]/90" aria-hidden />
+            )}
+          </div>
           <div className="absolute bottom-2 right-2 w-12 h-16 rounded-xl overflow-hidden border-2 border-white/20">
             <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
           </div>
@@ -881,7 +996,7 @@ const VideoContainer = () => {
 
                           {/* BUTTON */}
                           <button
-                            onClick={cameraReady || callMode === 'audio' ? startMatching : () => setCameraRequested(true)}
+                            onClick={cameraReady || callMode === 'audio' ? startMatching : () => { requestCallUi(); setCameraRequested(true); }}
                             className="
           group
           relative
@@ -970,13 +1085,27 @@ const VideoContainer = () => {
                         </div>
                       </div>
                     ) : (
-                      <video
-                        ref={remoteVideoRef}
-                        autoPlay
-                        playsInline
-                        style={{ filter: (isBlurred || peerIsPrivate || safetyBlurTimer > 0) ? "blur(80px) scale(1.1)" : (curiosityBlurTimer > 0) ? `blur(${curiosityBlurTimer * 2}px)` : "none" }}
-                        className="absolute inset-0 w-full h-full object-cover transition-all duration-[2000ms] ease-in-out z-10"
-                      />
+                      <>
+                        <video
+                          ref={remoteVideoRef}
+                          autoPlay
+                          playsInline
+                          className="absolute inset-0 w-full h-full object-cover z-10"
+                        />
+                        {remotePrivacyOverlay && (
+                          <div
+                            className="absolute inset-0 z-[15] bg-[#0B0E14]/92 transition-opacity duration-300"
+                            aria-hidden
+                          />
+                        )}
+                        {curiosityOverlayOpacity > 0 && (
+                          <div
+                            className="absolute inset-0 z-[14] bg-black pointer-events-none transition-opacity duration-1000"
+                            style={{ opacity: curiosityOverlayOpacity }}
+                            aria-hidden
+                          />
+                        )}
+                      </>
                     )}
                     {/* Safety Blur UI Overlay */}
                     {safetyBlurTimer > 0 && matchedCallMode !== 'audio' && (
