@@ -2,7 +2,67 @@ import React, { useState, useEffect, lazy, Suspense } from 'react'
 import HeroContent from './HeroContent'
 import WaterInteraction from '../ui/WaterInteraction'
 
-const WaterWave = lazy(() => import('react-water-wave'))
+const WaterWave = lazy(() => {
+    // Check if we are on a mobile/tablet or touch device
+    const isMobileOrTablet = typeof window !== 'undefined' && (
+        window.innerWidth < 1024 ||
+        /Mobi|Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry|Opera Mini/i.test(navigator.userAgent) ||
+        ('ontouchstart' in window) ||
+        (navigator.maxTouchPoints > 0)
+    )
+
+    // Check if WebGL is supported
+    const hasWebGL = typeof window !== 'undefined' && (() => {
+        try {
+            const canvas = document.createElement('canvas')
+            return !!(
+                window.WebGLRenderingContext && 
+                (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
+            )
+        } catch (_error) {
+            return false
+        }
+    })()
+
+    // Only load react-water-wave on desktop browsers with WebGL support
+    if (!isMobileOrTablet && hasWebGL) {
+        return import('react-water-wave').catch((error) => {
+            console.warn('Failed to load react-water-wave, falling back to static background:', error)
+            return {
+                default: ({ imageUrl, children, className, style }) => (
+                    <div 
+                        className={className} 
+                        style={{ 
+                            ...style, 
+                            backgroundImage: imageUrl ? `url(${imageUrl})` : 'none',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'right'
+                        }}
+                    >
+                        {typeof children === 'function' ? children({}) : children}
+                    </div>
+                )
+            }
+        })
+    }
+
+    // Fallback: A component that simply renders a standard div with a static background image
+    return Promise.resolve({
+        default: ({ imageUrl, children, className, style }) => (
+            <div 
+                className={className} 
+                style={{ 
+                    ...style, 
+                    backgroundImage: imageUrl ? `url(${imageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'right'
+                }}
+            >
+                {typeof children === 'function' ? children({}) : children}
+            </div>
+        )
+    })
+})
 
 const HeroSection = () => {
     const [isDesktop, setIsDesktop] = useState(false)
@@ -108,23 +168,21 @@ const HeroSection = () => {
                 ))}
             </div>
 
-            {/* DESKTOP BACKGROUND IMAGE (WITH WEBGL WATER RIPPLES) */}
-            {isDesktop && (
-                <div className="hidden lg:block absolute inset-0 w-full h-full z-[1]">
-                    <Suspense fallback={<div className="w-full h-full bg-[#04010D]" />}>
-                        <WaterWave
-                            imageUrl="/hero1.webp"
-                            dropRadius={35}
-                            perturbance={0.04}
-                            resolution={600}
-                            className="w-full h-full"
-                            style={{ backgroundSize: 'cover', backgroundPosition: 'right' }}
-                        >
-                            {() => <div className="w-full h-full pointer-events-none" />}
-                        </WaterWave>
-                    </Suspense>
-                </div>
-            )}
+            {/* BACKGROUND IMAGE (WITH WEBGL WATER RIPPLES ON DESKTOP, STATIC FALLBACK ON MOBILE/IOS) */}
+            <div className="absolute inset-0 w-full h-full z-[1]">
+                <Suspense fallback={<div className="w-full h-full bg-[#04010D]" />}>
+                    <WaterWave
+                        imageUrl="/hero1.webp"
+                        dropRadius={35}
+                        perturbance={0.04}
+                        resolution={600}
+                        className="w-full h-full"
+                        style={{ backgroundSize: 'cover', backgroundPosition: 'right' }}
+                    >
+                        {() => <div className="w-full h-full pointer-events-none" />}
+                    </WaterWave>
+                </Suspense>
+            </div>
 
             {/* DESKTOP OVERLAY */}
             <div
@@ -139,6 +197,20 @@ const HeroSection = () => {
                     via-30%
                     to-transparent
                     to-55%
+                "
+            />
+
+            {/* MOBILE OVERLAY (FALLBACK FOR READABILITY ON SMARTPHONES) */}
+            <div
+                className="
+                    block lg:hidden
+                    absolute inset-0
+                    z-[5]
+                    pointer-events-none
+                    bg-gradient-to-b
+                    from-[#04010D]/95
+                    via-[#04010D]/80
+                    to-[#04010D]
                 "
             />
 
